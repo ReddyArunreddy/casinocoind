@@ -245,11 +245,18 @@ private:
             , m_probe (interval, ios)
             , lastSample_ {}
         {
+JLOG(m_journal.warn()) << "io latency sampler thread id " << std::this_thread::get_id();
+        }
+        ~io_latency_sampler ()
+        {
+JLOG(m_journal.warn()) << "io_service latency measurement destroyed";
         }
 
         void
         start()
         {
+JLOG(m_journal.warn()) << "start sampling";
+JLOG(m_journal.warn()) << "io latency sampler start thread id " << std::this_thread::get_id();
             m_probe.sample (std::ref(*this));
         }
 
@@ -258,9 +265,10 @@ private:
         {
             using namespace std::chrono;
             auto const ms (ceil <std::chrono::milliseconds> (elapsed));
+JLOG(m_journal.warn()) << "io latency sampler operator() thread id " << std::this_thread::get_id();
+JLOG(m_journal.warn()) << "curr latency = " << ms.count();
 
             lastSample_ = ms;
-
             if (ms.count() >= 10)
                 m_event.notify (ms);
             if (ms.count() >= 500)
@@ -273,17 +281,20 @@ private:
         std::chrono::milliseconds
         get () const
         {
+JLOG(m_journal.warn()) << "get sampling = " << lastSample_.load().count() << "thread id " << std::this_thread::get_id();
             return lastSample_.load();
         }
 
         void
         cancel ()
         {
+JLOG(m_journal.warn()) << "cancel sampling";
             m_probe.cancel ();
         }
 
         void cancel_async ()
         {
+JLOG(m_journal.warn()) << "cancel async sampling";
             m_probe.cancel_async ();
         }
     };
@@ -496,7 +507,7 @@ public:
         , m_resolver (ResolverAsio::New (get_io_service(), logs_->journal("Resolver")))
 
         , m_io_latency_sampler (m_collectorManager->collector()->make_event ("ios_latency"),
-            logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
+                                logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
     {
         add (m_resourceManager.get ());
 

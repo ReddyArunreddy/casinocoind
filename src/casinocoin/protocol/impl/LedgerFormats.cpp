@@ -54,6 +54,16 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfTickSize,            SOE_OPTIONAL)
             ;
 
+//    add ("CRNRoot", ltCRN_ROOT)
+//            << SOElement (sfNodePubKey,          SOE_REQUIRED)
+//            << SOElement (sfNodeIPAddress,       SOE_REQUIRED)
+//            << SOElement (sfNodeDomainName,      SOE_REQUIRED)
+//            << SOElement (sfNodeLatencyAvg,      SOE_OPTIONAL)
+//            << SOElement (sfNodeConnectionStats, SOE_OPTIONAL)
+//            << SOElement (sfLastFeeShare,        SOE_OPTIONAL)
+//            << SOElement (sfLastFeeDrops,        SOE_OPTIONAL)
+//            ;
+
     add ("DirectoryNode", ltDIR_NODE)
             << SOElement (sfOwner,               SOE_OPTIONAL)  // for owner directories
             << SOElement (sfTakerPaysCurrency,   SOE_OPTIONAL)  // for order book directories
