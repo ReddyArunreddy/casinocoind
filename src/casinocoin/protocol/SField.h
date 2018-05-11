@@ -364,6 +364,7 @@ extern SF_U32 const sfWalletSize;
 extern SF_U32 const sfOwnerCount;
 extern SF_U32 const sfDestinationTag;
 extern SF_U32 const sfKYCTime;
+extern SF_U32 const sfTimestamp;
 
 // 32-bit integers (uncommon)
 extern SF_U32 const sfHighQualityIn;
@@ -390,6 +391,7 @@ extern SF_U32 const sfCancelAfter;
 extern SF_U32 const sfFinishAfter;
 extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
+extern SF_U32 const sfCRN_LatencyAvg;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
@@ -446,6 +448,7 @@ extern SF_Amount const sfDeliverMin;
 extern SF_Amount const sfMinimumOffer;
 extern SF_Amount const sfCasinocoinEscrow;
 extern SF_Amount const sfDeliveredAmount;
+extern SF_Amount const sfCRN_FeeDistributed;
 
 // variable length (common)
 extern SF_Blob const sfPublicKey;
@@ -462,11 +465,14 @@ extern SF_Blob const sfMemoType;
 extern SF_Blob const sfMemoData;
 extern SF_Blob const sfMemoFormat;
 extern SF_Blob const sfClientIP;
+extern SF_Blob const sfCRN_PublicKey;
 
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
 extern SF_Blob const sfCondition;
 extern SF_Blob const sfMasterSignature;
+extern SF_Blob const sfCRN_IPAddress;
+extern SF_Blob const sfCRN_DomainName;
 
 // account
 extern SF_Account const sfAccount;
@@ -501,7 +507,11 @@ extern SField const sfMemo;
 extern SField const sfSignerEntry;
 extern SField const sfSigner;
 extern SField const sfMajority;
+// stands for Know Your Customer
 extern SField const sfKYC;
+// stands for Community Relay Node
+extern SField const sfCRN;
+extern SField const sfCRN_ConnectionStats;
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -514,7 +524,7 @@ extern SField const sfSufficient;
 extern SField const sfAffectedNodes;
 extern SField const sfMemos;
 extern SField const sfMajorities;
-
+extern SField const sfCRNs;
 //------------------------------------------------------------------------------
 
 } // casinocoin
