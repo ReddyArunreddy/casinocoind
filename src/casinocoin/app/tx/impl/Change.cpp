@@ -85,7 +85,8 @@ Change::preclaim(PreclaimContext const &ctx)
     }
 
     if (ctx.tx.getTxnType() != ttAMENDMENT
-        && ctx.tx.getTxnType() != ttFEE)
+        && ctx.tx.getTxnType() != ttFEE
+        && ctx.tx.getTxnType() != ttCRN_ROUND)
         return temUNKNOWN;
 
     return tesSUCCESS;
@@ -98,8 +99,10 @@ Change::doApply()
     if (ctx_.tx.getTxnType () == ttAMENDMENT)
         return applyAmendment ();
 
-    assert(ctx_.tx.getTxnType() == ttFEE);
-    return applyFee ();
+    if (ctx_.tx.getTxnType () == ttFEE)
+        return applyFee();
+    assert(ctx_.tx.getTxnType() == ttCRN_ROUND);
+    return applyCRN ();
 }
 
 void
@@ -234,6 +237,13 @@ Change::applyFee()
 
     JLOG(j_.warn()) << "Fees have been changed";
     return tesSUCCESS;
+}
+
+TER Change::applyCRN()
+{
+    auto const k = keylet::crnRound();
+
+    SLE::pointer crnRoundObject = view().peek(k);
 }
 
 }

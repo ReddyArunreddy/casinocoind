@@ -146,6 +146,21 @@ TxFormats::TxFormats ()
         << SOElement (sfSetFlag,            SOE_OPTIONAL)
         << SOElement (sfClearFlag,          SOE_OPTIONAL)
         ;
+
+    add ("CRNReport", ttCRN_REPORT)
+        << SOElement (sfCRN_PublicKey,       SOE_REQUIRED)
+        << SOElement (sfCRN_IPAddress,       SOE_REQUIRED)
+        << SOElement (sfCRN_DomainName,      SOE_REQUIRED)
+        << SOElement (sfSetFlag,             SOE_OPTIONAL)
+        << SOElement (sfClearFlag,           SOE_OPTIONAL)
+        << SOElement (sfCRN_LatencyAvg,      SOE_OPTIONAL)
+        << SOElement (sfCRN_ConnectionStats, SOE_OPTIONAL)
+        ;
+
+    add ("SetCRNRound", ttCRN_ROUND)
+        << SOElement (sfCRNs,                SOE_REQUIRED)
+        << SOElement (sfCRN_FeeDistributed,  SOE_REQUIRED)
+        ;
 }
 
 void TxFormats::addCommonFields (Item& item)

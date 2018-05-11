@@ -52,17 +52,13 @@ LedgerFormats::LedgerFormats ()
             << SOElement (sfTransferRate,        SOE_OPTIONAL)
             << SOElement (sfDomain,              SOE_OPTIONAL)
             << SOElement (sfTickSize,            SOE_OPTIONAL)
+            << SOElement (sfCRN,                 SOE_OPTIONAL)
             ;
 
-//    add ("CRNRoot", ltCRN_ROOT)
-//            << SOElement (sfNodePubKey,          SOE_REQUIRED)
-//            << SOElement (sfNodeIPAddress,       SOE_REQUIRED)
-//            << SOElement (sfNodeDomainName,      SOE_REQUIRED)
-//            << SOElement (sfNodeLatencyAvg,      SOE_OPTIONAL)
-//            << SOElement (sfNodeConnectionStats, SOE_OPTIONAL)
-//            << SOElement (sfLastFeeShare,        SOE_OPTIONAL)
-//            << SOElement (sfLastFeeDrops,        SOE_OPTIONAL)
-//            ;
+    add ("CRNRound", ltCRN_ROUND)
+            << SOElement (sfCRNs,                SOE_REQUIRED)
+            << SOElement (sfCRN_FeeDistributed,  SOE_REQUIRED)
+            ;
 
     add ("DirectoryNode", ltDIR_NODE)
             << SOElement (sfOwner,               SOE_OPTIONAL)  // for owner directories

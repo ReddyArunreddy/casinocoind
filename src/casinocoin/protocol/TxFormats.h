@@ -63,6 +63,8 @@ enum TxType
 
     ttAMENDMENT         = 100,
     ttFEE               = 101,
+    ttCRN_REPORT        = 102,
+    ttCRN_ROUND         = 103
 };
 
 /** Manages the list of known transaction formats.

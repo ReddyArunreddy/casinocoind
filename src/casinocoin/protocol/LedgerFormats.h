@@ -61,10 +61,10 @@ enum LedgerEntryType
 
     /** Community Relay Node.
 
-        This is special Ledger entry assigned to CRN
-        describing state of a node and its properties.
+        This is special Ledger entry storing CRN Round conclusion results.
+        Node list, eligibility, fee share.
     */
-    ltCRN_ROOT          = 'C',
+    ltCRN_ROUND         = 'C',
 
     /** Directory node.
 
@@ -146,7 +146,7 @@ enum LedgerSpecificFlags
     lsfDefaultCasinocoin = 0x00800000,   // True, trust lines allow rippling by default
     lsfKYCValidated      = 0x01000000,   // True, if account has approved KYC validation
 
-    // ltCRN_ROOT
+    // ltCRN_ROUND
     lsfEligible          = 0x00010000,   // True, if CRN is eligible for fee share
 
     // ltOFFER
