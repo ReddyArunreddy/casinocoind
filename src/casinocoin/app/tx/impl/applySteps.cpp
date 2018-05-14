@@ -63,7 +63,9 @@ invoke_preflight (PreflightContext const& ctx)
     case ttTRUST_SET:       return SetTrust         ::preflight(ctx);
     case ttKYC_SET:         return SetKYC           ::preflight(ctx);
     case ttAMENDMENT:
-    case ttFEE:             return Change           ::preflight(ctx);
+    case ttFEE:
+    case ttCRN_REPORT:
+    case ttCRN_ROUND:       return Change           ::preflight(ctx);
     case ttPAYCHAN_CREATE:  return PayChanCreate    ::preflight(ctx);
     case ttPAYCHAN_FUND:    return PayChanFund      ::preflight(ctx);
     case ttPAYCHAN_CLAIM:   return PayChanClaim     ::preflight(ctx);

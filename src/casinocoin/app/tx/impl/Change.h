@@ -68,7 +68,8 @@ private:
 
     TER applyFee ();
 
-    TER applyCRN ();
+    TER applyCRN_Round ();
+    TER applyCRN_Report ();
 };
 
 }
