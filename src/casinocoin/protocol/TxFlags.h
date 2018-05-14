@@ -79,6 +79,10 @@ const std::uint32_t asfDefaultCasinocoin   = 8;
 // KYCSet SetFlag/ClearFlag values
 const std::uint32_t kycfValidated          = 1;
 
+// CRNReport SetFlag/ClearFlag values
+// jrojek TODO question if we can reuse Jumio for CRN KYC section
+//const std::uint32_t crnrepfKYCValidated    = 1;
+
 // OfferCreate flags:
 const std::uint32_t tfPassive              = 0x00010000;
 const std::uint32_t tfImmediateOrCancel    = 0x00020000;

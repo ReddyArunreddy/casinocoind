@@ -113,7 +113,7 @@ Change::preCompute()
 {
     account_ = ctx_.tx.getAccountID(sfAccount);
 
-    if (ctx_tx.getTxnType() == ttCRN_REPORT)
+    if (ctx_.tx.getTxnType() == ttCRN_REPORT)
     {
         // jrojek TODO: verify that account is on CRN list
         assert(account_ != zero);
@@ -261,32 +261,98 @@ TER Change::applyCRN_Round()
         view().insert(crnRoundObject);
     }
 
-    crnRoundObject->
+//    crnRoundObject->
     // jrojek TODO: evaluate CRN round object to apply it.
-    JLOG(j_.warn()) << "CRN Round have concluded and is applied";
+    JLOG(j_.warn()) << "CRN Round have concluded and is applied (ok, it's not, but will be soon";
 
     return tesSUCCESS;
 }
 
 TER Change::applyCRN_Report()
 {
-    auto const k = keylet::account(account_);
+    JLOG(j_.info()) << "applyCRN_Report!";
+    AccountID const crnAccountID (ctx_.tx.getAccountID (sfAccount));
 
-    SLE::pointer crn_accountObject = view().peek(k);
-    if (!crn_accountObject)
+    // Open a ledger for editing.
+    SLE::pointer sleAcc = view().peek (keylet::account(crnAccountID));
+
+    if (!sleAcc)
     {
-        JLOG(j_.warn()) << "Requested application of CRN Account Report ("
-                        << accountBase58 << ") but it does not exist";
+        JLOG(j_.warn()) << "Sourceccount does not exist. Kind of impossible";
+        return temDST_NEEDED;
     }
-    auto const sle = std::make_shared<SLE>(keylet::account(id));
-    sle->setFieldU32 (sfSequence, 1);
-    sle->setAccountID (sfAccount, id);
-    sle->setFieldAmount (sfBalance, info_.drops);
+    else
+    {
+        // mark account to update
+        view().update (sleAcc);
+    }
 
-    SLE::pointer crnReportObject = view().peek(k);
-    // jrojek TODO: evaluate report object to apply it.
+    std::uint32_t const uFlagsIn = sleAcc->getFieldU32 (sfFlags);
+    std::uint32_t uFlagsOut = uFlagsIn;
 
-    JLOG(j_.warn()) << "CRN Report for account: " << accBase58 << " is applied";
+    std::uint32_t const uSetFlag = ctx_.tx.getFieldU32 (sfSetFlag);
+    std::uint32_t const uClearFlag = ctx_.tx.getFieldU32 (sfClearFlag);
+
+    if (!(uFlagsIn & lsfKYCValidated))
+    {
+        JLOG(j_.warn()) << "Account is not KYC validated. Please fill KYC first";
+        return temINVALID;
+    }
+    auto crnObject = sleAcc->peekFieldObject(sfCRN);
+
+    // PubKey
+    if (crnObject.isFieldPresent(sfCRN_PublicKey))
+    {
+        if (makeSlice(crnObject.getFieldVL(sfCRN_PublicKey)) != makeSlice(ctx_.tx.getFieldVL(sfCRN_PublicKey)))
+        {
+            JLOG(j_.warn()) << "Public Key mismatch. Should actually blacklist this node";
+            return temMALFORMED;
+        }
+    }
+    else
+        crnObject.setFieldVL(sfCRN_PublicKey, makeSlice(ctx_.tx.getFieldVL(sfCRN_PublicKey)));
+
+    // IPAddress
+    if (crnObject.isFieldPresent(sfCRN_IPAddress))
+    {
+        if (makeSlice(crnObject.getFieldVL(sfCRN_IPAddress)) != makeSlice(ctx_.tx.getFieldVL(sfCRN_IPAddress)))
+        {
+            JLOG(j_.warn()) << "IPAddress mismatch. Should actually blacklist this node";
+            return temMALFORMED;
+        }
+    }
+    else
+        crnObject.setFieldVL(sfCRN_IPAddress, makeSlice(ctx_.tx.getFieldVL(sfCRN_IPAddress)));
+
+    //Domain
+    if (crnObject.isFieldPresent(sfCRN_DomainName))
+    {
+        if (makeSlice(crnObject.getFieldVL(sfCRN_DomainName)) != makeSlice(ctx_.tx.getFieldVL(sfCRN_DomainName)))
+        {
+            JLOG(j_.warn()) << "Domain mismatch. Should actually blacklist this node";
+            return temMALFORMED;
+        }
+    }
+    else
+        crnObject.setFieldVL(sfCRN_DomainName, makeSlice(ctx_.tx.getFieldVL(sfCRN_DomainName)));
+
+    //Latency average between flag ledgers
+    crnObject.setFieldU32(sfCRN_LatencyAvg, ctx_.tx.getFieldU32(sfCRN_LatencyAvg));
+
+    STArray connStats (sfCRN_ConnectionStats);
+    // jrojek TODO
+//    connStats.push_back(STObject (sfCRN_ConnectionStat));
+    auto& entry = connStats.back();
+//    entry.emplace_back (STUInt8 (sfConnType, abc));
+//    entry.emplace_back (STUInt32 (sfTime, def));
+    crnObject.setFieldArray(sfCRN_ConnectionStats, connStats);
+
+// jrojek TODO
+//    if (uFlagsIn != uFlagsOut)
+//        sleAcc->setFieldU32 (sfFlags, uFlagsOut);
+
+
+    JLOG(j_.warn()) << "CRN Report for account: " << toBase58(account_) << " is applied (it is not, but will be soon)";
     return tesSUCCESS;
 }
 
