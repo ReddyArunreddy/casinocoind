@@ -453,6 +453,14 @@ CCLConsensus::doAccept(
         validate(sharedLCL, proposing);
         JLOG(j_.info()) << "CNF Val " << newLCLHash;
     }
+    // jrojek TODO: this, or something similar,
+    // anyhow we need a way to automatically report CRN statuses
+    // and it should be free, something similar to CCLConsensus::validate but for CRN
+    // could work.
+//    else if (relaying_ && !consensusFail)
+//    {
+
+//    }
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
 
@@ -839,12 +847,25 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
     if (fee > feeTrack.getLoadBase())
         v->setFieldU32(sfLoadFee, fee);
 
+    if ((ledger.seq() % 256) == 0)
+    // this ledger is flag ledger
+    {
+        // jrojek TODO: on flag ledger CRN must report their performance
+    }
+
     if (((ledger.seq() + 1) % 256) == 0)
     // next ledger is flag ledger
     {
         // Suggest fee changes and new features
         feeVote_->doValidation(ledger.ledger_, *v);
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
+
+    }
+
+    if (((ledger.seq() + 1) % 1024) == 0)
+    {
+        // jrojek TODO: every 1024 ledgers re-distribute collected fees
+        // to eligible CRNs
     }
 
     auto const signingHash = v->sign(valSecret_);

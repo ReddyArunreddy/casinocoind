@@ -157,6 +157,8 @@ TxFormats::TxFormats ()
         << SOElement (sfCRN_ConnectionStats, SOE_OPTIONAL)
         ;
 
+    // jrojek TODO: well, might require huge refactoring
+    // as this might not be completly what it is meant to be
     add ("SetCRNRound", ttCRN_ROUND)
         << SOElement (sfCRNs,                SOE_REQUIRED)
         << SOElement (sfCRN_FeeDistributed,  SOE_REQUIRED)

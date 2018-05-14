@@ -86,6 +86,7 @@ Change::preclaim(PreclaimContext const &ctx)
 
     if (ctx.tx.getTxnType() != ttAMENDMENT
         && ctx.tx.getTxnType() != ttFEE
+        && ctx.tx.getTxnType() != ttCRN_REPORT
         && ctx.tx.getTxnType() != ttCRN_ROUND)
         return temUNKNOWN;
 
@@ -101,15 +102,24 @@ Change::doApply()
 
     if (ctx_.tx.getTxnType () == ttFEE)
         return applyFee();
+    if (ctx_.tx.getTxnType () == ttCRN_REPORT)
+        return applyCRN_Report ();
     assert(ctx_.tx.getTxnType() == ttCRN_ROUND);
-    return applyCRN ();
+    return applyCRN_Round ();
 }
 
 void
 Change::preCompute()
 {
     account_ = ctx_.tx.getAccountID(sfAccount);
-    assert(account_ == zero);
+
+    if (ctx_tx.getTxnType() == ttCRN_REPORT)
+    {
+        // jrojek TODO: verify that account is on CRN list
+        assert(account_ != zero);
+    }
+    else
+        assert(account_ == zero);
 }
 
 TER
@@ -239,11 +249,45 @@ Change::applyFee()
     return tesSUCCESS;
 }
 
-TER Change::applyCRN()
+TER Change::applyCRN_Round()
 {
     auto const k = keylet::crnRound();
 
     SLE::pointer crnRoundObject = view().peek(k);
+
+    if (!crnRoundObject)
+    {
+        crnRoundObject = std::make_shared<SLE>(k);
+        view().insert(crnRoundObject);
+    }
+
+    crnRoundObject->
+    // jrojek TODO: evaluate CRN round object to apply it.
+    JLOG(j_.warn()) << "CRN Round have concluded and is applied";
+
+    return tesSUCCESS;
+}
+
+TER Change::applyCRN_Report()
+{
+    auto const k = keylet::account(account_);
+
+    SLE::pointer crn_accountObject = view().peek(k);
+    if (!crn_accountObject)
+    {
+        JLOG(j_.warn()) << "Requested application of CRN Account Report ("
+                        << accountBase58 << ") but it does not exist";
+    }
+    auto const sle = std::make_shared<SLE>(keylet::account(id));
+    sle->setFieldU32 (sfSequence, 1);
+    sle->setAccountID (sfAccount, id);
+    sle->setFieldAmount (sfBalance, info_.drops);
+
+    SLE::pointer crnReportObject = view().peek(k);
+    // jrojek TODO: evaluate report object to apply it.
+
+    JLOG(j_.warn()) << "CRN Report for account: " << accBase58 << " is applied";
+    return tesSUCCESS;
 }
 
 }
