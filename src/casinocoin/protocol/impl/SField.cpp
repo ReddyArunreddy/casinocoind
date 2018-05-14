@@ -140,6 +140,7 @@ SF_U32 const sfSignerListID        = make::one<SF_U32::type>(&sfSignerListID,   
 SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,         STI_UINT32, 39, "SettleDelay");
 SF_U32 const sfCRN_LatencyAvg      = make::one<SF_U32::type>(&sfCRN_LatencyAvg,      STI_UINT32, 40, "CRN_LatencyAvg");
 SF_U32 const sfTimestamp           = make::one<SF_U32::type>(&sfTimestamp,           STI_UINT32, 41, "Timestamp");
+SF_U32 const sfTime                = make::one<SF_U32::type>(&sfTime,                STI_UINT32, 42, "Time");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -260,7 +261,6 @@ SField const sfSigner              = make::one(&sfSigner,              STI_OBJEC
 SField const sfMajority            = make::one(&sfMajority,            STI_OBJECT, 18, "Majority");
 SField const sfKYC                 = make::one(&sfKYC,                 STI_OBJECT, 19, "KYC");
 SField const sfCRN                 = make::one(&sfCRN,                 STI_OBJECT, 20, "CRN");
-SField const sfCRN_ConnectionStats = make::one(&sfCRN_ConnectionStats, STI_OBJECT, 21, "CRN_ConnectionStats");
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -274,8 +274,9 @@ SField const sfAffectedNodes   = make::one(&sfAffectedNodes,   STI_ARRAY, 8, "Af
 SField const sfMemos           = make::one(&sfMemos,           STI_ARRAY, 9, "Memos");
 
 // array of objects (uncommon)
-SField const sfMajorities      = make::one(&sfMajorities,      STI_ARRAY, 16, "Majorities");
-SField const sfCRNs            = make::one(&sfCRNs,            STI_ARRAY, 17, "CRNs");
+SField const sfMajorities           = make::one(&sfMajorities,          STI_ARRAY, 16, "Majorities");
+SField const sfCRNs                 = make::one(&sfCRNs,                STI_ARRAY, 17, "CRNs");
+SField const sfCRN_ConnectionStats  = make::one(&sfCRN_ConnectionStats, STI_ARRAY, 18, "CRN_ConnectionStats");
 
 SField::SField (SerializedTypeID tid, int fv, const char* fn,
                 int meta, IsSigning signing)

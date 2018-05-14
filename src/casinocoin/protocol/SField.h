@@ -365,6 +365,7 @@ extern SF_U32 const sfOwnerCount;
 extern SF_U32 const sfDestinationTag;
 extern SF_U32 const sfKYCTime;
 extern SF_U32 const sfTimestamp;
+extern SF_U32 const sfTime;
 
 // 32-bit integers (uncommon)
 extern SF_U32 const sfHighQualityIn;
@@ -465,7 +466,6 @@ extern SF_Blob const sfMemoType;
 extern SF_Blob const sfMemoData;
 extern SF_Blob const sfMemoFormat;
 extern SF_Blob const sfClientIP;
-extern SF_Blob const sfCRN_PublicKey;
 
 // variable length (uncommon)
 extern SF_Blob const sfFulfillment;
@@ -473,6 +473,7 @@ extern SF_Blob const sfCondition;
 extern SF_Blob const sfMasterSignature;
 extern SF_Blob const sfCRN_IPAddress;
 extern SF_Blob const sfCRN_DomainName;
+extern SF_Blob const sfCRN_PublicKey;
 
 // account
 extern SF_Account const sfAccount;
@@ -511,7 +512,6 @@ extern SField const sfMajority;
 extern SField const sfKYC;
 // stands for Community Relay Node
 extern SField const sfCRN;
-extern SField const sfCRN_ConnectionStats;
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -525,6 +525,7 @@ extern SField const sfAffectedNodes;
 extern SField const sfMemos;
 extern SField const sfMajorities;
 extern SField const sfCRNs;
+extern SField const sfCRN_ConnectionStats;
 //------------------------------------------------------------------------------
 
 } // casinocoin
