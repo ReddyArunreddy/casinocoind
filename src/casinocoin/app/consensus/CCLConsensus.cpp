@@ -337,6 +337,14 @@ CCLConsensus::onClose(
             feeVote_->doVoting(prevLedger, validations, initialSet);
             app_.getAmendmentTable().doVoting(
                 prevLedger, validations, initialSet);
+
+            app_.getCRNPerformance().submit(prevLedger, initialSet);
+
+            if ((prevLedger->info().seq % (256 * 4)) == 0)
+            {
+                // every fourth flag ledger we distribute fees. add CRNRound pseudo-transaction
+                // jrojek TODO
+            }
         }
     }
 
@@ -459,10 +467,23 @@ CCLConsensus::doAccept(
     // could work.
 //    else if (relaying_ && !consensusFail)
 //    {
-
+//        if (((sharedLCL.seq() + 1) % 256) == 0)
+//        // next ledger is flag ledger
+//        {
+//            app_.getCRNPerformance().submit(sharedLCL);
+//        }
 //    }
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
+
+    if (/*relaying_ &&*/ !consensusFail)
+    {
+        if (((sharedLCL.seq() + 1) % 256) == 0)
+        // next ledger is flag ledger
+        {
+            app_.getCRNPerformance().submit(sharedLCL.ledger_);
+        }
+    }
 
     // See if we can accept a ledger as fully-validated
     ledgerMaster_.consensusBuilt(sharedLCL.ledger_, getJson(true));
@@ -847,19 +868,12 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
     if (fee > feeTrack.getLoadBase())
         v->setFieldU32(sfLoadFee, fee);
 
-    if ((ledger.seq() % 256) == 0)
-    // this ledger is flag ledger
-    {
-        // jrojek TODO: on flag ledger CRN must report their performance
-    }
-
     if (((ledger.seq() + 1) % 256) == 0)
     // next ledger is flag ledger
     {
-        // Suggest fee changes and new features
+        // Suggest fee changes and new features.
         feeVote_->doValidation(ledger.ledger_, *v);
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
-
     }
 
     if (((ledger.seq() + 1) % 1024) == 0)

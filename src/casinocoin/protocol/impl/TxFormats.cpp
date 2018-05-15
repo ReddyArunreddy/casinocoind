@@ -148,6 +148,7 @@ TxFormats::TxFormats ()
         ;
 
     add ("CRNReport", ttCRN_REPORT)
+        << SOElement (sfLedgerSequence,      SOE_REQUIRED)
         << SOElement (sfCRN_PublicKey,       SOE_REQUIRED)
         << SOElement (sfCRN_IPAddress,       SOE_REQUIRED)
         << SOElement (sfCRN_DomainName,      SOE_REQUIRED)
@@ -155,6 +156,12 @@ TxFormats::TxFormats ()
         << SOElement (sfClearFlag,           SOE_OPTIONAL)
         << SOElement (sfCRN_LatencyAvg,      SOE_OPTIONAL)
         << SOElement (sfCRN_ConnectionStats, SOE_OPTIONAL)
+        ;
+
+    add ("CRNFeeDistribution", ttCRN_FEE_DISTRIB)
+        << SOElement (sfDestination,         SOE_REQUIRED)
+        << SOElement (sfAmount,              SOE_REQUIRED)
+        << SOElement (sfDestinationTag,      SOE_OPTIONAL)
         ;
 
     // jrojek TODO: well, might require huge refactoring

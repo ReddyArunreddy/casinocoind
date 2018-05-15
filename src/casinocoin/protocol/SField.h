@@ -512,6 +512,7 @@ extern SField const sfMajority;
 extern SField const sfKYC;
 // stands for Community Relay Node
 extern SField const sfCRN;
+extern SField const sfCRN_ConnectionStat;
 
 // array of objects
 // ARRAY/1 is reserved for end of array

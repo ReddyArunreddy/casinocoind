@@ -261,6 +261,7 @@ SField const sfSigner              = make::one(&sfSigner,              STI_OBJEC
 SField const sfMajority            = make::one(&sfMajority,            STI_OBJECT, 18, "Majority");
 SField const sfKYC                 = make::one(&sfKYC,                 STI_OBJECT, 19, "KYC");
 SField const sfCRN                 = make::one(&sfCRN,                 STI_OBJECT, 20, "CRN");
+SField const sfCRN_ConnectionStat  = make::one(&sfCRN_ConnectionStat,  STI_OBJECT, 21, "CRN_ConnectionStat");
 
 // array of objects
 // ARRAY/1 is reserved for end of array
