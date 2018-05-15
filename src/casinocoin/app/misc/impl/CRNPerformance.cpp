@@ -90,7 +90,6 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
         {
             obj[sfAccount] = account_;
             obj[sfFee] = beast::zero;
-//            obj[sfSigningPubKey] =
             obj[sfLedgerSequence] = seq;
             obj[sfCRN_PublicKey] = Blob();
             obj[sfCRN_IPAddress] = Blob();
@@ -102,7 +101,7 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
     uint256 txID = crnReportTx.getTransactionID ();
 
     JLOG(journal_.warn()) <<
-        "CRNReport for account: " << toBase58(account_) << " txID: " txID;
+        "CRNReport for account: " << toBase58(account_) << " txID: " << txID;
 
     Serializer s;
     crnReportTx.add (s);
