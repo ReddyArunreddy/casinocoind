@@ -109,59 +109,6 @@ class NetworkOPsImp final
 
     static std::array<char const*, 5> const states_;
 
-    /**
-     * State accounting records two attributes for each possible server state:
-     * 1) Amount of time spent in each state (in microseconds). This value is
-     *    updated upon each state transition.
-     * 2) Number of transitions to each state.
-     *
-     * This data can be polled through server_info and represented by
-     * monitoring systems similarly to how bandwidth, CPU, and other
-     * counter-based metrics are managed.
-     *
-     * State accounting is more accurate than periodic sampling of server
-     * state. With periodic sampling, it is very likely that state transitions
-     * are missed, and accuracy of time spent in each state is very rough.
-     */
-    class StateAccounting
-    {
-        struct Counters
-        {
-            std::uint32_t transitions = 0;
-            std::chrono::microseconds dur = std::chrono::microseconds (0);
-        };
-
-        OperatingMode mode_ = omDISCONNECTED;
-        std::array<Counters, 5> counters_;
-        mutable std::mutex mutex_;
-        std::chrono::system_clock::time_point start_ =
-            std::chrono::system_clock::now();
-        static std::array<Json::StaticString const, 5> const states_;
-        static Json::StaticString const transitions_;
-        static Json::StaticString const dur_;
-
-    public:
-        explicit StateAccounting ()
-        {
-            counters_[omDISCONNECTED].transitions = 1;
-        }
-
-        /**
-         * Record state transition. Update duration spent in previous
-         * state.
-         *
-         * @param om New state.
-         */
-        void mode (OperatingMode om);
-
-        /**
-         * Output state counters in JSON format.
-         *
-         * @return JSON object.
-         */
-        Json::Value json() const;
-    };
-
     //! Server fees published on `server` subscription
     struct ServerFeeSummary
     {
@@ -3279,7 +3226,12 @@ NetworkOPs::~NetworkOPs ()
 //------------------------------------------------------------------------------
 
 
-void NetworkOPsImp::StateAccounting::mode (OperatingMode om)
+NetworkOPs::StateAccounting::StateAccounting()
+{
+    counters_[omDISCONNECTED].transitions = 1;
+}
+
+void NetworkOPs::StateAccounting::mode (OperatingMode om)
 {
     auto now = std::chrono::system_clock::now();
 
@@ -3292,18 +3244,9 @@ void NetworkOPsImp::StateAccounting::mode (OperatingMode om)
     start_ = now;
 }
 
-Json::Value NetworkOPsImp::StateAccounting::json() const
+Json::Value NetworkOPs::StateAccounting::json() const
 {
-    std::unique_lock<std::mutex> lock (mutex_);
-
-    auto counters = counters_;
-    auto const start = start_;
-    auto const mode = mode_;
-
-    lock.unlock();
-
-    counters[mode].dur += std::chrono::duration_cast<
-        std::chrono::microseconds>(std::chrono::system_clock::now() - start);
+    auto counters = snapshot();
 
     Json::Value ret = Json::objectValue;
 
@@ -3317,6 +3260,22 @@ Json::Value NetworkOPsImp::StateAccounting::json() const
     }
 
     return ret;
+}
+
+std::array<NetworkOPs::StateAccounting::Counters> NetworkOPs::StateAccounting::snapshot() const
+{
+    std::unique_lock<std::mutex> lock (mutex_);
+
+    auto counters = counters_;
+    auto const start = start_;
+    auto const mode = mode_;
+
+    lock.unlock();
+
+    counters[mode].dur += std::chrono::duration_cast<
+        std::chrono::microseconds>(std::chrono::system_clock::now() - start);
+
+    return counters;
 }
 
 //------------------------------------------------------------------------------
