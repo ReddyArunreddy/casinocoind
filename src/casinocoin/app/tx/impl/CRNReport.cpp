@@ -34,6 +34,12 @@
 #include <casinocoin/ledger/View.h>
 namespace casinocoin {
 
+uint64_t
+CRNReport::calculateBaseFee(const PreclaimContext &ctx)
+{
+    return 0;
+}
+
 TER
 CRNReport::preflight (PreflightContext const& ctx)
 {
@@ -158,8 +164,9 @@ CRNReport::doApply ()
 //    entry.emplace_back (STUInt8 (sfConnType, abc));
 //    entry.emplace_back (STUInt32 (sfTime, def));
 
-    if (uFlagsIn != uFlagsOut)
-        sleAcc->setFieldU32 (sfFlags, uFlagsOut);
+    // jrojek TODO will be evaluated later
+//    if (uFlagsIn != uFlagsOut)
+//        sleAcc->setFieldU32 (sfFlags, uFlagsOut);
 
 
     JLOG(j_.warn()) << "CRN Report for account: " << toBase58(account_) << " is applied";

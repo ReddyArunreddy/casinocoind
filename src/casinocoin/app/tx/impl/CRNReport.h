@@ -46,11 +46,7 @@ public:
 
     static
     std::uint64_t
-    calculateBaseFee (
-        PreclaimContext const& ctx)
-    {
-        return 0;
-    }
+    calculateBaseFee (PreclaimContext const& ctx);
 
     static
     TER
