@@ -89,6 +89,7 @@ public:
     static char const* const databaseDirName;
     static char const* const validatorsFileName;
     static char const* const votingFileName;
+    static char const* const crnFileName;
 
     /** Returns the full path and filename of the debug log file. */
     boost::filesystem::path getDebugLogFile () const;

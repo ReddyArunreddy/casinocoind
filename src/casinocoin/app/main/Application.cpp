@@ -301,6 +301,7 @@ public:
     std::unique_ptr <ManifestCache> publisherManifests_;
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
+    // std::unique_ptr <CRNList> relaynodes_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
@@ -448,6 +449,9 @@ public:
     ManifestCache&
     publisherManifests() override { return *publisherManifests_; }
 
+    // CRNList&
+    // relaynodes () override { return *relaynodes_; }
+
     Cluster&
     cluster () override { return *cluster_; }
 
@@ -549,94 +553,97 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
     , m_nodeStoreScheduler (*this)
 
     , m_shaMapStore (make_SHAMapStore (*this, setup_SHAMapStore (*config_),
-                                       *this, m_nodeStoreScheduler,
-                                       logs_->journal ("SHAMapStore"), logs_->journal ("NodeObject"),
-                                       m_txMaster, *config_))
+        *this, m_nodeStoreScheduler,
+        logs_->journal ("SHAMapStore"), logs_->journal ("NodeObject"),
+        m_txMaster, *config_))
 
     , accountIDCache_(128000)
 
     , m_tempNodeCache ("NodeCache", 16384, 90, stopwatch(),
-                       logs_->journal("TaggedCache"))
+        logs_->journal("TaggedCache"))
 
     , m_collectorManager (CollectorManager::New (
-                              config_->section (SECTION_INSIGHT), logs_->journal("Collector")))
+        config_->section (SECTION_INSIGHT), logs_->journal("Collector")))
 
     , cachedSLEs_ (std::chrono::minutes(1), stopwatch())
 
     , m_resourceManager (Resource::make_Manager (
-                             m_collectorManager->collector(), logs_->journal("Resource")))
+        m_collectorManager->collector(), logs_->journal("Resource")))
 
     // The JobQueue has to come pretty early since
     // almost everything is a Stoppable child of the JobQueue.
     //
     , m_jobQueue (std::make_unique<JobQueue>(
-                      m_collectorManager->group ("jobq"), m_nodeStoreScheduler,
-                      logs_->journal("JobQueue"), *logs_))
+        m_collectorManager->group ("jobq"), m_nodeStoreScheduler,
+        logs_->journal("JobQueue"), *logs_))
 
     //
     // Anything which calls addJob must be a descendant of the JobQueue
     //
     , m_nodeStore (
-          m_shaMapStore->makeDatabase ("NodeStore.main", 4, *m_jobQueue))
+        m_shaMapStore->makeDatabase ("NodeStore.main", 4, *m_jobQueue))
 
     , family_ (*this, *m_nodeStore, *m_collectorManager)
 
     , m_orderBookDB (*this, *m_jobQueue)
 
     , m_pathRequests (std::make_unique<PathRequests> (
-                          *this, logs_->journal("PathRequest"), m_collectorManager->collector ()))
+        *this, logs_->journal("PathRequest"), m_collectorManager->collector ()))
 
     , m_ledgerMaster (std::make_unique<LedgerMaster> (*this, stopwatch (),
-                                                      *m_jobQueue, m_collectorManager->collector (),
-                                                      logs_->journal("LedgerMaster")))
+        *m_jobQueue, m_collectorManager->collector (),
+        logs_->journal("LedgerMaster")))
 
     // VFALCO NOTE must come before NetworkOPs to prevent a crash due
     //             to dependencies in the destructor.
     //
     , m_inboundLedgers (make_InboundLedgers (*this, stopwatch(),
-                                             *m_jobQueue, m_collectorManager->collector ()))
+        *m_jobQueue, m_collectorManager->collector ()))
 
     , m_inboundTransactions (make_InboundTransactions
-                             ( *this, stopwatch()
-                               , *m_jobQueue
-                               , m_collectorManager->collector ()
-                               , [this](std::shared_ptr <SHAMap> const& set,
-                               bool fromAcquire)
-{
-                             gotTXSet (set, fromAcquire);
-}))
+        ( *this, stopwatch()
+        , *m_jobQueue
+        , m_collectorManager->collector ()
+        , [this](std::shared_ptr <SHAMap> const& set,
+            bool fromAcquire)
+        {
+            gotTXSet (set, fromAcquire);
+        }))
 
     , m_acceptedLedgerCache ("AcceptedLedger", 4, 60, stopwatch(),
-                             logs_->journal("TaggedCache"))
+        logs_->journal("TaggedCache"))
 
     , m_networkOPs (make_NetworkOPs (*this, stopwatch(),
-                                     config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
-                                     *m_jobQueue, *m_ledgerMaster, *m_jobQueue,
-                                     logs_->journal("NetworkOPs")))
+        config_->standalone(), config_->NETWORK_QUORUM, config_->START_VALID,
+        *m_jobQueue, *m_ledgerMaster, *m_jobQueue,
+        logs_->journal("NetworkOPs")))
 
     , cluster_ (std::make_unique<Cluster> (
-                    logs_->journal("Overlay")))
+        logs_->journal("Overlay")))
 
     , validatorManifests_ (std::make_unique<ManifestCache> (
-                               logs_->journal("ManifestCache")))
+        logs_->journal("ManifestCache")))
 
     , publisherManifests_ (std::make_unique<ManifestCache> (
-                               logs_->journal("ManifestCache")))
+        logs_->journal("ManifestCache")))
 
     , validators_ (std::make_unique<ValidatorList> (
-                       *validatorManifests_, *publisherManifests_, *timeKeeper_,
-                       logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
+        *validatorManifests_, *publisherManifests_, *timeKeeper_,
+        logs_->journal("ValidatorList"), config_->VALIDATION_QUORUM))
 
     , validatorSites_ (std::make_unique<ValidatorSite> (
-                           get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+        get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+
+    // , relaynodes_ (std::make_unique<CRNList> (
+    //     *timeKeeper_, logs_->journal("CRNList")))
 
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
-                                          *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
+        *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
     , mHashRouter (std::make_unique<HashRouter>(
-                       stopwatch(), HashRouter::getDefaultHoldTime ()))
+        stopwatch(), HashRouter::getDefaultHoldTime ()))
 
     , mValidations (make_Validations (*this))
 
@@ -657,7 +664,7 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
     , m_resolver (ResolverAsio::New (get_io_service(), logs_->journal("Resolver")))
 
     , m_io_latency_sampler (m_collectorManager->collector()->make_event ("ios_latency"),
-                            logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
+        logs_->journal("Application"), std::chrono::milliseconds (100), get_io_service())
 {
     add (m_resourceManager.get ());
 
@@ -681,7 +688,6 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
 
     add (m_ledgerMaster->getPropertySource ());
 }
-
 // VFALCO TODO Break this function up into many small initialization segments.
 //             Or better yet refactor these initializations into RAII classes
 //             which are members of the Application object.
@@ -860,6 +866,8 @@ bool ApplicationImp::setup()
                 "Invalid entry in validator configuration.";
             return false;
         }
+
+        // Setup trusted relay nodes
     }
 
     if (!validatorSites_->load (
