@@ -93,7 +93,8 @@ Json::Value doWalletPropose         (RPC::Context&);
 Json::Value doWalletSeed            (RPC::Context&);
 Json::Value doWalletUnlock          (RPC::Context&);
 Json::Value doWalletVerify          (RPC::Context&);
-
+Json::Value doCRNCreate             (RPC::Context&);
+Json::Value doCRNVerify             (RPC::Context&);
 } // casinocoin
 
 #endif

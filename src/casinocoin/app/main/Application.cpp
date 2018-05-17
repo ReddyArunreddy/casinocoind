@@ -330,6 +330,7 @@ public:
     std::unique_ptr <ManifestCache> publisherManifests_;
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
+    // std::unique_ptr <CRNList> relaynodes_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
@@ -468,6 +469,9 @@ public:
 
         , validatorSites_ (std::make_unique<ValidatorSite> (
             get_io_service (), *validators_, logs_->journal("ValidatorSite")))
+
+        // , relaynodes_ (std::make_unique<CRNList> (
+        //     *timeKeeper_, logs_->journal("CRNList")))
 
         , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
             *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
@@ -690,6 +694,11 @@ public:
     {
         return *validatorSites_;
     }
+
+    // CRNList& relaynodes () override
+    // {
+    //     return *relaynodes_;
+    // }
 
     ManifestCache& validatorManifests() override
     {
@@ -1143,6 +1152,8 @@ bool ApplicationImp::setup()
                 "Invalid entry in validator configuration.";
             return false;
         }
+
+        // Setup trusted relay nodes
     }
 
     if (!validatorSites_->load (
