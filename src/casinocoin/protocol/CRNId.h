@@ -31,7 +31,7 @@
 
 namespace casinocoin {
 
-// jrojek TODO feel that class with section contents, add section to CFG file (possibly ajohems?)
+// jrojek TODO fill that class with section contents, add section to CFG file (possibly ajohems?)
 class CRNId
 {
 public:
