@@ -143,6 +143,7 @@ char const* const Config::configFileName = "casinocoind.cfg";
 char const* const Config::databaseDirName = "db";
 char const* const Config::validatorsFileName = "validators.txt";
 char const* const Config::votingFileName = "voting.cfg";
+char const* const Config::crnFileName = "relaynodes.txt";
 
 static
 std::string
@@ -589,10 +590,26 @@ void Config::loadFromString (std::string const& fileContents)
         }
     }
 
+    // Load Features
     {
         auto const part = section("features");
         for(auto const& s : part.values())
             features.insert(feature(s));
+    }
+
+    // Load Community Relay Nodes 
+    boost::filesystem::path crnFile;
+    std::string crnData;   
+    if (loadSectionFromExternalPath (SECTION_CRN_FILE, crnFile, crnData, crnFileName))
+    {
+        auto crnIniFile = parseIniFile (crnData, true);
+
+        auto crnEntries = getIniFileSection (
+            crnIniFile,
+            SECTION_CRNS);
+
+        if (crnEntries)
+            section (SECTION_CRNS).append (*crnEntries);
     }
 }
 

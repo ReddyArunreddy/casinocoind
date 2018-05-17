@@ -42,6 +42,7 @@
 #include <casinocoin/app/misc/Transaction.h>
 #include <casinocoin/app/misc/TxQ.h>
 #include <casinocoin/app/misc/ValidatorList.h>
+#include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/impl/AccountTxPaging.h>
 #include <casinocoin/app/tx/apply.h>
 #include <casinocoin/basics/mulDiv.h>
