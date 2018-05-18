@@ -116,22 +116,13 @@ public:
      */
     class StateAccounting
     {
+    public:
         struct Counters
         {
             std::uint32_t transitions = 0;
             std::chrono::microseconds dur = std::chrono::microseconds (0);
         };
 
-        OperatingMode mode_ = omDISCONNECTED;
-        std::array<Counters, 5> counters_;
-        mutable std::mutex mutex_;
-        std::chrono::system_clock::time_point start_ =
-            std::chrono::system_clock::now();
-        static std::array<Json::StaticString const, 5> const states_;
-        static Json::StaticString const transitions_;
-        static Json::StaticString const dur_;
-
-    public:
         explicit StateAccounting ();
 
         /**
@@ -154,7 +145,17 @@ public:
          *
          * @return array of Counters.
          */
-        std::array<Counters> snapshot() const;
+        std::array<Counters, 5> snapshot() const;
+
+    private:
+        OperatingMode mode_ = omDISCONNECTED;
+        std::array<Counters, 5> counters_;
+        mutable std::mutex mutex_;
+        std::chrono::system_clock::time_point start_ =
+            std::chrono::system_clock::now();
+        static std::array<Json::StaticString const, 5> const states_;
+        static Json::StaticString const transitions_;
+        static Json::StaticString const dur_;
     };
 
 public:
@@ -240,11 +241,11 @@ public:
     virtual PublicKey const& getValidationPublicKey () const = 0;
     virtual void setValidationKeys (
         SecretKey const& valSecret, PublicKey const& valPublic) = 0;
-
+    virtual void setCRNKeys (
+        SecretKey const& crnSecret, PublicKey const& crnPublic) = 0;
     virtual Json::Value getConsensusInfo () = 0;
     virtual Json::Value getServerInfo (bool human, bool admin) = 0;
-    virtual Json::Value getServerInfo (bool human, bool admin) = 0;
-    virtual std::array< getServerAccountingInfo () = 0;
+    virtual std::array<StateAccounting::Counters, 5> getServerAccountingInfo () = 0;
     virtual void clearLedgerFetch () = 0;
     virtual Json::Value getLedgerFetchInfo () = 0;
 

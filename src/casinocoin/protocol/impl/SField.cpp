@@ -141,6 +141,7 @@ SF_U32 const sfSettleDelay         = make::one<SF_U32::type>(&sfSettleDelay,    
 SF_U32 const sfCRN_LatencyAvg      = make::one<SF_U32::type>(&sfCRN_LatencyAvg,      STI_UINT32, 40, "CRN_LatencyAvg");
 SF_U32 const sfTimestamp           = make::one<SF_U32::type>(&sfTimestamp,           STI_UINT32, 41, "Timestamp");
 SF_U32 const sfTime                = make::one<SF_U32::type>(&sfTime,                STI_UINT32, 42, "Time");
+SF_U32 const sfTransitions         = make::one<SF_U32::type>(&sfTransitions,         STI_UINT32, 43, "Transitions");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -261,7 +262,7 @@ SField const sfSigner              = make::one(&sfSigner,              STI_OBJEC
 SField const sfMajority            = make::one(&sfMajority,            STI_OBJECT, 18, "Majority");
 SField const sfKYC                 = make::one(&sfKYC,                 STI_OBJECT, 19, "KYC");
 SField const sfCRN                 = make::one(&sfCRN,                 STI_OBJECT, 20, "CRN");
-SField const sfCRN_ConnectionStat  = make::one(&sfCRN_ConnectionStat,  STI_OBJECT, 21, "CRN_ConnectionStat");
+SField const sfCRN_ConnectionStat  = make::one(&sfCRN_ConnectionStat,  STI_OBJECT, 21, "ConnStat");
 
 // array of objects
 // ARRAY/1 is reserved for end of array

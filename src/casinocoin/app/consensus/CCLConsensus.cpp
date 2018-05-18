@@ -31,6 +31,7 @@
 #include <casinocoin/app/ledger/LocalTxs.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
+#include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
@@ -317,6 +318,14 @@ CCLConsensus::onClose(
             false);
     }
 
+    // CRN report their performance in selected periods
+    // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
+    // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
+    if ((prevLedger->info().seq % 64) == 0)
+    {
+        app_.getCRNPerformance().submit(prevLedger, crnSecret_, app_);
+    }
+
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
         ((prevLedger->info().seq % 256) == 0))
@@ -338,7 +347,6 @@ CCLConsensus::onClose(
             app_.getAmendmentTable().doVoting(
                 prevLedger, validations, initialSet);
 
-            app_.getCRNPerformance().submit(prevLedger, initialSet);
 
             if ((prevLedger->info().seq % (256 * 4)) == 0)
             {
@@ -478,11 +486,11 @@ CCLConsensus::doAccept(
 
     if (/*relaying_ &&*/ !consensusFail)
     {
-        if (((sharedLCL.seq() + 1) % 256) == 0)
+//        if (((sharedLCL.seq() + 1) % 256) == 0)
         // next ledger is flag ledger
-        {
-            app_.getCRNPerformance().submit(sharedLCL.ledger_);
-        }
+//        {
+//            app_.getCRNPerformance().submit(sharedLCL.ledger_);
+//        }
     }
 
     // See if we can accept a ledger as fully-validated
@@ -915,6 +923,14 @@ CCLConsensus::setValidationKeys(
 {
     valSecret_ = valSecret;
     valPublic_ = valPublic;
+}
+
+void CCLConsensus::setCRNKeys(
+    SecretKey const& crnSecret,
+    PublicKey const& crnPublic)
+{
+    crnSecret_ = crnSecret;
+    crnPublic_ = crnPublic;
 }
 
 void

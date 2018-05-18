@@ -121,14 +121,14 @@ CRNReport::doApply ()
     // PubKey
     if (crnObject.isFieldPresent(sfCRN_PublicKey))
     {
-        if (makeSlice(crnObject.getFieldVL(sfCRN_PublicKey)) != makeSlice(ctx_.tx.getFieldVL(sfCRN_PublicKey)))
+        if (makeSlice(crnObject.getFieldVL(sfCRN_PublicKey)) != makeSlice(ctx_.tx.getFieldVL(sfSigningPubKey)))
         {
             JLOG(j_.warn()) << "Public Key mismatch. Should actually blacklist this node";
             return temMALFORMED;
         }
     }
     else
-        crnObject.setFieldVL(sfCRN_PublicKey, makeSlice(ctx_.tx.getFieldVL(sfCRN_PublicKey)));
+        crnObject.setFieldVL(sfCRN_PublicKey, makeSlice(ctx_.tx.getFieldVL(sfSigningPubKey)));
 
     // IPAddress
     if (crnObject.isFieldPresent(sfCRN_IPAddress))
@@ -158,16 +158,12 @@ CRNReport::doApply ()
     crnObject.setFieldU32(sfCRN_LatencyAvg, ctx_.tx.getFieldU32(sfCRN_LatencyAvg));
     crnObject.setFieldArray(sfCRN_ConnectionStats, ctx_.tx.getFieldArray(sfCRN_ConnectionStats));
 
-    // jrojek TODO following few lines should be added at the place where tx is created
-//    connStats.push_back(STObject(sfCRN_ConnectionStat));
-//    auto& entry = connStats.back();
-//    entry.emplace_back (STUInt8 (sfConnType, abc));
-//    entry.emplace_back (STUInt32 (sfTime, def));
-
     // jrojek TODO will be evaluated later
 //    if (uFlagsIn != uFlagsOut)
 //        sleAcc->setFieldU32 (sfFlags, uFlagsOut);
 
+
+    sleAcc->setFieldObject(sfCRN, crnObject);
 
     JLOG(j_.warn()) << "CRN Report for account: " << toBase58(account_) << " is applied";
     return tesSUCCESS;

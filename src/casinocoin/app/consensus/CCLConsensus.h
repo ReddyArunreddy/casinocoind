@@ -152,6 +152,10 @@ public:
     void
     setValidationKeys(SecretKey const& valSecret, PublicKey const& valPublic);
 
+    /** Set relay node private and public key pair. */
+    void
+    setCRNKeys(SecretKey const& crnSecret, PublicKey const& crnPublic);
+
 private:
     friend class Consensus<CCLConsensus, CCLCxTraits>;
 
@@ -378,6 +382,9 @@ private:
     PublicKey valPublic_;
     SecretKey valSecret_;
     LedgerHash acquiringLedger_;
+
+    PublicKey crnPublic_;
+    SecretKey crnSecret_;
 
     // The timestamp of the last validation we used, in network time. This is
     // only used for our own validations.

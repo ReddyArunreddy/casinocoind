@@ -319,8 +319,14 @@ public:
     {
         mConsensus->setValidationKeys (valSecret, valPublic);
     }
+    void setCRNKeys (
+        SecretKey const& crnSecret, PublicKey const& crnPublic) override
+    {
+        mConsensus->setCRNKeys (crnSecret, crnPublic);
+    }
     Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin) override;
+    std::array<StateAccounting::Counters, 5> getServerAccountingInfo() override;
     void clearLedgerFetch () override;
     Json::Value getLedgerFetchInfo () override;
     std::uint32_t acceptLedger (
@@ -2287,6 +2293,11 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
     return info;
 }
 
+std::array<NetworkOPs::StateAccounting::Counters, 5> NetworkOPsImp::getServerAccountingInfo()
+{
+    return accounting_.snapshot();
+}
+
 void NetworkOPsImp::clearLedgerFetch ()
 {
     app_.getInboundLedgers().clearFailures();
@@ -3263,7 +3274,7 @@ Json::Value NetworkOPs::StateAccounting::json() const
     return ret;
 }
 
-std::array<NetworkOPs::StateAccounting::Counters> NetworkOPs::StateAccounting::snapshot() const
+std::array<NetworkOPs::StateAccounting::Counters, 5> NetworkOPs::StateAccounting::snapshot() const
 {
     std::unique_lock<std::mutex> lock (mutex_);
 

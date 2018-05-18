@@ -149,7 +149,6 @@ TxFormats::TxFormats ()
 
     add ("CRNReport", ttCRN_REPORT)
         << SOElement (sfLedgerSequence,      SOE_REQUIRED)
-        << SOElement (sfCRN_PublicKey,       SOE_REQUIRED)
         << SOElement (sfCRN_IPAddress,       SOE_REQUIRED)
         << SOElement (sfCRN_DomainName,      SOE_REQUIRED)
         << SOElement (sfSetFlag,             SOE_OPTIONAL)
