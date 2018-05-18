@@ -44,13 +44,13 @@ public:
     virtual Json::Value getJson () = 0;
 
     virtual void submit (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                         std::shared_ptr<SHAMap> const& initialPosition) = 0;
+                         SecretKey const& crnSecret,
+                         Application& app) = 0;
 
 };
 
 std::unique_ptr<CRNPerformance> make_CRNPerformance (
     NetworkOPs& networkOps,
-    AccountID const& account,
     beast::Journal journal);
 
 }

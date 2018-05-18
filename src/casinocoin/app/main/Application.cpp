@@ -304,6 +304,7 @@ public:
     // std::unique_ptr <CRNList> relaynodes_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
+    std::unique_ptr <CRNPerformance> m_crnPerformance;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
     std::unique_ptr <Validations> mValidations;
@@ -400,6 +401,9 @@ public:
 
     TransactionMaster&
     getMasterTransaction () override { return m_txMaster; }
+
+    CRNPerformance&
+    getCRNPerformance() override { return *m_crnPerformance; }
 
     NodeCache&
     getTempNodeCache () override { return m_tempNodeCache; }
@@ -762,6 +766,8 @@ bool ApplicationImp::setup()
                     enabledAmendments,
                     config_->section (SECTION_VETO_AMENDMENTS),
                     logs_->journal("Amendments"));
+
+        m_crnPerformance = make_CRNPerformance(getOPs(), logs_->journal("CRN"));
     }
 
     Pathfinder::initPathTable();
@@ -816,6 +822,7 @@ bool ApplicationImp::setup()
         PublicKey valPublic;
         SecretKey valSecret;
         std::string manifest;
+        // load validator private key
         if (config().exists (SECTION_VALIDATOR_TOKEN))
         {
             if (auto const token = ValidatorToken::make_ValidatorToken (
@@ -866,8 +873,52 @@ bool ApplicationImp::setup()
                 "Invalid entry in validator configuration.";
             return false;
         }
+    }
 
+    {
+        PublicKey crnPublic;
+        SecretKey crnSecret;
+        std::string manifest;
+        // load relay node private key
+        if (config().exists (SECTION_CRN_TOKEN))
+        {
+            // ValidatorToken name might be misleading, but functionally they are the same
+            if (auto const token = ValidatorToken::make_ValidatorToken (
+                        config().section (SECTION_CRN_TOKEN).lines ()))
+            {
+                crnSecret = token->validationSecret;
+                crnPublic = derivePublicKey (KeyType::secp256k1, crnSecret);
+                manifest = std::move(token->manifest);
+            }
+            else
+            {
+                JLOG(m_journal.fatal()) <<
+                                           "Invalid entry in validator token configuration.";
+                return false;
+            }
+        }
+        else if (config().exists (SECTION_CRN_SEED))
+        {
+            auto const seed = parseBase58<Seed>(
+                        config().section (SECTION_CRN_SEED).lines ().front());
+            if (!seed)
+                Throw<std::runtime_error> (
+                            "Invalid seed specified in [" SECTION_CRN_SEED "]");
+            crnSecret = generateSecretKey (KeyType::secp256k1, *seed);
+            crnPublic = derivePublicKey (KeyType::secp256k1, crnSecret);
+        }
+
+        m_networkOPs->setCRNKeys (crnSecret, crnPublic);
         // Setup trusted relay nodes
+//        if (!relaynodes_->load (
+//                crnPublic,
+//                config().section (SECTION_CRNS).values (),
+//                config().section (SECTION_CRN_LIST_KEYS).values ()))
+//        {
+//            JLOG(m_journal.fatal()) <<
+//                "Invalid entry in relaynode configuration.";
+//            return false;
+//        }
     }
 
     if (!validatorSites_->load (
@@ -1886,36 +1937,29 @@ ApplicationImp::io_latency_sampler::io_latency_sampler(beast::insight::Event ev,
     , m_probe (interval, ios)
     , lastSample_ {}
 {
-    JLOG(m_journal.warn()) << "io latency sampler thread id " << std::this_thread::get_id();
 }
 
 ApplicationImp::io_latency_sampler::~io_latency_sampler()
 {
-    JLOG(m_journal.warn()) << "io_service latency measurement destroyed";
 }
 
 void ApplicationImp::io_latency_sampler::start()
 {
-    JLOG(m_journal.warn()) << "start sampling";
-    JLOG(m_journal.warn()) << "io latency sampler start thread id " << std::this_thread::get_id();
     m_probe.sample (std::ref(*this));
 }
 
 std::chrono::milliseconds ApplicationImp::io_latency_sampler::get() const
 {
-    JLOG(m_journal.warn()) << "get sampling = " << lastSample_.load().count() << "thread id " << std::this_thread::get_id();
     return lastSample_.load();
 }
 
 void ApplicationImp::io_latency_sampler::cancel()
 {
-    JLOG(m_journal.warn()) << "cancel sampling";
     m_probe.cancel ();
 }
 
 void ApplicationImp::io_latency_sampler::cancel_async()
 {
-    JLOG(m_journal.warn()) << "cancel async sampling";
     m_probe.cancel_async ();
 }
 
@@ -1924,8 +1968,6 @@ void ApplicationImp::io_latency_sampler::operator() (Duration const& elapsed)
 {
     using namespace std::chrono;
     auto const ms (ceil <std::chrono::milliseconds> (elapsed));
-    JLOG(m_journal.warn()) << "io latency sampler operator() thread id " << std::this_thread::get_id();
-JLOG(m_journal.warn()) << "curr latency = " << ms.count();
 
     lastSample_ = ms;
     if (ms.count() >= 10)

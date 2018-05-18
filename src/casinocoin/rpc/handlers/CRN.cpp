@@ -51,21 +51,14 @@ Json::Value doCRNCreate (RPC::Context& context)
 
     auto seed = randomSeed();
 
-    auto const private_key = generateSecretKey (KeyType::secp256k1, seed);
     auto const publicKey = generateKeyPair (keyType, seed).first;
     auto const secretKey = generateKeyPair (keyType, seed).second;
-
-    obj[jss::crn_public_key] = toBase58 (
-        TokenType::TOKEN_NODE_PUBLIC,
-        derivePublicKey (KeyType::secp256k1, private_key));
-
-    obj[jss::crn_private_key] = toBase58 (
-        TokenType::TOKEN_NODE_PRIVATE, private_key);
 
     obj[jss::crn_seed] = toBase58 (seed);
     obj[jss::crn_key] = seedAs1751 (seed);
     obj[jss::crn_account_id] = toBase58(calcAccountID(publicKey));
     obj[jss::crn_public_key] = toBase58(TOKEN_NODE_PUBLIC, publicKey);
+    obj[jss::crn_private_key] = toBase58(TOKEN_NODE_PRIVATE, secretKey);
     obj[jss::crn_key_type] = to_string (keyType);
     obj[jss::crn_public_key_hex] = strHex (publicKey.data(), publicKey.size());
     obj[jss::crn_domain_name] = context.params[jss::crn_domain_name].asString();
