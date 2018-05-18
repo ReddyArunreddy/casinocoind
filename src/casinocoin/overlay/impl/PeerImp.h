@@ -171,6 +171,59 @@ private:
 
     friend class OverlayImpl;
 
+    /**
+     * Status accounting records two attributes for each possible node status:
+     * 1) Amount of time spent in each status (in seconds). This value is
+     *    updated upon each status transition.
+     * 2) Number of transitions to each status.
+     *
+     * This data can be polled through peers with 'details' attribute set.
+     */
+    class StatusAccounting
+    {
+    public:
+        struct Counters
+        {
+            std::uint32_t transitions = 0;
+            std::chrono::seconds dur = std::chrono::seconds (0);
+        };
+
+        explicit StatusAccounting ();
+
+        /**
+         * Record status transition. Update duration spent in previous
+         * status.
+         *
+         * @param nodeStatus New status.
+         */
+        void mode (protocol::NodeStatus nodeStatus);
+
+        /**
+         * Output status counters in JSON format.
+         *
+         * @return JSON object.
+         */
+        Json::Value json() const;
+
+        /**
+         * Returns current status of counters + duration in current status
+         *
+         * @return array of Counters.
+         */
+        std::array<Counters, 5> snapshot() const;
+
+        static std::array<Json::StaticString const, 5> const statuses_;
+    private:
+        OperatingMode mode_ = omDISCONNECTED;
+        std::array<Counters, 5> counters_;
+        mutable std::mutex mutex_;
+        std::chrono::system_clock::time_point start_ =
+            std::chrono::system_clock::now();
+        static Json::StaticString const transitions_;
+        static Json::StaticString const dur_;
+    };
+
+    StatusAccounting accounting_;
 public:
     PeerImp (PeerImp const&) = delete;
     PeerImp& operator= (PeerImp const&) = delete;
@@ -537,5 +590,5 @@ PeerImp::sendEndpoints (FwdIt first, FwdIt last)
 }
 
 }
-
 #endif
+
