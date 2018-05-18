@@ -1321,7 +1321,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         m->set_newstatus (status);
     }
 
-    if (m->newevent () == protocol::neLOST_SYNC)
+    if (m->has_newevent() && m->newevent () == protocol::neLOST_SYNC)
     {
         if (!closedLedgerHash_.isZero ())
         {

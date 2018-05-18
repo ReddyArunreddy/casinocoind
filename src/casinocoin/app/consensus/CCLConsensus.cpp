@@ -657,6 +657,31 @@ CCLConsensus::notify(
     }
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
+
+    NetworkOps::OperationMode mode = app_.getOPs().getOperatingMode();
+
+    protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
+    switch (mode)
+    {
+    case NetworkOps::omDISCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTING;
+        break;
+    case NetworkOps::omCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTED;
+        break;
+    case NetworkOps::omSYNCING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case NetworkOps::omTRACKING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case NetworkOps::omFULL:
+        overlayStatus = protocol::NodeStatus::nsVALIDATING;
+        break;
+    }
+
+    s.set_newstatus (overlayStatus);
+
     app_.overlay().foreach (
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
     JLOG(j_.trace()) << "send status change to peer";
