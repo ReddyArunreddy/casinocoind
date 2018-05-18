@@ -38,22 +38,11 @@
 
 namespace casinocoin {
 
-/** Current state of an amendment.
-    Tells if a amendment is supported, enabled or vetoed. A vetoed amendment
-    means the node will never announce its support.
+/** Current state of CRN in terms of eligibility for payout.
+    Tells if node is qualified for payout
 */
 struct CRNState
 {
-    /** If an amendment is vetoed, a server will not support it */
-    bool vetoed = false;
-
-    /** Indicates that the amendment has been enabled.
-        This is a one-way switch: once an amendment is enabled
-        it can never be disabled, but it can be superseded by
-        a subsequent amendment.
-    */
-    bool enabled = false;
-
     /** Indicates an amendment that this server has code support for. */
     bool supported = false;
 
@@ -63,7 +52,7 @@ struct CRNState
     CRNState () = default;
 };
 
-/** The status of all amendments requested in a given window. */
+/** The status of all CRN eligibility requested in a given window. */
 struct CRNSet
 {
 private:

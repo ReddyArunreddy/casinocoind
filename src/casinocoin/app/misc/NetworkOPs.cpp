@@ -1429,6 +1429,30 @@ void NetworkOPsImp::switchLastClosedLedger (
     m_ledgerMaster.switchLCL (newLCL);
 
     protocol::TMStatusChange s;
+
+    protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
+    switch (mMode)
+    {
+    case omDISCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTING;
+        break;
+    case omCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTED;
+        break;
+    case omSYNCING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case omTRACKING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case omFULL:
+        overlayStatus = protocol::NodeStatus::nsVALIDATING;
+        break;
+    }
+
+    protocol::TMStatusChange s;
+    s.set_newstatus (overlayStatus);
+
     s.set_newevent (protocol::neSWITCHED_LEDGER);
     s.set_ledgerseq (newLCL->info().seq);
     s.set_networktime (app_.timeKeeper().now().time_since_epoch().count());
