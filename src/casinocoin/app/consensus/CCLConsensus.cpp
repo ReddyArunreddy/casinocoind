@@ -658,33 +658,11 @@ CCLConsensus::notify(
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
 
-    NetworkOPs::OperatingMode mode = app_.getOPs().getOperatingMode();
+    s.set_newstatus (app_.getOPs().getNodeStatus());
 
-    protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
-    switch (mode)
-    {
-    case NetworkOPs::omDISCONNECTED:
-        overlayStatus = protocol::NodeStatus::nsCONNECTING;
-        break;
-    case NetworkOPs::omCONNECTED:
-        overlayStatus = protocol::NodeStatus::nsCONNECTED;
-        break;
-    case NetworkOPs::omSYNCING:
-        overlayStatus = protocol::NodeStatus::nsMONITORING;
-        break;
-    case NetworkOPs::omTRACKING:
-        overlayStatus = protocol::NodeStatus::nsMONITORING;
-        break;
-    case NetworkOPs::omFULL:
-        overlayStatus = protocol::NodeStatus::nsVALIDATING;
-        break;
-    }
-
-    s.set_newstatus (overlayStatus);
-
+    JLOG(j_.info()) << "notify: send status change to peer. newstatus: " << app_.getOPs().getNodeStatus();
     app_.overlay().foreach (
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
-    JLOG(j_.info()) << "notify: send status change to peer. newstatus: " << overlayStatus;
 }
 
 /** Apply a set of transactions to a ledger.

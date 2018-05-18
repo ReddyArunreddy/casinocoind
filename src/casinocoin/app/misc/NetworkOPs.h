@@ -168,6 +168,7 @@ public:
 
     virtual OperatingMode getOperatingMode () const = 0;
     virtual std::string strOperatingMode () const = 0;
+    virtual protocol::NodeStatus getNodeStatus() const = 0;
 
     //--------------------------------------------------------------------------
     //

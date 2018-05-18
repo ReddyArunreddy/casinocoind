@@ -179,6 +179,7 @@ public:
         return mMode;
     }
     std::string strOperatingMode () const override;
+    protocol::NodeStatus getNodeStatus() const override;
 
     //
     // Transaction operations.
@@ -733,6 +734,30 @@ std::string NetworkOPsImp::strOperatingMode () const
     }
 
     return states_[mMode];
+}
+
+protocol::NodeStatus NetworkOPsImp::getNodeStatus() const
+{
+    protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
+    switch (mMode)
+    {
+    case omDISCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTING;
+        break;
+    case omCONNECTED:
+        overlayStatus = protocol::NodeStatus::nsCONNECTED;
+        break;
+    case omSYNCING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case omTRACKING:
+        overlayStatus = protocol::NodeStatus::nsMONITORING;
+        break;
+    case omFULL:
+        overlayStatus = protocol::NodeStatus::nsVALIDATING;
+        break;
+    }
+    return overlayStatus;
 }
 
 void NetworkOPsImp::submitTransaction (std::shared_ptr<STTx const> const& iTrans)
@@ -1428,30 +1453,11 @@ void NetworkOPsImp::switchLastClosedLedger (
 
     m_ledgerMaster.switchLCL (newLCL);
 
-    protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
-    switch (mMode)
-    {
-    case omDISCONNECTED:
-        overlayStatus = protocol::NodeStatus::nsCONNECTING;
-        break;
-    case omCONNECTED:
-        overlayStatus = protocol::NodeStatus::nsCONNECTED;
-        break;
-    case omSYNCING:
-        overlayStatus = protocol::NodeStatus::nsMONITORING;
-        break;
-    case omTRACKING:
-        overlayStatus = protocol::NodeStatus::nsMONITORING;
-        break;
-    case omFULL:
-        overlayStatus = protocol::NodeStatus::nsVALIDATING;
-        break;
-    }
 
     protocol::TMStatusChange s;
-    s.set_newstatus (overlayStatus);
 
     s.set_newevent (protocol::neSWITCHED_LEDGER);
+    s.set_newstatus (getNodeStatus());
     s.set_ledgerseq (newLCL->info().seq);
     s.set_networktime (app_.timeKeeper().now().time_since_epoch().count());
     s.set_ledgerhashprevious (
@@ -1461,10 +1467,10 @@ void NetworkOPsImp::switchLastClosedLedger (
         newLCL->info().hash.begin (),
         newLCL->info().hash.size ());
 
+    JLOG(m_journal.info()) << "switchLastClosedLedger: send status change to peer. newstatus: " << getNodeStatus();
     app_.overlay ().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
 
-    JLOG(m_journal.info()) << "switchLastClosedLedger: send status change to peer. newstatus: " << overlayStatus;
 }
 
 bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)
@@ -1818,6 +1824,18 @@ void NetworkOPsImp::setMode (OperatingMode om)
     mMode = om;
 
     accounting_.mode (om);
+
+    // notify peers about state change
+    protocol::TMStatusChange s;
+
+    s.set_newevent (protocol::neCHANGED_STATUS);
+    s.set_newstatus (getNodeStatus());
+    s.set_networktime (app_.timeKeeper().now().time_since_epoch().count());
+
+    JLOG(m_journal.info()) << "setMode: send NodeStatus change to peers. newstatus: " << getNodeStatus();
+    app_.overlay ().foreach (send_always (
+        std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
+
 
     JLOG(m_journal.info()) << "STATE->" << strOperatingMode ();
     pubServer ();
