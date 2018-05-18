@@ -1428,8 +1428,6 @@ void NetworkOPsImp::switchLastClosedLedger (
 
     m_ledgerMaster.switchLCL (newLCL);
 
-    protocol::TMStatusChange s;
-
     protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
     switch (mMode)
     {
@@ -1465,6 +1463,8 @@ void NetworkOPsImp::switchLastClosedLedger (
 
     app_.overlay ().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtSTATUS_CHANGE)));
+
+    JLOG(m_journal.info()) << "switchLastClosedLedger: send status change to peer. newstatus: " << overlayStatus;
 }
 
 bool NetworkOPsImp::beginConsensus (uint256 const& networkClosed)
