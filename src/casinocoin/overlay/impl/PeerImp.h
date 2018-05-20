@@ -186,9 +186,20 @@ private:
         {
             std::uint32_t transitions = 0;
             std::chrono::seconds dur = std::chrono::seconds (0);
+
+            void reset()
+            {
+                transitions = 0;
+                dur = std::chrono::seconds (0);
+            }
         };
 
         explicit StatusAccounting ();
+
+        /**
+         * Reset status counters to their default state
+         */
+        void reset();
 
         /**
          * Record status transition. Update duration spent in previous
@@ -214,11 +225,10 @@ private:
 
         static std::array<Json::StaticString const, 5> const statuses_;
     private:
-        OperatingMode mode_ = omDISCONNECTED;
+        protocol::NodeStatus mode_;
         std::array<Counters, 5> counters_;
         mutable std::mutex mutex_;
-        std::chrono::system_clock::time_point start_ =
-            std::chrono::system_clock::now();
+        std::chrono::system_clock::time_point start_;
         static Json::StaticString const transitions_;
         static Json::StaticString const dur_;
     };
