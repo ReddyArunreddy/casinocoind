@@ -334,11 +334,11 @@ PeerImp::json()
             break;
 
         case Sanity::sane:
-            // Nothing to do here
+            // Nothing to do here regarding sanity printout, but we do print state accounting
+            ret[jss::state_accounting] = accounting_.json();
             break;
     }
 
-    ret[jss::state_accounting] = accounting_.json();
     if (last_status_.has_newstatus ())
     {
         if (last_status_.newstatus() > StatusAccounting::statuses_.size() ||
@@ -350,7 +350,7 @@ PeerImp::json()
         else
         {
             ret[jss::status] =
-                    StatusAccounting::statuses_[static_cast<uint8_t>(last_status_.newstatus () - 1)];
+                    StatusAccounting::statuses_[last_status_.newstatus () - 1];
         }
     }
 
@@ -2392,11 +2392,11 @@ PeerImp::isHighLatency() const
 
 //-------------------------------------------------------------------------------------
 static std::array<char const*, 5> const statusNames {{
-    "disconnected",
+    "connecting",
     "connected",
-    "syncing",
-    "tracking",
-    "full"}};
+    "monitoring",
+    "validating",
+    "shutting"}};
 
 std::array<Json::StaticString const, 5> const
 PeerImp::StatusAccounting::statuses_ = {{
@@ -2406,8 +2406,19 @@ PeerImp::StatusAccounting::statuses_ = {{
     Json::StaticString(statusNames[3]),
     Json::StaticString(statusNames[4])}};
 
-PeerImp::StatusAccounting::StateAccounting()
+PeerImp::StatusAccounting::StatusAccounting()
 {
+    reset();
+}
+
+void PeerImp::StatusAccounting::reset()
+{
+    std::unique_lock<std::mutex> lock (mutex_);
+
+    start_ = std::chrono::system_clock::now();
+    for (auto counter : counters_)
+        counter.reset();
+    mode_ = protocol::nsCONNECTING;
     counters_[protocol::nsCONNECTING-1].transitions = 1;
 }
 
@@ -2434,10 +2445,10 @@ Json::Value PeerImp::StatusAccounting::json() const
         i <= protocol::nsSHUTTING; ++i)
     {
         uint8_t index = i-1;
-        ret[states_[index] = Json::objectValue;
-        auto& state = ret[states_[index]];
-        state[jss::transitions] = counters[index].transitions;
-        state[jss::duration_us] = std::to_string (counters[index].dur.count());
+        ret[statuses_[index]] = Json::objectValue;
+        auto& status = ret[statuses_[index]];
+        status[jss::transitions] = counters[index].transitions;
+        status[jss::duration_us] = std::to_string (counters[index].dur.count());
     }
 
     return ret;

@@ -556,6 +556,7 @@ ServerHandlerImp::processRequest (Port const& port,
             ! jsonRPC ||
             ! jsonRPC.isObject ())
         {
+            JLOG(m_journal.warn()) << "Unable to parse request: " << request;
             HTTPReply (400, "Unable to parse request", output, rpcJ);
             return;
         }
