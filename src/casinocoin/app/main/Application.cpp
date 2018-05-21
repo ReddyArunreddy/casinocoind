@@ -766,8 +766,6 @@ bool ApplicationImp::setup()
                     enabledAmendments,
                     config_->section (SECTION_VETO_AMENDMENTS),
                     logs_->journal("Amendments"));
-
-        m_crnPerformance = make_CRNPerformance(getOPs(), logs_->journal("CRN"));
     }
 
     Pathfinder::initPathTable();
@@ -919,6 +917,8 @@ bool ApplicationImp::setup()
 //                "Invalid entry in relaynode configuration.";
 //            return false;
 //        }
+
+        m_crnPerformance = make_CRNPerformance(getOPs(), m_ledgerMaster->getCurrentLedgerIndex(), logs_->journal("CRN"));
     }
 
     if (!validatorSites_->load (
