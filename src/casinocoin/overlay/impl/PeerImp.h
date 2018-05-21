@@ -225,15 +225,18 @@ private:
 
         static std::array<Json::StaticString const, 5> const statuses_;
     private:
+        mutable std::mutex mutex_;
+
+        std::chrono::system_clock::time_point start_;
         protocol::NodeStatus mode_;
         std::array<Counters, 5> counters_;
-        mutable std::mutex mutex_;
-        std::chrono::system_clock::time_point start_;
+
         static Json::StaticString const transitions_;
         static Json::StaticString const dur_;
     };
 
     StatusAccounting accounting_;
+    std::array<StatusAccounting::Counters, 5> nodeSelfAccounting_;
 public:
     PeerImp (PeerImp const&) = delete;
     PeerImp& operator= (PeerImp const&) = delete;
@@ -494,6 +497,7 @@ public:
     void onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m);
     void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
+    void onMessage (std::shared_ptr <protocol::TMReportState> const& m);
 
 private:
     State state() const

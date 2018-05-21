@@ -1751,6 +1751,47 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
     }
 }
 
+/*
+message TMReportState
+{
+    required NodeStatus currStatus      = 1;
+    required ledgerSeqBegin             = 2;
+    required ledgerSeqEnd               = 3;
+    message Status
+    {
+        required string name            = 4;
+        required uint32 transitions     = 5;
+        required uint32 duration        = 6;
+    }
+    repeated Status status              = 7;
+}
+*/
+void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
+{
+    JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState";
+    if (m->status_size() != nodeSelfAccounting_.size())
+    {
+        JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reported statuses count == " << m->status_size()
+                                << "  != status supported count == " << nodeSelfAccounting_.size();
+        return;
+    }
+
+    JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reporting performance period: "
+                            << m->ledgerseqbegin() << "-" << m->ledgerseqend()
+                            << " curr status: " << static_cast<uint32_t>(m->currstatus());
+    for (int i = 0; i < m->status_size(); ++i)
+    {
+        const protocol::TMReportState::Status& singleStatus = m->status(i);
+        uint32_t index = static_cast<uint32_t>(singleStatus.mode()) - 1;
+        nodeSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.duration());
+        nodeSelfAccounting_[index].transitions = singleStatus.transitions();
+
+        JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: spent: " << nodeSelfAccounting_[index].dur.count()
+                                << " with " << index << " status, transitioned: " << nodeSelfAccounting_[index].transitions
+                                << " times";
+    }
+}
+
 //--------------------------------------------------------------------------
 
 void
@@ -2448,7 +2489,9 @@ Json::Value PeerImp::StatusAccounting::json() const
         ret[statuses_[index]] = Json::objectValue;
         auto& status = ret[statuses_[index]];
         status[jss::transitions] = counters[index].transitions;
-        status[jss::duration_us] = std::to_string (counters[index].dur.count());
+        status[jss::duration_sec] = std::to_string (counters[index].dur.count());
+        status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
+        status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
     }
 
     return ret;

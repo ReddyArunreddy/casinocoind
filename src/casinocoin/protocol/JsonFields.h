@@ -169,6 +169,7 @@ JSS ( dir_root );                   // out: DirectoryEntryIterator
 JSS ( directory );                  // in: LedgerEntry
 JSS ( drops );                      // out: TxQ
 JSS ( duration_us );                // out: NetworkOPs
+JSS ( duration_sec );               // out: Peers
 JSS ( enabled );                    // out: AmendmentTable
 JSS ( engine_result );              // out: NetworkOPs, TransactionSign, Submit
 JSS ( engine_result_code );         // out: NetworkOPs, TransactionSign, Submit
@@ -379,6 +380,8 @@ JSS ( secret );                     // in: TransactionSign, WalletSeed,
                                     //     channel_authorize
 JSS ( seed );                       // in: WalletAccounts, out: WalletSeed
 JSS ( seed_hex );                   // in: WalletPropose, TransactionSign
+JSS ( self_duration_sec );          // out: Peers
+JSS ( self_transitions );           // out: Peers
 JSS ( send_currencies );            // out: AccountCurrencies
 JSS ( send_max );                   // in: PathRequest, CasinocoinPathFind
 JSS ( seq );                        // in: LedgerEntry;
