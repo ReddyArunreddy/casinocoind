@@ -81,6 +81,9 @@ struct ConfigSection
 #define SECTION_VOTING_FILE             "voting_file"
 #define SECTION_CRN_FILE                "relaynodes_file"
 #define SECTION_CRNS                    "relaynodes"
+#define SECTION_CRN_SEED                "relaynode_seed"
+#define SECTION_CRN_TOKEN               "relaynode_token"
+//#define SECTION_RELAYNODE_KEY_REVOCATION "relaynode_key_revocation" // jrojek TODO in future
 } // casinocoin
 
 #endif

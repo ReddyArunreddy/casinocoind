@@ -834,6 +834,8 @@ bool
 OverlayImpl::processRequest (http_request_type const& req,
     Handoff& handoff)
 {
+    JLOG(journal_.info()) << "OverlayImpl::processRequest url: " << req.url;
+
     if (req.url != "/crawl")
         return false;
 

@@ -85,7 +85,8 @@ Change::preclaim(PreclaimContext const &ctx)
     }
 
     if (ctx.tx.getTxnType() != ttAMENDMENT
-        && ctx.tx.getTxnType() != ttFEE)
+        && ctx.tx.getTxnType() != ttFEE
+        && ctx.tx.getTxnType() != ttCRN_ROUND)
         return temUNKNOWN;
 
     return tesSUCCESS;
@@ -98,8 +99,10 @@ Change::doApply()
     if (ctx_.tx.getTxnType () == ttAMENDMENT)
         return applyAmendment ();
 
-    assert(ctx_.tx.getTxnType() == ttFEE);
-    return applyFee ();
+    if (ctx_.tx.getTxnType () == ttFEE)
+        return applyFee();
+    assert(ctx_.tx.getTxnType() == ttCRN_ROUND);
+    return applyCRN_Round ();
 }
 
 void
@@ -233,6 +236,25 @@ Change::applyFee()
     view().update (feeObject);
 
     JLOG(j_.warn()) << "Fees have been changed";
+    return tesSUCCESS;
+}
+
+TER Change::applyCRN_Round()
+{
+    auto const k = keylet::crnRound();
+
+    SLE::pointer crnRoundObject = view().peek(k);
+
+    if (!crnRoundObject)
+    {
+        crnRoundObject = std::make_shared<SLE>(k);
+        view().insert(crnRoundObject);
+    }
+
+//    crnRoundObject->
+    // jrojek TODO: evaluate CRN round object to apply it.
+    JLOG(j_.warn()) << "CRN Round have concluded and is applied (ok, it's not, but will be soon";
+
     return tesSUCCESS;
 }
 

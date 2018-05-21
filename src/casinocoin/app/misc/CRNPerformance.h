@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of rippled: https://github.com/casinocoin/casinocoind
+    Copyright (c) 2018 CasinoCoin Foundation
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -19,58 +19,39 @@
 
 //==============================================================================
 /*
-    2017-06-28  ajochems        Refactored for casinocoin
+    2018-05-15  jrojek          Created
 */
 //==============================================================================
 
-#ifndef CASINOCOIN_TX_CHANGE_H_INCLUDED
-#define CASINOCOIN_TX_CHANGE_H_INCLUDED
+#ifndef CASINOCOIN_APP_MISC_CRNPERFORMANCE_H
+#define CASINOCOIN_APP_MISC_CRNPERFORMANCE_H
 
-#include <casinocoin/app/main/Application.h>
-#include <casinocoin/app/misc/AmendmentTable.h>
-#include <casinocoin/app/misc/NetworkOPs.h>
-#include <casinocoin/app/tx/impl/Transactor.h>
-#include <casinocoin/basics/Log.h>
-#include <casinocoin/protocol/Indexes.h>
+#include <casinocoin/app/ledger/Ledger.h>
+#include <casinocoin/core/ConfigSections.h>
+#include <casinocoin/protocol/Protocol.h>
 
 namespace casinocoin {
 
-class Change
-    : public Transactor
+class NetworkOPs;
+class Application;
+
+class CRNPerformance
 {
 public:
-    Change (ApplyContext& ctx)
-        : Transactor(ctx)
-    {
-    }
+    virtual ~CRNPerformance() = default;
 
-    static
-    TER
-    preflight (PreflightContext const& ctx);
+    /** Returns a Json::objectValue. */
+    virtual Json::Value getJson () = 0;
 
-    TER doApply () override;
-    void preCompute() override;
+    virtual void submit (std::shared_ptr<ReadView const> const& lastClosedLedger,
+                         SecretKey const& crnSecret,
+                         Application& app) = 0;
 
-    static
-    std::uint64_t
-    calculateBaseFee (
-        PreclaimContext const& ctx)
-    {
-        return 0;
-    }
-
-    static
-    TER
-    preclaim(PreclaimContext const &ctx);
-
-private:
-    TER applyAmendment ();
-
-    TER applyFee ();
-
-    TER applyCRN_Round ();
 };
 
-}
+std::unique_ptr<CRNPerformance> make_CRNPerformance (
+    NetworkOPs& networkOps,
+    beast::Journal journal);
 
-#endif
+}
+#endif // CASINOCOIN_APP_MISC_CRNPERFORMANCE_H

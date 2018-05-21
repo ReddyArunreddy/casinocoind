@@ -334,38 +334,23 @@ PeerImp::json()
             break;
 
         case Sanity::sane:
-            // Nothing to do here
+            // Nothing to do here regarding sanity printout, but we do print state accounting
+            ret[jss::state_accounting] = accounting_.json();
             break;
     }
 
     if (last_status_.has_newstatus ())
     {
-        switch (last_status_.newstatus ())
+        if (last_status_.newstatus() > StatusAccounting::statuses_.size() ||
+            last_status_.newstatus() < 1)
         {
-        case protocol::nsCONNECTING:
-            ret[jss::status] = "connecting";
-            break;
-
-        case protocol::nsCONNECTED:
-            ret[jss::status] = "connected";
-            break;
-
-        case protocol::nsMONITORING:
-            ret[jss::status] = "monitoring";
-            break;
-
-        case protocol::nsVALIDATING:
-            ret[jss::status] = "validating";
-            break;
-
-        case protocol::nsSHUTTING:
-            ret[jss::status] = "shutting";
-            break;
-
-        default:
-            // FIXME: do we really want this?
             JLOG(p_journal_.warn()) <<
                 "Unknown status: " << last_status_.newstatus ();
+        }
+        else
+        {
+            ret[jss::status] =
+                    StatusAccounting::statuses_[last_status_.newstatus () - 1];
         }
     }
 
@@ -1312,7 +1297,10 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         m->set_networktime (app_.timeKeeper().now().time_since_epoch().count());
 
     if (!last_status_.has_newstatus () || m->has_newstatus ())
+    {
         last_status_ = *m;
+        accounting_.mode(m->newstatus());
+    }
     else
     {
         // preserve old status
@@ -1321,7 +1309,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
         m->set_newstatus (status);
     }
 
-    if (m->newevent () == protocol::neLOST_SYNC)
+    if (m->has_newevent() && m->newevent () == protocol::neLOST_SYNC)
     {
         if (!closedLedgerHash_.isZero ())
         {
@@ -1369,7 +1357,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     }
 
     if (m->has_ledgerseq() &&
-        app_.getLedgerMaster().getValidatedLedgerAge() < 10min)
+        app_.getLedgerMaster().getValidatedLedgerAge() < 15min)
     {
         checkSanity (m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
     }
@@ -1417,6 +1405,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
                     case protocol::neLOST_SYNC:
                         j[jss::action] = "LOST_SYNC";
                         break;
+                    case protocol::neCHANGED_STATUS:
+                        j[jss::action] = "CHANGED_STATUS";
                 }
             }
 
@@ -2399,5 +2389,86 @@ PeerImp::isHighLatency() const
     std::lock_guard<std::mutex> sl (recentLock_);
     return latency_.count() >= Tuning::peerHighLatency;
 }
+
+//-------------------------------------------------------------------------------------
+static std::array<char const*, 5> const statusNames {{
+    "connecting",
+    "connected",
+    "monitoring",
+    "validating",
+    "shutting"}};
+
+std::array<Json::StaticString const, 5> const
+PeerImp::StatusAccounting::statuses_ = {{
+    Json::StaticString(statusNames[0]),
+    Json::StaticString(statusNames[1]),
+    Json::StaticString(statusNames[2]),
+    Json::StaticString(statusNames[3]),
+    Json::StaticString(statusNames[4])}};
+
+PeerImp::StatusAccounting::StatusAccounting()
+{
+    reset();
+}
+
+void PeerImp::StatusAccounting::reset()
+{
+    std::unique_lock<std::mutex> lock (mutex_);
+
+    start_ = std::chrono::system_clock::now();
+    for (auto counter : counters_)
+        counter.reset();
+    mode_ = protocol::nsCONNECTING;
+    counters_[protocol::nsCONNECTING-1].transitions = 1;
+}
+
+void PeerImp::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
+{
+    auto now = std::chrono::system_clock::now();
+
+    std::lock_guard<std::mutex> lock (mutex_);
+    ++counters_[nodeStatus-1].transitions;
+    counters_[mode_-1].dur += std::chrono::duration_cast<
+        std::chrono::seconds>(now - start_);
+
+    mode_ = nodeStatus;
+    start_ = now;
+}
+
+Json::Value PeerImp::StatusAccounting::json() const
+{
+    auto counters = snapshot();
+
+    Json::Value ret = Json::objectValue;
+
+    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+        i <= protocol::nsSHUTTING; ++i)
+    {
+        uint8_t index = i-1;
+        ret[statuses_[index]] = Json::objectValue;
+        auto& status = ret[statuses_[index]];
+        status[jss::transitions] = counters[index].transitions;
+        status[jss::duration_us] = std::to_string (counters[index].dur.count());
+    }
+
+    return ret;
+}
+
+std::array<PeerImp::StatusAccounting::Counters, 5> PeerImp::StatusAccounting::snapshot() const
+{
+    std::unique_lock<std::mutex> lock (mutex_);
+
+    auto counters = counters_;
+    auto const start = start_;
+    auto const mode = mode_;
+
+    lock.unlock();
+
+    counters[mode-1].dur += std::chrono::duration_cast<
+        std::chrono::seconds>(std::chrono::system_clock::now() - start);
+
+    return counters;
+}
+//-------------------------------------------------------------------------------------
 
 } // casinocoin

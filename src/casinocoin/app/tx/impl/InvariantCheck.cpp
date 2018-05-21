@@ -264,6 +264,7 @@ LedgerEntryTypesMatch::visitEntry(
         case ltLEDGER_HASHES:
         case ltAMENDMENTS:
         case ltFEE_SETTINGS:
+        case ltCRN_ROUND:
         case ltESCROW:
         case ltPAYCHAN:
             break;
