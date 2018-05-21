@@ -886,6 +886,12 @@ bool ApplicationImp::setup()
                 JLOG(m_journal.info()) << "Set this node as CRN Node";
                 boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
                 m_networkOPs->setCRNKey (*crnPublicKey, domainName.first);
+
+
+                m_crnPerformance = make_CRNPerformance(getOPs(),
+                                                       m_ledgerMaster->getCurrentLedgerIndex(),
+                                                       *crnPublicKey,
+                                                       logs_->journal("CRN"));
             }
             else
             {
@@ -904,17 +910,6 @@ bool ApplicationImp::setup()
 //                "Invalid entry in relaynode configuration.";
 //            return false;
 //        }
-
-        m_crnPerformance = make_CRNPerformance(getOPs(), m_ledgerMaster->getCurrentLedgerIndex(), logs_->journal("CRN"));
-        //        if (!relaynodes_->load (
-        //                crnPublic,
-        //                config().section (SECTION_CRNS).values (),
-        //                config().section (SECTION_CRN_LIST_KEYS).values ()))
-        //        {
-        //            JLOG(m_journal.fatal()) <<
-        //                "Invalid entry in relaynode configuration.";
-        //            return false;
-        //        }
     }
 
     if (!validatorSites_->load (
