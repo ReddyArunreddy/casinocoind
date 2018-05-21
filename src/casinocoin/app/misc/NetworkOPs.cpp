@@ -322,10 +322,17 @@ public:
     {
         mConsensus->setValidationKeys (valSecret, valPublic);
     }
-    void setCRNKeys (
-        SecretKey const& crnSecret, PublicKey const& crnPublic) override
+    PublicKey const& getCRNPublicKey () const override
     {
-        mConsensus->setCRNKeys (crnSecret, crnPublic);
+        return mConsensus->getCRNPublicKey ();
+    }
+    std::string const& getCRNDomain () const override
+    {
+        return mConsensus->getCRNDomain ();
+    }
+    void setCRNKey ( PublicKey const& crnPublic, std::string const& crnDomain) override
+    {
+        mConsensus->setCRNKey (crnPublic, crnDomain);
     }
     Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin) override;
@@ -2143,6 +2150,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
 
     if (admin)
     {
+        // Validator Public Key
         if (getValidationPublicKey().size ())
         {
             info[jss::pubkey_validator] = toBase58 (
@@ -2152,6 +2160,19 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         else
         {
             info[jss::pubkey_validator] = "none";
+        }
+
+        // CRN Public Key
+        if (getCRNPublicKey().size ())
+        {
+            info[jss::crn_public_key] = toBase58 (
+                TokenType::TOKEN_NODE_PUBLIC,
+                getCRNPublicKey());
+            info[jss::crn_domain_name] = getCRNDomain();
+        }
+        else
+        {
+            info[jss::crn_public_key] = "none";
         }
     }
 

@@ -62,7 +62,8 @@ Json::Value doCRNCreate (RPC::Context& context)
     obj[jss::crn_key_type] = to_string (keyType);
     obj[jss::crn_public_key_hex] = strHex (publicKey.data(), publicKey.size());
     obj[jss::crn_domain_name] = context.params[jss::crn_domain_name].asString();
-    obj[jss::crn_domain_signature] = strHex(casinocoin::sign (publicKey, secretKey, makeSlice (context.params[jss::crn_domain_name].asString())));
+    auto const signature = casinocoin::sign (publicKey, secretKey, makeSlice (strHex(context.params[jss::crn_domain_name].asString())));
+    obj[jss::crn_domain_signature] = strHex(signature.data(), signature.size());
     return obj;
 }
 
@@ -77,12 +78,38 @@ Json::Value doCRNVerify (RPC::Context& context)
 
     Json::Value obj (Json::objectValue);
 
-    boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key_hex].asString());
-    // const casinocoin::PublicKey& pk = publicKey;
-    //casinocoin::verify(pk, makeSlice (context.params[jss::crn_domain_name].asString()), makeSlice (context.params[jss::crn_domain_signature].asString()));
-    // obj[jss::crn_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, publicKey);
-    obj[jss::crn_valid] = true;
+    bool verifyResult = false;
+
+    std::string domainName = context.params[jss::crn_domain_name].asString();
+    auto unHexedSignature = strUnHex(context.params[jss::signature].asString());
+    boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key].asString());
+
+    if (unHexedSignature.second)
+    {
+        JLOG(context.j.info()) << "Do Verify";
+        verifyResult = casinocoin::verify(
+          *publicKey,
+          makeSlice(strHex(domainName)),
+          makeSlice(unHexedSignature.first));
+    }
+            
+        
+    JLOG(context.j.info()) << "Domain: " << domainName << " Result: " << verifyResult;
+
+    obj[jss::crn_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
+    obj[jss::crn_valid] = verifyResult;
     return obj;
+    
+    // auto signature = strUnHex(context.params[jss::crn_domain_signature].asString());
+    // std::string domainName = context.params[jss::crn_domain_name].asString();
+    // boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key].asString());
+
+    // bool verifyResult = casinocoin::verify(*publicKey, makeSlice (strHex(domainName)), makeSlice (signature.first));
+    // JLOG(context.j.info()) << "Domain: " << domainName << " Result: " << verifyResult;
+
+    // obj[jss::crn_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
+    // obj[jss::crn_valid] = verifyResult;
+    // return obj;
 }
 
 } // casinocoin

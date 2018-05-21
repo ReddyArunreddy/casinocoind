@@ -135,12 +135,12 @@ JSS ( converge_time_s );            // out: NetworkOPs
 JSS ( count );                      // in: AccountTx*
 JSS ( crn_key );                    // out: CRNCreate
 JSS ( crn_private_key );            // out: CRNCreate
-JSS ( crn_public_key );             // out: CRNCreate
+JSS ( crn_public_key );             // out: CRNCreate, NetworkOPs
 JSS ( crn_seed );                   // out: CRNCreate
 JSS ( crn_account_id );             // out: CRNCreate
 JSS ( crn_key_type );               // out: CRNCreate
 JSS ( crn_public_key_hex );         // out: CRNCreate
-JSS ( crn_domain_name );            // in/out: CRN
+JSS ( crn_domain_name );            // in/out: CRN, NetworkOPs
 JSS ( crn_domain_signature );       // out: CRN
 JSS ( crn_valid );                  // out: CRN
 JSS ( currency );                   // in: paths/PathRequest, STAmount

@@ -35,6 +35,7 @@ struct ConfigSection
 {
     static std::string nodeDatabase ()       { return "node_db"; }
     static std::string importNodeDatabase () { return "import_db"; }
+    static std::string relayNode () { return "relaynode_config"; }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.
@@ -81,8 +82,7 @@ struct ConfigSection
 #define SECTION_VOTING_FILE             "voting_file"
 #define SECTION_CRN_FILE                "relaynodes_file"
 #define SECTION_CRNS                    "relaynodes"
-#define SECTION_CRN_SEED                "relaynode_seed"
-#define SECTION_CRN_TOKEN               "relaynode_token"
+#define SECTION_CRN_CONFIG              "relaynode_config"
 //#define SECTION_RELAYNODE_KEY_REVOCATION "relaynode_key_revocation" // jrojek TODO in future
 } // casinocoin
 

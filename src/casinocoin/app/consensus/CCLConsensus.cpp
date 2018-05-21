@@ -323,7 +323,7 @@ CCLConsensus::onClose(
     // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
     if ((prevLedger->info().seq % 64) == 0)
     {
-        app_.getCRNPerformance().submit(prevLedger, crnSecret_, app_);
+        app_.getCRNPerformance().submit(prevLedger, app_);
     }
 
     // Add pseudo-transactions to the set
@@ -928,12 +928,22 @@ CCLConsensus::setValidationKeys(
     valPublic_ = valPublic;
 }
 
-void CCLConsensus::setCRNKeys(
-    SecretKey const& crnSecret,
-    PublicKey const& crnPublic)
+PublicKey const&
+CCLConsensus::getCRNPublicKey() const
 {
-    crnSecret_ = crnSecret;
+    return crnPublic_;
+}
+
+std::string const&
+CCLConsensus::getCRNDomain() const
+{
+    return crnDomain_;
+}
+
+void CCLConsensus::setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain)
+{
     crnPublic_ = crnPublic;
+    crnDomain_ = crnDomain;
 }
 
 void
