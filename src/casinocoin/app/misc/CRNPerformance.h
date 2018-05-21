@@ -44,7 +44,6 @@ public:
     virtual Json::Value getJson () = 0;
 
     virtual void submit (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                         SecretKey const& crnSecret,
                          Application& app) = 0;
 
 };

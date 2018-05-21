@@ -49,7 +49,6 @@ public:
 
     Json::Value getJson () override;
     void submit (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                 SecretKey const& crnSecret,
                 Application& app) override;
 
 protected:
@@ -76,7 +75,7 @@ Json::Value CRNPerformanceImpl::getJson()
     return ret;
 }
 
-void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClosedLedger, SecretKey const& crnSecret, Application& app)
+void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClosedLedger, Application& app)
 {
     // LCL must be flag ledger
 //    assert ((lastClosedLedger->info().seq % 256) == 0);

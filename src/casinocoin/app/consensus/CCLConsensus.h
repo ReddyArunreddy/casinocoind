@@ -152,9 +152,17 @@ public:
     void
     setValidationKeys(SecretKey const& valSecret, PublicKey const& valPublic);
 
-    /** Set relay node private and public key pair. */
+    /** Returns CRN public key */
+    PublicKey const&
+    getCRNPublicKey() const;
+
+    /** Returns CRN domain name */
+    std::string const&
+    getCRNDomain() const;
+
+    /** Set relay node public key. */
     void
-    setCRNKeys(SecretKey const& crnSecret, PublicKey const& crnPublic);
+    setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain);
 
 private:
     friend class Consensus<CCLConsensus, CCLCxTraits>;
@@ -384,7 +392,7 @@ private:
     LedgerHash acquiringLedger_;
 
     PublicKey crnPublic_;
-    SecretKey crnSecret_;
+    std::string crnDomain_;
 
     // The timestamp of the last validation we used, in network time. This is
     // only used for our own validations.

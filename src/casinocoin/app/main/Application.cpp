@@ -874,39 +874,26 @@ bool ApplicationImp::setup()
     }
 
     {
-        PublicKey crnPublic;
-        SecretKey crnSecret;
-        std::string manifest;
-        // load relay node private key
-        if (config().exists (SECTION_CRN_TOKEN))
+        // Check if we are a Relay Node
+        JLOG(m_journal.info()) << "LOAD relaynode_config";
+        if (config().exists (SECTION_CRN_CONFIG))
         {
-            // ValidatorToken name might be misleading, but functionally they are the same
-            if (auto const token = ValidatorToken::make_ValidatorToken (
-                        config().section (SECTION_CRN_TOKEN).lines ()))
+            // check for 'domain' and 'publickey' values
+            std::pair <std::string, bool> domainName = config().section (SECTION_CRN_CONFIG).find("domain");
+            std::pair <std::string, bool> publicKey = config().section (SECTION_CRN_CONFIG).find("publickey");
+            if(domainName.second && publicKey.second)
             {
-                crnSecret = token->validationSecret;
-                crnPublic = derivePublicKey (KeyType::secp256k1, crnSecret);
-                manifest = std::move(token->manifest);
+                JLOG(m_journal.info()) << "Set this node as CRN Node";
+                boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
+                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first);
             }
             else
             {
-                JLOG(m_journal.fatal()) <<
-                                           "Invalid entry in validator token configuration.";
+                JLOG (m_journal.fatal()) << "The [relaynode_config] section needs to be configured if its availalble";
                 return false;
             }
         }
-        else if (config().exists (SECTION_CRN_SEED))
-        {
-            auto const seed = parseBase58<Seed>(
-                        config().section (SECTION_CRN_SEED).lines ().front());
-            if (!seed)
-                Throw<std::runtime_error> (
-                            "Invalid seed specified in [" SECTION_CRN_SEED "]");
-            crnSecret = generateSecretKey (KeyType::secp256k1, *seed);
-            crnPublic = derivePublicKey (KeyType::secp256k1, crnSecret);
-        }
 
-        m_networkOPs->setCRNKeys (crnSecret, crnPublic);
         // Setup trusted relay nodes
 //        if (!relaynodes_->load (
 //                crnPublic,
@@ -919,6 +906,15 @@ bool ApplicationImp::setup()
 //        }
 
         m_crnPerformance = make_CRNPerformance(getOPs(), m_ledgerMaster->getCurrentLedgerIndex(), logs_->journal("CRN"));
+        //        if (!relaynodes_->load (
+        //                crnPublic,
+        //                config().section (SECTION_CRNS).values (),
+        //                config().section (SECTION_CRN_LIST_KEYS).values ()))
+        //        {
+        //            JLOG(m_journal.fatal()) <<
+        //                "Invalid entry in relaynode configuration.";
+        //            return false;
+        //        }
     }
 
     if (!validatorSites_->load (
