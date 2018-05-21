@@ -31,6 +31,7 @@
 #include <casinocoin/app/ledger/LocalTxs.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
+#include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
@@ -317,6 +318,14 @@ CCLConsensus::onClose(
             false);
     }
 
+    // CRN report their performance in selected periods
+    // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
+    // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
+    if ((prevLedger->info().seq % 64) == 0)
+    {
+        app_.getCRNPerformance().submit(prevLedger, crnSecret_, app_);
+    }
+
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
         ((prevLedger->info().seq % 256) == 0))
@@ -337,6 +346,13 @@ CCLConsensus::onClose(
             feeVote_->doVoting(prevLedger, validations, initialSet);
             app_.getAmendmentTable().doVoting(
                 prevLedger, validations, initialSet);
+
+
+            if ((prevLedger->info().seq % (256 * 4)) == 0)
+            {
+                // every fourth flag ledger we distribute fees. add CRNRound pseudo-transaction
+                // jrojek TODO
+            }
         }
     }
 
@@ -453,8 +469,29 @@ CCLConsensus::doAccept(
         validate(sharedLCL, proposing);
         JLOG(j_.info()) << "CNF Val " << newLCLHash;
     }
+    // jrojek TODO: this, or something similar,
+    // anyhow we need a way to automatically report CRN statuses
+    // and it should be free, something similar to CCLConsensus::validate but for CRN
+    // could work.
+//    else if (relaying_ && !consensusFail)
+//    {
+//        if (((sharedLCL.seq() + 1) % 256) == 0)
+//        // next ledger is flag ledger
+//        {
+//            app_.getCRNPerformance().submit(sharedLCL);
+//        }
+//    }
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
+
+    if (/*relaying_ &&*/ !consensusFail)
+    {
+//        if (((sharedLCL.seq() + 1) % 256) == 0)
+        // next ledger is flag ledger
+//        {
+//            app_.getCRNPerformance().submit(sharedLCL.ledger_);
+//        }
+    }
 
     // See if we can accept a ledger as fully-validated
     ledgerMaster_.consensusBuilt(sharedLCL.ledger_, getJson(true));
@@ -620,9 +657,12 @@ CCLConsensus::notify(
     }
     s.set_firstseq(uMin);
     s.set_lastseq(uMax);
+
+    s.set_newstatus (app_.getOPs().getNodeStatus());
+
+    JLOG(j_.info()) << "notify: send status change to peer. newstatus: " << app_.getOPs().getNodeStatus();
     app_.overlay().foreach (
         send_always(std::make_shared<Message>(s, protocol::mtSTATUS_CHANGE)));
-    JLOG(j_.trace()) << "send status change to peer";
 }
 
 /** Apply a set of transactions to a ledger.
@@ -842,9 +882,15 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
     if (((ledger.seq() + 1) % 256) == 0)
     // next ledger is flag ledger
     {
-        // Suggest fee changes and new features
+        // Suggest fee changes and new features.
         feeVote_->doValidation(ledger.ledger_, *v);
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
+    }
+
+    if (((ledger.seq() + 1) % 1024) == 0)
+    {
+        // jrojek TODO: every 1024 ledgers re-distribute collected fees
+        // to eligible CRNs
     }
 
     auto const signingHash = v->sign(valSecret_);
@@ -880,6 +926,14 @@ CCLConsensus::setValidationKeys(
 {
     valSecret_ = valSecret;
     valPublic_ = valPublic;
+}
+
+void CCLConsensus::setCRNKeys(
+    SecretKey const& crnSecret,
+    PublicKey const& crnPublic)
+{
+    crnSecret_ = crnSecret;
+    crnPublic_ = crnPublic;
 }
 
 void

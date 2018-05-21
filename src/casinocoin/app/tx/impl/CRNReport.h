@@ -1,7 +1,6 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of casinocoind: https://github.com/casinocoin/casinocoind
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -19,58 +18,43 @@
 
 //==============================================================================
 /*
-    2017-06-28  ajochems        Refactored for casinocoin
+    2018-05-15  jrojek        created
 */
 //==============================================================================
 
-#ifndef CASINOCOIN_TX_CHANGE_H_INCLUDED
-#define CASINOCOIN_TX_CHANGE_H_INCLUDED
 
-#include <casinocoin/app/main/Application.h>
-#include <casinocoin/app/misc/AmendmentTable.h>
-#include <casinocoin/app/misc/NetworkOPs.h>
+#ifndef CASINOCOIN_TX_CRNREPORT_H
+#define CASINOCOIN_TX_CRNREPORT_H
+
 #include <casinocoin/app/tx/impl/Transactor.h>
 #include <casinocoin/basics/Log.h>
+#include <casinocoin/core/Config.h>
 #include <casinocoin/protocol/Indexes.h>
+#include <casinocoin/protocol/Quality.h>
+#include <casinocoin/protocol/TxFlags.h>
 
 namespace casinocoin {
 
-class Change
+class CRNReport
     : public Transactor
 {
 public:
-    Change (ApplyContext& ctx)
+    CRNReport (ApplyContext& ctx)
         : Transactor(ctx)
     {
     }
+
+    static
+    std::uint64_t
+    calculateBaseFee (PreclaimContext const& ctx);
 
     static
     TER
     preflight (PreflightContext const& ctx);
 
     TER doApply () override;
-    void preCompute() override;
-
-    static
-    std::uint64_t
-    calculateBaseFee (
-        PreclaimContext const& ctx)
-    {
-        return 0;
-    }
-
-    static
-    TER
-    preclaim(PreclaimContext const &ctx);
-
-private:
-    TER applyAmendment ();
-
-    TER applyFee ();
-
-    TER applyCRN_Round ();
 };
 
-}
+} // casinocoin
 
-#endif
+#endif // CASINOCOIN_TX_CRNREPORT_H

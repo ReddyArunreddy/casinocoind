@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of rippled: https://github.com/casinocoin/casinocoind
+    Copyright (c) 2018 CasinoCoin Foundation
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -19,58 +19,46 @@
 
 //==============================================================================
 /*
-    2017-06-28  ajochems        Refactored for casinocoin
+    2018-05-15  jrojek          Created
 */
 //==============================================================================
 
-#ifndef CASINOCOIN_TX_CHANGE_H_INCLUDED
-#define CASINOCOIN_TX_CHANGE_H_INCLUDED
+#ifndef CASINOCOIN_PROTOCOL_CRNID_H
+#define CASINOCOIN_PROTOCOL_CRNID_H
 
-#include <casinocoin/app/main/Application.h>
-#include <casinocoin/app/misc/AmendmentTable.h>
-#include <casinocoin/app/misc/NetworkOPs.h>
-#include <casinocoin/app/tx/impl/Transactor.h>
-#include <casinocoin/basics/Log.h>
-#include <casinocoin/protocol/Indexes.h>
+#include <casinocoin/core/ConfigSections.h>
+#include <casinocoin/core/Config.h>
 
 namespace casinocoin {
 
-class Change
-    : public Transactor
+// jrojek TODO fill that class with section contents, add section to CFG file (possibly ajohems?)
+class CRNId
 {
 public:
-    Change (ApplyContext& ctx)
-        : Transactor(ctx)
+    CRNId(Section const& crnConfig)
     {
+
     }
 
-    static
-    TER
-    preflight (PreflightContext const& ctx);
-
-    TER doApply () override;
-    void preCompute() override;
-
-    static
-    std::uint64_t
-    calculateBaseFee (
-        PreclaimContext const& ctx)
+    std::string const& getNodePubKey() const
     {
-        return 0;
+        return nodePubKey_;
     }
 
-    static
-    TER
-    preclaim(PreclaimContext const &ctx);
+    std::string const& getNodeIP() const
+    {
+        return nodeIP_;
+    }
+
+    std::string const& getNodeDomain() const
+    {
+        return nodeDomain_;
+    }
 
 private:
-    TER applyAmendment ();
-
-    TER applyFee ();
-
-    TER applyCRN_Round ();
+    std::string nodePubKey_;
+    std::string nodeIP_;
+    std::string nodeDomain_;
 };
-
 }
-
-#endif
+#endif // CASINOCOIN_PROTOCOL_CRNID_H
