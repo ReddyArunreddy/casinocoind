@@ -179,7 +179,9 @@ public:
         return mMode;
     }
     std::string strOperatingMode () const override;
+
     protocol::NodeStatus getNodeStatus() const override;
+    protocol::NodeStatus getNodeStatus(OperatingMode mode) const override;
 
     //
     // Transaction operations.
@@ -738,8 +740,12 @@ std::string NetworkOPsImp::strOperatingMode () const
 
 protocol::NodeStatus NetworkOPsImp::getNodeStatus() const
 {
+    return getNodeStatus(mMode);
+}
+protocol::NodeStatus NetworkOPsImp::getNodeStatus(OperatingMode mode) const
+{
     protocol::NodeStatus overlayStatus = protocol::NodeStatus::nsCONNECTING;
-    switch (mMode)
+    switch (mode)
     {
     case omDISCONNECTED:
         overlayStatus = protocol::NodeStatus::nsCONNECTING;
