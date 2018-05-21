@@ -45,6 +45,7 @@ class CRNPerformanceImpl final
 public:
     CRNPerformanceImpl (NetworkOPs& networkOps,
                         LedgerIndex const& startupSeq,
+                        PublicKey const& crnPubKey,
                         beast::Journal journal);
 
     Json::Value getJson () override;
@@ -54,6 +55,7 @@ public:
 protected:
     NetworkOPs& networkOps;
     LedgerIndex lastSnapshotSeq_;
+    PublicKey crnPubKey_;
     beast::Journal j_;
     std::array<NetworkOPs::StateAccounting::Counters,5> lastSnapshot_;
 };
@@ -61,9 +63,11 @@ protected:
 CRNPerformanceImpl::CRNPerformanceImpl(
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
+        PublicKey const& crnPubKey,
         beast::Journal journal)
     : networkOps(networkOps)
     , lastSnapshotSeq_(startupSeq)
+    , crnPubKey_(crnPubKey)
     , j_(journal)
 {
 
@@ -102,6 +106,10 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
     s.set_currstatus(currentStatus);
     s.set_ledgerseqbegin(lastSnapshotSeq_);
     s.set_ledgerseqend(lastClosedLedger->info().seq);
+
+    auto const pk = crnPubKey_.slice();
+    s.set_crnpubkey(pk.data(), pk.size());
+
     // jrojek TODO real latency... :O
     s.set_latency(10);
 
@@ -110,90 +118,21 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
 
     app.overlay ().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtREPORT_STATE)));
-/*
-    std::uint32_t latencyAvg = 123;
 
-
-    PublicKey crnPubKey = derivePublicKey(KeyType::secp256k1, crnSecret);
-    AccountID crnAccountID = calcAccountID(crnPubKey);
-
-    JLOG(j_.info()) << "preparing CRNReport tx for account " << toBase58(crnAccountID);
-
-    std::shared_ptr<SLE const> sle = cachedRead(*lastClosedLedger,
-        keylet::account(crnAccountID).key, ltACCOUNT_ROOT);
-    if (!sle)
-    {
-        JLOG(j_.warn()) << "cannot get account " << toBase58(crnAccountID) << " for CRNReport :(";
-        return;
-    }
-    auto accSeq = (*sle)[sfSequence];
-    auto const queued = app.getTxQ().getAccountTxs(crnAccountID,
-        *lastClosedLedger);
-    // If the account has any txs in the TxQ, skip those sequence
-    // numbers (accounting for possible gaps).
-    for(auto const& tx : queued)
-    {
-        if (tx.first == accSeq)
-            ++accSeq;
-        else if (tx.first > accSeq)
-            break;
-    }
-
-    std::shared_ptr<STTx> crnReportTx = std::make_shared<STTx>(ttCRN_REPORT,
-        [crnAccountID,crnPubKey,ledgerSeq,accSeq,counters,latencyAvg](auto& obj)
-        {
-            obj[sfAccount] = crnAccountID;
-            obj[sfFee] = beast::zero;
-            obj[sfLedgerSequence] = ledgerSeq;
-            obj[sfSequence] = accSeq;
-            obj.setFieldVL(sfSigningPubKey, crnPubKey.slice());
-//            obj[sfCRN_IPAddress] = STBlob();
-//            obj[sfCRN_DomainName] = STBlob();
-            obj[sfCRN_LatencyAvg] = latencyAvg;
-
-            STArray connStats (sfCRN_ConnectionStats);
-            for (NetworkOPs::StateAccounting::Counters const& counter : counters)
-            {
-                connStats.push_back(STObject(sfCRN_ConnectionStat));
-                auto& entry = connStats.back();
-                entry.emplace_back (STUInt32 (sfTransitions, counter.transitions));
-                entry.emplace_back (STUInt32 (sfTime, (counter.dur.count() / 1000 / 1000)));
-            }
-            obj.setFieldArray(sfCRN_ConnectionStats, connStats);
-        });
-
-    crnReportTx->sign(crnPubKey, crnSecret);
-    uint256 txID = crnReportTx->getTransactionID ();
-
-    Transaction::pointer tpTrans;
-    {
-        std::string reason;
-        tpTrans = std::make_shared<Transaction>(
-            crnReportTx, reason, app);
-        if (tpTrans->getStatus () != NEW)
-        {
-            JLOG(j_.error()) <<
-                "Unable to construct transaction: " << reason;
-            return;
-        }
-    }
-
-    JLOG(j_.info()) <<
-        "CRNReport tx for account: " << toBase58(crnAccountID) << "sent to processing with txID: " << txID;
-
-    networkOps.processTransaction(tpTrans, true, true, NetworkOPs::FailHard::no);
-*/
+    lastSnapshotSeq_ = lastClosedLedger->info().seq;
 }
 
 
 std::unique_ptr<CRNPerformance> make_CRNPerformance(
     NetworkOPs& networkOps,
     LedgerIndex const& startupSeq,
+    PublicKey const& crnPubKey,
     beast::Journal journal)
 {
     return std::make_unique<CRNPerformanceImpl> (
                 networkOps,
                 startupSeq,
+                crnPubKey,
                 journal);
 }
 

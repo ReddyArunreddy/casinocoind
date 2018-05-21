@@ -195,6 +195,7 @@ message TMReportState
     }
     repeated Status status              = 7;
     required uint32 latency             = 8;
+    required bytes crnPubKey            = 9;
 }
 
 // Announce to the network our position on a closing ledger

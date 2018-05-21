@@ -51,6 +51,7 @@ public:
 std::unique_ptr<CRNPerformance> make_CRNPerformance (
     NetworkOPs& networkOps,
     LedgerIndex const& startupSeq,
+    PublicKey const& crnPubKey,
     beast::Journal journal);
 
 }
