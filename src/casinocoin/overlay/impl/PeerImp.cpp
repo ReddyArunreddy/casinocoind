@@ -336,6 +336,16 @@ PeerImp::json()
         case Sanity::sane:
             // Nothing to do here regarding sanity printout, but we do print state accounting
             ret[jss::state_accounting] = accounting_.json();
+            auto& stateAccountingJson = ret[jss::state_accounting];
+            for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+                i <= protocol::nsSHUTTING; ++i)
+            {
+                uint8_t index = i-1;
+                auto& status = stateAccountingJson[StatusAccounting::statuses_[index]];
+                status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
+                status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
+            }
+
             break;
     }
 
@@ -2490,8 +2500,6 @@ Json::Value PeerImp::StatusAccounting::json() const
         auto& status = ret[statuses_[index]];
         status[jss::transitions] = counters[index].transitions;
         status[jss::duration_sec] = std::to_string (counters[index].dur.count());
-        status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-        status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
     }
 
     return ret;
