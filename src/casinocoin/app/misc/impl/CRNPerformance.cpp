@@ -58,7 +58,11 @@ protected:
     LedgerIndex lastSnapshotSeq_;
     PublicKey crnPubKey_;
     beast::Journal j_;
-    std::array<NetworkOPs::StateAccounting::Counters,5> lastSnapshot_;
+    std::array<PeerImp::StatusAccounting::Counters,5> lastSnapshot_;
+
+private:
+    std::array<PeerImp::StatusAccounting::Counters,5>
+    mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
 };
 
 CRNPerformanceImpl::CRNPerformanceImpl(
@@ -91,28 +95,30 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
 //    auto const ledgerSeq = lastClosedLedger->info().seq + 1;
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
-    std::array<NetworkOPs::StateAccounting::Counters, 5> counters = networkOps.getServerAccountingInfo();
+    std::array<PeerImp::StatusAccounting::Counters, 5> counters =
+            mapServerAccountingToPeerAccounting(networkOps.getServerAccountingInfo());
+
     protocol::TMReportState s;
 
     for (uint32_t i = 0; i < 5; i++)
     {
-        NetworkOPs::StateAccounting::Counters counterToReport;
+        PeerImp::StatusAccounting::Counters counterToReport;
         counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
         counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
 
         JLOG(j_.info()) << "CRNPerformanceImpl::submit TMReportState: "
                         << " mode: " << i+1
-                        << "\nlastSnapshot   [" << i << "]dur:" << lastSnapshot_[i].dur.count() << " transitions:" << lastSnapshot_[i].transitions
-                        << "\ncounters       [" << i << "]dur:" << counters[i].dur.count() << " transitions:" << counters[i].transitions
-                        << "\ncounterToReport[" << i << "]dur:" << counterToReport.dur.count() << " transitions:" << counterToReport.transitions;
+                        << " lastSnapshot   [" << i << "]dur:" << lastSnapshot_[i].dur.count() << " transitions:" << lastSnapshot_[i].transitions
+                        << " counters       [" << i << "]dur:" << counters[i].dur.count() << " transitions:" << counters[i].transitions
+                        << " counterToReport[" << i << "]dur:" << counterToReport.dur.count() << " transitions:" << counterToReport.transitions;
 
 
-        lastSnapshot_[i].dur = counterToReport.dur;
-        lastSnapshot_[i].transitions = counterToReport.transitions;
+        lastSnapshot_[i].dur = counters[i].dur;
+        lastSnapshot_[i].transitions = counters[i].transitions;
 
         protocol::TMReportState::Status* newStatus = s.add_status ();
         newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
-        newStatus->set_duration(counterToReport.dur.count() / 1000 / 1000);
+        newStatus->set_duration(counterToReport.dur.count());
         newStatus->set_transitions(counterToReport.transitions);
     }
     s.set_currstatus(currentStatus);
@@ -132,6 +138,18 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
         std::make_shared<Message> (s, protocol::mtREPORT_STATE)));
 
     lastSnapshotSeq_ = lastClosedLedger->info().seq;
+}
+
+std::array<PeerImp::StatusAccounting::Counters, 5> CRNPerformanceImpl::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
+{
+    std::array<PeerImp::StatusAccounting::Counters, 5> ret;
+    for (uint32_t i = 0; i < serverAccounting.size(); i++)
+    {
+        auto &entry = ret[networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))];
+        entry.dur = std::chrono::seconds(serverAccounting[i].dur.count() / 1000 / 1000);
+        entry.transitions = serverAccounting[i].transitions;
+    }
+    return ret;
 }
 
 

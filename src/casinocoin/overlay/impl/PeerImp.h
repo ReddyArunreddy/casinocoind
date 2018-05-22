@@ -94,83 +94,6 @@ public:
 
     using ptr = std::shared_ptr <PeerImp>;
 
-private:
-    using clock_type    = std::chrono::steady_clock;
-    using error_code    = boost::system::error_code;
-    using socket_type   = boost::asio::ip::tcp::socket;
-    using stream_type   = boost::asio::ssl::stream <socket_type&>;
-    using address_type  = boost::asio::ip::address;
-    using endpoint_type = boost::asio::ip::tcp::endpoint;
-
-    // The length of the smallest valid finished message
-    static const size_t sslMinimumFinishedLength = 12;
-
-    Application& app_;
-    id_t const id_;
-    beast::WrappedSink sink_;
-    beast::WrappedSink p_sink_;
-    beast::Journal journal_;
-    beast::Journal p_journal_;
-    std::unique_ptr<beast::asio::ssl_bundle> ssl_bundle_;
-    socket_type& socket_;
-    stream_type& stream_;
-    boost::asio::io_service::strand strand_;
-    boost::asio::basic_waitable_timer<
-        std::chrono::steady_clock> timer_;
-
-    //Type type_ = Type::legacy;
-
-    // Updated at each stage of the connection process to reflect
-    // the current conditions as closely as possible.
-    beast::IP::Endpoint remote_address_;
-
-    // These are up here to prevent warnings about order of initializations
-    //
-    OverlayImpl& overlay_;
-    bool m_inbound;
-    State state_;          // Current state
-    std::atomic<Sanity> sanity_;
-    clock_type::time_point insaneTime_;
-    bool detaching_ = false;
-    // Node public key of peer.
-    PublicKey publicKey_;
-    std::string name_;
-    uint256 sharedValue_;
-
-    // The indices of the smallest and largest ledgers this peer has available
-    //
-    LedgerIndex minLedger_ = 0;
-    LedgerIndex maxLedger_ = 0;
-    uint256 closedLedgerHash_;
-    uint256 previousLedgerHash_;
-    std::deque<uint256> recentLedgers_;
-    std::deque<uint256> recentTxSets_;
-
-    std::chrono::milliseconds latency_ = std::chrono::milliseconds (-1);
-    std::uint64_t lastPingSeq_ = 0;
-    clock_type::time_point lastPingTime_;
-    clock_type::time_point creationTime_;
-
-    std::mutex mutable recentLock_;
-    protocol::TMStatusChange last_status_;
-    protocol::TMHello hello_;
-    Resource::Consumer usage_;
-    Resource::Charge fee_;
-    PeerFinder::Slot::ptr slot_;
-    beast::streambuf read_buffer_;
-    http_request_type request_;
-    http_response_type response_;
-    beast::http::fields const& headers_;
-    beast::streambuf write_buffer_;
-    std::queue<Message::pointer> send_queue_;
-    bool gracefulClose_ = false;
-    int large_sendq_ = 0;
-    int no_ping_ = 0;
-    std::unique_ptr <LoadEvent> load_event_;
-    bool hopsAware_ = false;
-
-    friend class OverlayImpl;
-
     /**
      * Status accounting records two attributes for each possible node status:
      * 1) Amount of time spent in each status (in seconds). This value is
@@ -234,6 +157,84 @@ private:
         static Json::StaticString const transitions_;
         static Json::StaticString const dur_;
     };
+
+private:
+    using clock_type    = std::chrono::steady_clock;
+    using error_code    = boost::system::error_code;
+    using socket_type   = boost::asio::ip::tcp::socket;
+    using stream_type   = boost::asio::ssl::stream <socket_type&>;
+    using address_type  = boost::asio::ip::address;
+    using endpoint_type = boost::asio::ip::tcp::endpoint;
+
+    // The length of the smallest valid finished message
+    static const size_t sslMinimumFinishedLength = 12;
+
+    Application& app_;
+    id_t const id_;
+    beast::WrappedSink sink_;
+    beast::WrappedSink p_sink_;
+    beast::Journal journal_;
+    beast::Journal p_journal_;
+    std::unique_ptr<beast::asio::ssl_bundle> ssl_bundle_;
+    socket_type& socket_;
+    stream_type& stream_;
+    boost::asio::io_service::strand strand_;
+    boost::asio::basic_waitable_timer<
+        std::chrono::steady_clock> timer_;
+
+    //Type type_ = Type::legacy;
+
+    // Updated at each stage of the connection process to reflect
+    // the current conditions as closely as possible.
+    beast::IP::Endpoint remote_address_;
+
+    // These are up here to prevent warnings about order of initializations
+    //
+    OverlayImpl& overlay_;
+    bool m_inbound;
+    State state_;          // Current state
+    std::atomic<Sanity> sanity_;
+    clock_type::time_point insaneTime_;
+    bool detaching_ = false;
+    // Node public key of peer.
+    PublicKey publicKey_;
+    std::string name_;
+    uint256 sharedValue_;
+    PublicKey crnPublicKey_; // jrojek TODO: compare it with cfg list of relay nodes
+
+    // The indices of the smallest and largest ledgers this peer has available
+    //
+    LedgerIndex minLedger_ = 0;
+    LedgerIndex maxLedger_ = 0;
+    uint256 closedLedgerHash_;
+    uint256 previousLedgerHash_;
+    std::deque<uint256> recentLedgers_;
+    std::deque<uint256> recentTxSets_;
+
+    std::chrono::milliseconds latency_ = std::chrono::milliseconds (-1);
+    std::uint64_t lastPingSeq_ = 0;
+    clock_type::time_point lastPingTime_;
+    clock_type::time_point creationTime_;
+
+    std::mutex mutable recentLock_;
+    protocol::TMStatusChange last_status_;
+    protocol::TMHello hello_;
+    Resource::Consumer usage_;
+    Resource::Charge fee_;
+    PeerFinder::Slot::ptr slot_;
+    beast::streambuf read_buffer_;
+    http_request_type request_;
+    http_response_type response_;
+    beast::http::fields const& headers_;
+    beast::streambuf write_buffer_;
+    std::queue<Message::pointer> send_queue_;
+    bool gracefulClose_ = false;
+    int large_sendq_ = 0;
+    int no_ping_ = 0;
+    std::unique_ptr <LoadEvent> load_event_;
+    bool hopsAware_ = false;
+
+    friend class OverlayImpl;
 
     StatusAccounting accounting_;
     std::array<StatusAccounting::Counters, 5> nodeSelfAccounting_;

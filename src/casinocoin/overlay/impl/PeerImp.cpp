@@ -335,19 +335,26 @@ PeerImp::json()
             break;
 
         case Sanity::sane:
-            // Nothing to do here regarding sanity printout, but we do print state accounting
-            ret[jss::state_accounting] = accounting_.json();
-            auto& stateAccountingJson = ret[jss::state_accounting];
-            for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-                i <= protocol::nsSHUTTING; i++)
-            {
-                uint8_t index = i-1;
-                auto& status = stateAccountingJson[StatusAccounting::statuses_[index]];
-                status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-                status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-            }
-
+            // Nothing to do here
             break;
+    }
+
+    if (crnPublicKey_.size() != 0)
+    {
+        // not supported now
+        // ret[jss::state_accounting] = accounting_.json();
+
+        Json::Value selfStateAccounting = Json::objectValue;
+        for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+            i <= protocol::nsSHUTTING; ++i)
+        {
+            uint8_t index = i-1;
+            selfStateAccounting[StatusAccounting::statuses_[index]] = Json::objectValue;
+            auto& status = selfStateAccounting[StatusAccounting::statuses_[index]];
+            status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
+            status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
+        }
+        ret[jss::state_accounting] = selfStateAccounting;
     }
 
     if (last_status_.has_newstatus ())
@@ -1784,6 +1791,15 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
     {
         JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reported statuses count == " << m->status_size()
                                 << "  != status supported count == " << nodeSelfAccounting_.size();
+        return;
+    }
+
+    PublicKey crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
+    if (crnPublicKey_.size() == 0)
+        crnPublicKey_ = crnIncomingPubKey;
+    else if (!(crnPublicKey_ == crnIncomingPubKey))
+    {
+        JLOG(p_journal_.warn()) << "PeerImp::onMessage TMReportState public key mismatch";
         return;
     }
 
