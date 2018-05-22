@@ -51,6 +51,7 @@
 #include <casinocoin/overlay/ClusterNode.h>
 #include <casinocoin/protocol/BuildInfo.h>
 #include <casinocoin/protocol/JsonFields.h>
+#include <casinocoin/protocol/tokens.h>
 #include <casinocoin/beast/core/SemanticVersion.h>
 #include <casinocoin/beast/utility/weak_fn.h>
 #include <beast/http/write.hpp>
@@ -338,7 +339,7 @@ PeerImp::json()
             ret[jss::state_accounting] = accounting_.json();
             auto& stateAccountingJson = ret[jss::state_accounting];
             for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-                i <= protocol::nsSHUTTING; ++i)
+                i <= protocol::nsSHUTTING; i++)
             {
                 uint8_t index = i-1;
                 auto& status = stateAccountingJson[StatusAccounting::statuses_[index]];
@@ -824,7 +825,7 @@ PeerImp::error_code
 PeerImp::onMessageUnknown (std::uint16_t type)
 {
     error_code ec;
-    // TODO
+    JLOG(p_journal_.warn()) << "Unknown message received: " <<type;
     return ec;
 }
 
@@ -1789,6 +1790,7 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
     JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reporting performance period: "
                             << m->ledgerseqbegin() << "-" << m->ledgerseqend()
                             << " curr status: " << static_cast<uint32_t>(m->currstatus());
+//                            << " crnPk: " << toBase58(TokenType::TOKEN_NODE_PUBLIC, PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size())));
     for (int i = 0; i < m->status_size(); ++i)
     {
         const protocol::TMReportState::Status& singleStatus = m->status(i);
@@ -1797,8 +1799,8 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
         nodeSelfAccounting_[index].transitions = singleStatus.transitions();
 
         JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: spent: " << nodeSelfAccounting_[index].dur.count()
-                                << " with " << index << " status, transitioned: " << nodeSelfAccounting_[index].transitions
-                                << " times";
+                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
+                                << "transitioned: " << nodeSelfAccounting_[index].transitions << " times";
     }
 }
 

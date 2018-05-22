@@ -84,7 +84,7 @@ Json::Value doCRNVerify (RPC::Context& context)
     auto unHexedSignature = strUnHex(context.params[jss::signature].asString());
     boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key].asString());
 
-    if (unHexedSignature.second)
+    if (unHexedSignature.second && publicKey)
     {
         JLOG(context.j.info()) << "Do Verify";
         verifyResult = casinocoin::verify(
