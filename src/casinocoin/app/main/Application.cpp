@@ -41,6 +41,7 @@
 #include <casinocoin/app/main/NodeIdentity.h>
 #include <casinocoin/app/main/NodeStoreScheduler.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
+#include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -301,7 +302,7 @@ public:
     std::unique_ptr <ManifestCache> publisherManifests_;
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
-    // std::unique_ptr <CRNList> relaynodes_;
+    std::unique_ptr <CRNList> relaynodes_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <CRNPerformance> m_crnPerformance;
@@ -456,8 +457,8 @@ public:
     ManifestCache&
     publisherManifests() override { return *publisherManifests_; }
 
-    // CRNList&
-    // relaynodes () override { return *relaynodes_; }
+    CRNList&
+    relaynodes () override { return *relaynodes_; }
 
     Cluster&
     cluster () override { return *cluster_; }
@@ -641,8 +642,8 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
     , validatorSites_ (std::make_unique<ValidatorSite> (
         get_io_service (), *validators_, logs_->journal("ValidatorSite")))
 
-    // , relaynodes_ (std::make_unique<CRNList> (
-    //     *timeKeeper_, logs_->journal("CRNList")))
+    , relaynodes_ (std::make_unique<CRNList> (
+        *timeKeeper_, logs_->journal("CRNList")))
 
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
@@ -886,17 +887,20 @@ bool ApplicationImp::setup()
             // check for 'domain' and 'publickey' values
             std::pair <std::string, bool> domainName = config().section (SECTION_CRN_CONFIG).find("domain");
             std::pair <std::string, bool> publicKey = config().section (SECTION_CRN_CONFIG).find("publickey");
-            if(domainName.second && publicKey.second)
+            std::pair <std::string, bool> signature = config().section (SECTION_CRN_CONFIG).find("signature");
+            if(domainName.second && publicKey.second && signature.second)
             {
                 JLOG(m_journal.info()) << "Set this node as CRN Node";
                 boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
-                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first);
+
+                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first, signature.first);
 
 
                 m_crnPerformance = make_CRNPerformance(getOPs(),
                                                        m_ledgerMaster->getCurrentLedgerIndex(),
                                                        *crnPublicKey,
                                                        logs_->journal("CRN"));
+
             }
             else
             {
@@ -906,15 +910,13 @@ bool ApplicationImp::setup()
         }
 
         // Setup trusted relay nodes
-//        if (!relaynodes_->load (
-//                crnPublic,
-//                config().section (SECTION_CRNS).values (),
-//                config().section (SECTION_CRN_LIST_KEYS).values ()))
-//        {
-//            JLOG(m_journal.fatal()) <<
-//                "Invalid entry in relaynode configuration.";
-//            return false;
-//        }
+       if (!relaynodes_->load (
+               config().section (SECTION_CRNS).values ()))
+       {
+           JLOG(m_journal.fatal()) <<
+               "Invalid entry in relaynode configuration.";
+           return false;
+       }
     }
 
     if (!validatorSites_->load (

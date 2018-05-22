@@ -330,9 +330,13 @@ public:
     {
         return mConsensus->getCRNDomain ();
     }
-    void setCRNKey ( PublicKey const& crnPublic, std::string const& crnDomain) override
+    std::string const& getCRNSignature () const override
     {
-        mConsensus->setCRNKey (crnPublic, crnDomain);
+        return mConsensus->getCRNSignature ();
+    }
+    void setCRNKey ( PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature ) override
+    {
+        mConsensus->setCRNKey (crnPublic, crnDomain, crnSignature);
     }
     Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin) override;
