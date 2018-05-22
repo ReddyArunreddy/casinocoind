@@ -402,6 +402,9 @@ public:
     TransactionMaster&
     getMasterTransaction () override { return m_txMaster; }
 
+    bool
+    isCRN() override { return m_crnPerformance != nullptr; }
+
     CRNPerformance&
     getCRNPerformance() override { return *m_crnPerformance; }
 
@@ -643,6 +646,8 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
 
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
+
+    , m_crnPerformance (nullptr)
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 

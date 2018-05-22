@@ -28,6 +28,7 @@
 #include <casinocoin/app/main/Application.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/overlay/Overlay.h>
+#include <casinocoin/overlay/impl/PeerImp.h>
 #include <casinocoin/overlay/Message.h>
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/app/misc/CRNPerformance.h>
@@ -70,7 +71,11 @@ CRNPerformanceImpl::CRNPerformanceImpl(
     , crnPubKey_(crnPubKey)
     , j_(journal)
 {
-
+    for (auto& oneCounter : lastSnapshot_)
+    {
+        oneCounter.dur = std::chrono::seconds(0);
+        oneCounter.transitions = 0;
+    }
 }
 
 Json::Value CRNPerformanceImpl::getJson()
@@ -89,12 +94,19 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
     std::array<NetworkOPs::StateAccounting::Counters, 5> counters = networkOps.getServerAccountingInfo();
     protocol::TMReportState s;
 
-    for (uint32_t i = 0; i < 5; ++i)
+    for (uint32_t i = 0; i < 5; i++)
     {
-
         NetworkOPs::StateAccounting::Counters counterToReport;
-        counterToReport.dur = counters[i].dur - lastSnapshot_[i].dur;
+        counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
         counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
+
+        JLOG(j_.info()) << "CRNPerformanceImpl::submit TMReportState: "
+                        << " mode: " << i+1
+                        << "\nlastSnapshot   [" << i << "]dur:" << lastSnapshot_[i].dur.count() << " transitions:" << lastSnapshot_[i].transitions
+                        << "\ncounters       [" << i << "]dur:" << counters[i].dur.count() << " transitions:" << counters[i].transitions
+                        << "\ncounterToReport[" << i << "]dur:" << counterToReport.dur.count() << " transitions:" << counterToReport.transitions;
+
+
         lastSnapshot_[i].dur = counterToReport.dur;
         lastSnapshot_[i].transitions = counterToReport.transitions;
 
