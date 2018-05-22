@@ -82,7 +82,7 @@ CRNList::load (
         boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
         // auto const publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
 
-        JLOG (j_.info()) << "Loading CRN " << match[1] << " for domain " << match[2];
+        JLOG (j_.info()) << "Loading CRN " << match[1] << " / " << match[2];
         if (!(toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey).length() > 0))
         {
             JLOG (j_.error()) << "Invalid node identity: " << toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);

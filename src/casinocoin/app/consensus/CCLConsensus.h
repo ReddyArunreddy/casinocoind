@@ -160,9 +160,13 @@ public:
     std::string const&
     getCRNDomain() const;
 
+    /** Returns CRN signature */
+    std::string const&
+    getCRNSignature() const;
+
     /** Set relay node public key. */
     void
-    setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain);
+    setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature);
 
 private:
     friend class Consensus<CCLConsensus, CCLCxTraits>;
@@ -393,6 +397,7 @@ private:
 
     PublicKey crnPublic_;
     std::string crnDomain_;
+    std::string crnSignature_;
 
     // The timestamp of the last validation we used, in network time. This is
     // only used for our own validations.
