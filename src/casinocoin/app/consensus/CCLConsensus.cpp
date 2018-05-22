@@ -940,10 +940,17 @@ CCLConsensus::getCRNDomain() const
     return crnDomain_;
 }
 
-void CCLConsensus::setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain)
+std::string const&
+CCLConsensus::getCRNSignature() const
+{
+    return crnSignature_;
+}
+
+void CCLConsensus::setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature)
 {
     crnPublic_ = crnPublic;
     crnDomain_ = crnDomain;
+    crnSignature_ = crnSignature;
 }
 
 void

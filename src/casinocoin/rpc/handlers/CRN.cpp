@@ -48,11 +48,11 @@ Json::Value doCRNCreate (RPC::Context& context)
 
     Json::Value obj (Json::objectValue);
     KeyType keyType = KeyType::secp256k1;
-
     auto seed = randomSeed();
+    std::pair<PublicKey,SecretKey> keyPair = generateKeyPair (keyType, seed);
 
-    auto const publicKey = generateKeyPair (keyType, seed).first;
-    auto const secretKey = generateKeyPair (keyType, seed).second;
+    auto const publicKey = keyPair.first;
+    auto const secretKey = keyPair.second;
 
     obj[jss::crn_seed] = toBase58 (seed);
     obj[jss::crn_key] = seedAs1751 (seed);

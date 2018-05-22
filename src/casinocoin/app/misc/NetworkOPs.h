@@ -245,7 +245,8 @@ public:
         SecretKey const& valSecret, PublicKey const& valPublic) = 0;
     virtual PublicKey const& getCRNPublicKey () const = 0;
     virtual std::string const& getCRNDomain () const = 0;
-    virtual void setCRNKey (PublicKey const& crnPublic, std::string const& crnDomain) = 0;
+    virtual std::string const& getCRNSignature () const = 0;
+    virtual void setCRNKey (PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature) = 0;
     virtual Json::Value getConsensusInfo () = 0;
     virtual Json::Value getServerInfo (bool human, bool admin) = 0;
     virtual std::array<StateAccounting::Counters, 5> getServerAccountingInfo () = 0;
