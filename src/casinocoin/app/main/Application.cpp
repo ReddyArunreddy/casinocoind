@@ -882,11 +882,12 @@ bool ApplicationImp::setup()
             // check for 'domain' and 'publickey' values
             std::pair <std::string, bool> domainName = config().section (SECTION_CRN_CONFIG).find("domain");
             std::pair <std::string, bool> publicKey = config().section (SECTION_CRN_CONFIG).find("publickey");
-            if(domainName.second && publicKey.second)
+            std::pair <std::string, bool> signature = config().section (SECTION_CRN_CONFIG).find("signature");
+            if(domainName.second && publicKey.second && signature.second)
             {
                 JLOG(m_journal.info()) << "Set this node as CRN Node";
                 boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
-                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first);
+                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first, signature.first);
             }
             else
             {
