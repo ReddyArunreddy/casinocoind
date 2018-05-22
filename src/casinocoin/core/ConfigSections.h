@@ -35,7 +35,6 @@ struct ConfigSection
 {
     static std::string nodeDatabase ()       { return "node_db"; }
     static std::string importNodeDatabase () { return "import_db"; }
-    static std::string relayNode () { return "relaynode_config"; }
 };
 
 // VFALCO TODO Rename and replace these macros with variables.

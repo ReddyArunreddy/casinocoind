@@ -46,9 +46,7 @@ CRNList::~CRNList()
 
 bool
 CRNList::load (
-    PublicKey const& localSigningKey,
-    std::vector<std::string> const& configKeys,
-    std::vector<std::string> const& publisherKeys)
+    std::vector<std::string> const& configKeys)
 {
     static boost::regex const re (
         "[[:space:]]*"            // skip leading whitespace
@@ -64,54 +62,16 @@ CRNList::load (
 
     boost::unique_lock<boost::shared_mutex> read_lock{mutex_};
 
-    JLOG (j_.debug()) << "Loading configured trusted CRN list publisher keys";
+    JLOG (j_.debug()) << "Loading configured trusted CRN public keys";
 
     std::size_t count = 0;
-    for (auto key : publisherKeys)
-    {
-        JLOG (j_.trace()) <<
-            "Processing '" << key << "'";
 
-        auto const ret = strUnHex (key);
-
-        if (! ret.second || ! ret.first.size ())
-        {
-            JLOG (j_.error()) << "Invalid CRN list publisher key: " << key;
-            return false;
-        }
-
-        auto id = PublicKey(Slice{ ret.first.data (), ret.first.size() });
-
-        if (publisherLists_.count(id))
-        {
-            JLOG (j_.warn()) <<
-                "Duplicate CRN list publisher key: " << key;
-            continue;
-        }
-
-        publisherLists_[id].available = false;
-        ++count;
-    }
-
-    JLOG (j_.debug()) << "Loaded " << count << " keys";
-
-    // TODO !!! localPubKey_ = validatorManifests_.getMasterKey (localSigningKey);
-
-    // Treat local CRN key as though it was listed in the config
-    if (localPubKey_.size())
-        keyListings_.insert ({ localPubKey_, 1 });
-
-    JLOG (j_.debug()) << "Loading configured CRN keys";
-
-    count = 0;
     PublicKey local;
     for (auto const& n : configKeys)
     {
-        JLOG (j_.trace()) <<
-            "Processing '" << n << "'";
+        JLOG (j_.trace()) << "Processing '" << n << "'";
 
         boost::smatch match;
-
         if (!boost::regex_match (n, match, re))
         {
             JLOG (j_.error()) <<
@@ -119,33 +79,26 @@ CRNList::load (
             return false;
         }
 
-        auto const id = parseBase58<PublicKey>(
-            TokenType::TOKEN_NODE_PUBLIC, match[1]);
+        boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
+        // auto const publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
 
-        if (!id)
+        JLOG (j_.info()) << "Loading CRN " << match[1] << " for domain " << match[2];
+        if (!(toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey).length() > 0))
         {
-            JLOG (j_.error()) << "Invalid node identity: " << match[1];
+            JLOG (j_.error()) << "Invalid node identity: " << toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
             return false;
         }
 
-        // Skip local key which was already added
-        if (*id == localPubKey_ || *id == localSigningKey)
-            continue;
-
-        auto ret = keyListings_.insert ({*id, 1});
+        auto ret = keyListings_.insert ({*publicKey, match[2]});
         if (! ret.second)
         {
             JLOG (j_.warn()) << "Duplicate node identity: " << match[1];
             continue;
         }
-        publisherLists_[local].list.emplace_back (std::move(*id));
-        publisherLists_[local].available = true;
         ++count;
     }
 
-    JLOG (j_.debug()) <<
-        "Loaded " << count << " entries";
-
+    JLOG (j_.debug()) << "Loaded " << count << " CRN Public Keys";
     return true;
 }
 
@@ -155,29 +108,8 @@ CRNList::listed (
 {
     boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
 
-    // auto const pubKey;
-    // return keyListings_.find (pubKey) != keyListings_.end ();
-    return true;
+    return keyListings_.find (identity) != keyListings_.end ();
 }
-
-boost::optional<PublicKey>
-CRNList::getListedKey (PublicKey const& identity) const
-{
-    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
-
-    // auto const pubKey;
-    // if (keyListings_.find (pubKey) != keyListings_.end ())
-    //     return pubKey;
-    return boost::none;
-}
-
-PublicKey
-CRNList::localPublicKey () const
-{
-    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
-    return localPubKey_;
-}
-
 
 void
 CRNList::for_each_listed (
