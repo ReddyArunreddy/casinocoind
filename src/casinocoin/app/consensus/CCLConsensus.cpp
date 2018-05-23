@@ -321,7 +321,7 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
     // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
-    if (app_.isCRN() && (prevLedger->info().seq % 64) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRNPerformance().getReportingPeriod()) == 0)
     {
         app_.getCRNPerformance().submit(prevLedger, app_);
     }
