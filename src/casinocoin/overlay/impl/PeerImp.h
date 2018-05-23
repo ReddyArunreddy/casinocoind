@@ -200,7 +200,7 @@ private:
     PublicKey publicKey_;
     std::string name_;
     uint256 sharedValue_;
-    PublicKey crnPublicKey_; // jrojek TODO: compare it with cfg list of relay nodes
+    boost::optional<PublicKey> crnPublicKey_; // jrojek TODO: compare it with cfg list of relay nodes
 
     // The indices of the smallest and largest ledgers this peer has available
     //

@@ -90,9 +90,8 @@ Json::Value CRNPerformanceImpl::getJson()
 
 void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClosedLedger, Application& app)
 {
-    // LCL must be flag ledger
-//    assert ((lastClosedLedger->info().seq % 256) == 0);
-//    auto const ledgerSeq = lastClosedLedger->info().seq + 1;
+    // LCL must be 'reporting' ledger
+    assert ((lastClosedLedger->info().seq % getReportingPeriod()) == 0);
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<PeerImp::StatusAccounting::Counters, 5> counters =
@@ -142,12 +141,19 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
 
 std::array<PeerImp::StatusAccounting::Counters, 5> CRNPerformanceImpl::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
 {
+    JLOG(j_.info()) << "CRNPerformanceImpl::mapServerAccountingToPeerAccounting";
+
     std::array<PeerImp::StatusAccounting::Counters, 5> ret;
-    for (uint32_t i = 0; i < serverAccounting.size(); i++)
+    for (uint32_t i = 0; i < 5; i++)
     {
-        auto &entry = ret[networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))];
-        entry.dur = std::chrono::seconds(serverAccounting[i].dur.count() / 1000 / 1000);
-        entry.transitions = serverAccounting[i].transitions;
+        auto &entry = ret[(networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))) - 1];
+        entry.dur += std::chrono::seconds(serverAccounting[i].dur.count() / 1000 / 1000);
+        entry.transitions += serverAccounting[i].transitions;
+        JLOG(j_.info()) << "CRNPerformanceImpl::mapServerAccountingToPeerAccounting TMReportState:"
+                        << " OperatingMode(" << i << ") -> protocol::NodeStatus(" << networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i)) << ")"
+                        << " serverAccounting[" << i << "]dur:" << serverAccounting[i].dur.count() << " transitions:" << serverAccounting[i].transitions
+                        << " ret             [" << (networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))) - 1 << "]dur:" << entry.dur.count() << " transitions:" << entry.transitions
+                        ;
     }
     return ret;
 }

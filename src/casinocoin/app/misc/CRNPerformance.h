@@ -46,6 +46,8 @@ public:
     virtual void submit (std::shared_ptr<ReadView const> const& lastClosedLedger,
                          Application& app) = 0;
 
+    virtual uint32_t getReportingPeriod() const { return 64; }
+
 };
 
 std::unique_ptr<CRNPerformance> make_CRNPerformance (
