@@ -130,9 +130,6 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
     // jrojek TODO real latency... :O
     s.set_latency(10);
 
-    JLOG(j_.info()) <<
-        "Sending TMReportState";
-
     app.overlay ().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtREPORT_STATE)));
 

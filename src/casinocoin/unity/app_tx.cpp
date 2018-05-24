@@ -47,4 +47,3 @@
 #include <casinocoin/app/tx/impl/ApplyContext.cpp>
 #include <casinocoin/app/tx/impl/Transactor.cpp>
 #include <casinocoin/app/tx/impl/SetKYC.cpp>
-#include <casinocoin/app/tx/impl/CRNReport.cpp>
