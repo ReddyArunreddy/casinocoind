@@ -341,8 +341,6 @@ CCLConsensus::onClose(
 
         if (count >= app_.validators().quorum())
         {
-            app_.config().reloadFeeVoteParams();
-            feeVote_->updatePosition(setup_FeeVote(app_.config().section ("voting")));
             feeVote_->doVoting(prevLedger, validations, initialSet);
             app_.getAmendmentTable().doVoting(
                 prevLedger, validations, initialSet);
@@ -882,7 +880,9 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
     if (((ledger.seq() + 1) % 256) == 0)
     // next ledger is flag ledger
     {
-        // Suggest fee changes and new features.
+        // Suggest fee changes and new features
+        app_.config().reloadFeeVoteParams();
+        feeVote_->updatePosition(setup_FeeVote(app_.config().section ("voting")));
         feeVote_->doValidation(ledger.ledger_, *v);
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
