@@ -81,7 +81,7 @@ Json::Value doCRNVerify (RPC::Context& context)
     bool verifyResult = false;
 
     std::string domainName = context.params[jss::crn_domain_name].asString();
-    auto unHexedSignature = strUnHex(context.params[jss::signature].asString());
+    auto unHexedSignature = strUnHex(context.params[jss::crn_domain_signature].asString());
     boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key].asString());
 
     if (unHexedSignature.second && publicKey)
@@ -92,14 +92,14 @@ Json::Value doCRNVerify (RPC::Context& context)
           makeSlice(strHex(domainName)),
           makeSlice(unHexedSignature.first));
     }
-            
-        
+
+
     JLOG(context.j.info()) << "Domain: " << domainName << " Result: " << verifyResult;
 
     obj[jss::crn_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
     obj[jss::crn_valid] = verifyResult;
     return obj;
-    
+
     // auto signature = strUnHex(context.params[jss::crn_domain_signature].asString());
     // std::string domainName = context.params[jss::crn_domain_name].asString();
     // boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, context.params[jss::crn_public_key].asString());
