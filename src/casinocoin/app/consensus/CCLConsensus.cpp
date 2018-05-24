@@ -321,7 +321,7 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
     // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
-    if ((prevLedger->info().seq % 64) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRNPerformance().getReportingPeriod()) == 0)
     {
         app_.getCRNPerformance().submit(prevLedger, app_);
     }
@@ -341,8 +341,6 @@ CCLConsensus::onClose(
 
         if (count >= app_.validators().quorum())
         {
-            app_.config().reloadFeeVoteParams();
-            feeVote_->updatePosition(setup_FeeVote(app_.config().section ("voting")));
             feeVote_->doVoting(prevLedger, validations, initialSet);
             app_.getAmendmentTable().doVoting(
                 prevLedger, validations, initialSet);
@@ -882,7 +880,9 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
     if (((ledger.seq() + 1) % 256) == 0)
     // next ledger is flag ledger
     {
-        // Suggest fee changes and new features.
+        // Suggest fee changes and new features
+        app_.config().reloadFeeVoteParams();
+        feeVote_->updatePosition(setup_FeeVote(app_.config().section ("voting")));
         feeVote_->doValidation(ledger.ledger_, *v);
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }

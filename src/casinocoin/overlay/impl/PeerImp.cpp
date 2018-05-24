@@ -24,12 +24,9 @@
 //==============================================================================
 
 #include <BeastConfig.h>
-#include <casinocoin/overlay/impl/TMHello.h>
-#include <casinocoin/overlay/impl/PeerImp.h>
-#include <casinocoin/overlay/impl/Tuning.h>
+
 #include <casinocoin/app/ledger/InboundLedgers.h>
 #include <casinocoin/app/ledger/LedgerMaster.h>
-#include <casinocoin/consensus/LedgerTiming.h>
 #include <casinocoin/app/ledger/InboundTransactions.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -37,22 +34,30 @@
 #include <casinocoin/app/misc/Transaction.h>
 #include <casinocoin/app/misc/Validations.h>
 #include <casinocoin/app/misc/ValidatorList.h>
+#include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/tx/apply.h>
-#include <casinocoin/protocol/digest.h>
 #include <casinocoin/basics/random.h>
 #include <casinocoin/basics/StringUtilities.h>
 #include <casinocoin/basics/UptimeTimer.h>
+#include <casinocoin/beast/core/SemanticVersion.h>
+#include <casinocoin/beast/utility/weak_fn.h>
+#include <casinocoin/consensus/LedgerTiming.h>
 #include <casinocoin/core/JobQueue.h>
 #include <casinocoin/core/TimeKeeper.h>
 #include <casinocoin/json/json_reader.h>
-#include <casinocoin/resource/Fees.h>
-#include <casinocoin/rpc/ServerHandler.h>
 #include <casinocoin/overlay/Cluster.h>
 #include <casinocoin/overlay/ClusterNode.h>
+#include <casinocoin/overlay/impl/TMHello.h>
+#include <casinocoin/overlay/impl/PeerImp.h>
+#include <casinocoin/overlay/impl/Tuning.h>
 #include <casinocoin/protocol/BuildInfo.h>
 #include <casinocoin/protocol/JsonFields.h>
-#include <casinocoin/beast/core/SemanticVersion.h>
-#include <casinocoin/beast/utility/weak_fn.h>
+#include <casinocoin/protocol/tokens.h>
+#include <casinocoin/protocol/digest.h>
+#include <casinocoin/protocol/PublicKey.h>
+#include <casinocoin/resource/Fees.h>
+#include <casinocoin/rpc/ServerHandler.h>
+
 #include <beast/http/write.hpp>
 #include <boost/algorithm/string/predicate.hpp>
 #include <boost/asio/io_service.hpp>
@@ -99,6 +104,7 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
 {
+    JLOG(journal_.info()) << "Peer[" << id_ << "] created";
 }
 
 PeerImp::~PeerImp ()
@@ -111,6 +117,7 @@ PeerImp::~PeerImp ()
         overlay_.onPeerDeactivate(id_);
     overlay_.peerFinder().on_closed (slot_);
     overlay_.remove (slot_);
+    JLOG(journal_.info()) << "Peer[" << id_ << "] removed";
 }
 
 void
@@ -334,19 +341,37 @@ PeerImp::json()
             break;
 
         case Sanity::sane:
-            // Nothing to do here regarding sanity printout, but we do print state accounting
-            ret[jss::state_accounting] = accounting_.json();
-            auto& stateAccountingJson = ret[jss::state_accounting];
-            for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-                i <= protocol::nsSHUTTING; ++i)
-            {
-                uint8_t index = i-1;
-                auto& status = stateAccountingJson[StatusAccounting::statuses_[index]];
-                status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-                status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-            }
-
+            // Nothing to do here
             break;
+    }
+
+    if (crnPublicKey_)
+    {
+        JLOG(journal_.info()) <<
+            "Peer is CRN, reporting more detailed data (PK:" << *crnPublicKey_ << ")";
+        // report this node measurement and self-measurement
+//         ret[jss::state_accounting] = accounting_.json();
+//         for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+//             i <= protocol::nsSHUTTING; ++i)
+//         {
+//             uint8_t index = i-1;
+//             auto& status = ret[jss::state_accounting][StatusAccounting::statuses_[index]];
+//             status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
+//             status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
+//         }
+
+         // report self-measurement only
+        Json::Value selfStateAccounting = Json::objectValue;
+        for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+            i <= protocol::nsSHUTTING; ++i)
+        {
+            uint8_t index = i-1;
+            selfStateAccounting[StatusAccounting::statuses_[index]] = Json::objectValue;
+            auto& status = selfStateAccounting[StatusAccounting::statuses_[index]];
+            status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
+            status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
+        }
+        ret[jss::state_accounting] = selfStateAccounting;
     }
 
     if (last_status_.has_newstatus ())
@@ -354,7 +379,7 @@ PeerImp::json()
         if (last_status_.newstatus() > StatusAccounting::statuses_.size() ||
             last_status_.newstatus() < 1)
         {
-            JLOG(p_journal_.warn()) <<
+            JLOG(journal_.warn()) <<
                 "Unknown status: " << last_status_.newstatus ();
         }
         else
@@ -824,7 +849,7 @@ PeerImp::error_code
 PeerImp::onMessageUnknown (std::uint16_t type)
 {
     error_code ec;
-    // TODO
+    JLOG(p_journal_.warn()) << "Unknown message received: " <<type;
     return ec;
 }
 
@@ -1369,6 +1394,14 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     if (m->has_ledgerseq() &&
         app_.getLedgerMaster().getValidatedLedgerAge() < 15min)
     {
+        if (crnPublicKey_ &&
+            app_.isCRN() &&
+            (m->ledgerseq() % app_.getCRNPerformance().getReportingPeriod()) == 0)
+        // reset accounting data
+        {
+            JLOG(p_journal_.info()) << "Reset accounting data";
+            accounting_.reset();
+        }
         checkSanity (m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
     }
 
@@ -1778,17 +1811,34 @@ message TMReportState
 */
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState";
+    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState";
     if (m->status_size() != nodeSelfAccounting_.size())
     {
-        JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reported statuses count == " << m->status_size()
+        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: reported statuses count == " << m->status_size()
                                 << "  != status supported count == " << nodeSelfAccounting_.size();
         return;
     }
 
-    JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: reporting performance period: "
+    PublicKey crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
+    if (!crnPublicKey_)
+    {
+        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState no public key set, setting new one";
+        crnPublicKey_ = crnIncomingPubKey;
+    }
+    else if (!(*crnPublicKey_ == crnIncomingPubKey))
+    {
+        JLOG(journal_.warn()) << "PeerImp::onMessage TMReportState public key mismatch"
+                                << " incomingPK: " << crnIncomingPubKey
+                                << " ourPK: " << *crnPublicKey_
+                                ;
+        return;
+    }
+
+    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: reporting performance period: "
                             << m->ledgerseqbegin() << "-" << m->ledgerseqend()
-                            << " curr status: " << static_cast<uint32_t>(m->currstatus());
+                            << " curr status: " << static_cast<uint32_t>(m->currstatus())
+                            << " crnPk: " << *crnPublicKey_
+                            ;
     for (int i = 0; i < m->status_size(); ++i)
     {
         const protocol::TMReportState::Status& singleStatus = m->status(i);
@@ -1796,9 +1846,10 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
         nodeSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.duration());
         nodeSelfAccounting_[index].transitions = singleStatus.transitions();
 
-        JLOG(p_journal_.info()) << "PeerImp::onMessage TMReportState: spent: " << nodeSelfAccounting_[index].dur.count()
-                                << " with " << index << " status, transitioned: " << nodeSelfAccounting_[index].transitions
-                                << " times";
+        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: spent: " << nodeSelfAccounting_[index].dur.count()
+                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
+                                << "transitioned: " << nodeSelfAccounting_[index].transitions << " times"
+                                ;
     }
 }
 
@@ -2459,22 +2510,29 @@ PeerImp::StatusAccounting::statuses_ = {{
 
 PeerImp::StatusAccounting::StatusAccounting()
 {
-    reset();
+    mode_ = protocol::nsCONNECTING;
+    counters_[protocol::nsCONNECTING-1].transitions = 1;
+    start_ = std::chrono::system_clock::now();
 }
 
 void PeerImp::StatusAccounting::reset()
 {
     std::unique_lock<std::mutex> lock (mutex_);
 
-    start_ = std::chrono::system_clock::now();
     for (auto counter : counters_)
         counter.reset();
-    mode_ = protocol::nsCONNECTING;
-    counters_[protocol::nsCONNECTING-1].transitions = 1;
+
+    ++counters_[mode_-1].transitions;
+    counters_[mode_-1].dur = std::chrono::seconds(1);
+
+    start_ = std::chrono::system_clock::now();
 }
 
 void PeerImp::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
 {
+    if (nodeStatus == mode_)
+        return;
+
     auto now = std::chrono::system_clock::now();
 
     std::lock_guard<std::mutex> lock (mutex_);

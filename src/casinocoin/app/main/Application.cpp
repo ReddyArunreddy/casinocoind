@@ -403,6 +403,9 @@ public:
     TransactionMaster&
     getMasterTransaction () override { return m_txMaster; }
 
+    bool
+    isCRN() override { return m_crnPerformance != nullptr; }
+
     CRNPerformance&
     getCRNPerformance() override { return *m_crnPerformance; }
 
@@ -644,6 +647,8 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
 
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
+
+    , m_crnPerformance (nullptr)
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
@@ -887,7 +892,15 @@ bool ApplicationImp::setup()
             {
                 JLOG(m_journal.info()) << "Set this node as CRN Node";
                 boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
+
                 m_networkOPs->setCRNKey (*crnPublicKey, domainName.first, signature.first);
+
+
+                m_crnPerformance = make_CRNPerformance(getOPs(),
+                                                       m_ledgerMaster->getCurrentLedgerIndex(),
+                                                       *crnPublicKey,
+                                                       logs_->journal("CRN"));
+
             }
             else
             {
@@ -904,8 +917,6 @@ bool ApplicationImp::setup()
                "Invalid entry in relaynode configuration.";
            return false;
        }
-
-        m_crnPerformance = make_CRNPerformance(getOPs(), m_ledgerMaster->getCurrentLedgerIndex(), logs_->journal("CRN"));
     }
 
     if (!validatorSites_->load (

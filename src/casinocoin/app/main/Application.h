@@ -112,6 +112,7 @@ public:
     virtual void signalStop () = 0;
     virtual bool checkSigs() const = 0;
     virtual void checkSigs(bool) = 0;
+    virtual bool isCRN() = 0;
 
     //
     // ---
