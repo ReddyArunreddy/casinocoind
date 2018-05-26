@@ -2492,6 +2492,18 @@ PeerImp::isHighLatency() const
     return latency_.count() >= Tuning::peerHighLatency;
 }
 
+uint32_t PeerImp::latency() const
+{
+    std::lock_guard<std::mutex> sl (recentLock_);
+    return  latency_.count();
+}
+
+Peer::Sanity PeerImp::sanity() const
+{
+    std::lock_guard<std::mutex> sl (recentLock_);
+    return sanity_;
+}
+
 //-------------------------------------------------------------------------------------
 static std::array<char const*, 5> const statusNames {{
     "connecting",
