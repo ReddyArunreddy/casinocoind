@@ -91,6 +91,7 @@ Json::Value CRNPerformanceImpl::getJson()
 void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClosedLedger, Application& app)
 {
     // LCL must be 'reporting' ledger
+    JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
     assert ((lastClosedLedger->info().seq % getReportingPeriod()) == 0);
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
@@ -104,13 +105,6 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
         PeerImp::StatusAccounting::Counters counterToReport;
         counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
         counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
-
-        JLOG(j_.info()) << "CRNPerformanceImpl::submit TMReportState: "
-                        << " mode: " << i+1
-                        << " lastSnapshot   [" << i << "]dur:" << lastSnapshot_[i].dur.count() << " transitions:" << lastSnapshot_[i].transitions
-                        << " counters       [" << i << "]dur:" << counters[i].dur.count() << " transitions:" << counters[i].transitions
-                        << " counterToReport[" << i << "]dur:" << counterToReport.dur.count() << " transitions:" << counterToReport.transitions;
-
 
         lastSnapshot_[i].dur = counters[i].dur;
         lastSnapshot_[i].transitions = counters[i].transitions;
@@ -127,8 +121,18 @@ void CRNPerformanceImpl::submit(std::shared_ptr<ReadView const> const& lastClose
     auto const pk = crnPubKey_.slice();
     s.set_crnpubkey(pk.data(), pk.size());
 
-    // jrojek TODO real latency... :O
-    s.set_latency(10);
+    // jrojek TODO? for now latency reported is the minimum latency to sane peers
+    // (since latency reported by Peer is already averaged from last 8 mesaurements
+    uint32_t myLatency = std::numeric_limits<uint32_t>::max();
+    {
+        auto peerList = app.overlay().getActivePeers();
+        for (auto const& peer : peerList)
+        {
+            if (peer->sanity() == Peer::Sanity::sane)
+                myLatency = std::min(myLatency, peer->latency());
+        }
+    }
+    s.set_latency(myLatency);
 
     app.overlay ().foreach (send_always (
         std::make_shared<Message> (s, protocol::mtREPORT_STATE)));

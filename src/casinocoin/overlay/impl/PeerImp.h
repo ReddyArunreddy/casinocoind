@@ -85,13 +85,6 @@ public:
         ,active
     };
 
-    enum class Sanity
-    {
-        insane
-        ,unknown
-        ,sane
-    };
-
     using ptr = std::shared_ptr <PeerImp>;
 
     /**
@@ -193,7 +186,7 @@ private:
     OverlayImpl& overlay_;
     bool m_inbound;
     State state_;          // Current state
-    std::atomic<Sanity> sanity_;
+    std::atomic<Peer::Sanity> sanity_;
     clock_type::time_point insaneTime_;
     bool detaching_ = false;
     // Node public key of peer.
@@ -397,6 +390,12 @@ public:
 
     bool
     isHighLatency() const override;
+
+    uint32_t
+    latency() const override;
+
+    Peer::Sanity
+    sanity() const override;
 
     void
     fail(std::string const& reason);
