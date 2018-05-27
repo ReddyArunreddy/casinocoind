@@ -76,7 +76,7 @@ class ValidatorList;
 class ValidatorSite;
 class CRNList;
 class Cluster;
-class CRNPerformance;
+class CRN;
 
 class DatabaseCon;
 class SHAMapStore;
@@ -149,7 +149,7 @@ public:
     virtual NetworkOPs&             getOPs () = 0;
     virtual OrderBookDB&            getOrderBookDB () = 0;
     virtual TransactionMaster&      getMasterTransaction () = 0;
-    virtual CRNPerformance&         getCRNPerformance() = 0;
+    virtual CRN&                    getCRN() = 0;
 
     virtual
     std::pair<PublicKey, SecretKey> const&

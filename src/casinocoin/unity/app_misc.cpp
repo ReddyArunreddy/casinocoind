@@ -43,4 +43,5 @@
 #include <casinocoin/app/misc/impl/ValidatorSite.cpp>
 #include <casinocoin/app/misc/impl/CRNList.cpp>
 #include <casinocoin/app/misc/impl/CRNPerformance.cpp>
+#include <casinocoin/app/misc/impl/CRN.cpp>
 //#include <casinocoin/app/misc/impl/CRNRound.cpp>

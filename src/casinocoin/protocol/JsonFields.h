@@ -143,6 +143,8 @@ JSS ( crn_public_key_hex );         // out: CRNCreate
 JSS ( crn_domain_name );            // in/out: CRN, NetworkOPs
 JSS ( crn_domain_signature );       // out: CRN
 JSS ( crn_valid );                  // out: CRN
+JSS ( crn_id );                     // out: Peers/CRN
+JSS ( crn );                        // out: Peers/CRN
 JSS ( currency );                   // in: paths/PathRequest, STAmount
                                     // out: paths/Node, STPathSet, STAmount
 JSS ( current );                    // out: OwnerInfo
