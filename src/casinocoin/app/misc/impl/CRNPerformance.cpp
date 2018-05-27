@@ -79,7 +79,7 @@ CRNPerformanceImpl::CRNPerformanceImpl(
         beast::Journal journal)
     : networkOps(networkOps)
     , lastSnapshotSeq_(startupSeq)
-    , id(id)
+    , id(crnId)
     , j_(journal)
 {
 }
