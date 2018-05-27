@@ -37,12 +37,13 @@
 #include <casinocoin/app/ledger/OrderBookDB.h>
 #include <casinocoin/app/ledger/TransactionMaster.h>
 #include <casinocoin/app/main/LoadManager.h>
+#include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/Transaction.h>
 #include <casinocoin/app/misc/TxQ.h>
 #include <casinocoin/app/misc/ValidatorList.h>
-#include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/impl/AccountTxPaging.h>
 #include <casinocoin/app/tx/apply.h>
 #include <casinocoin/basics/mulDiv.h>
@@ -322,22 +323,7 @@ public:
     {
         mConsensus->setValidationKeys (valSecret, valPublic);
     }
-    PublicKey const& getCRNPublicKey () const override
-    {
-        return mConsensus->getCRNPublicKey ();
-    }
-    std::string const& getCRNDomain () const override
-    {
-        return mConsensus->getCRNDomain ();
-    }
-    std::string const& getCRNSignature () const override
-    {
-        return mConsensus->getCRNSignature ();
-    }
-    void setCRNKey ( PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature ) override
-    {
-        mConsensus->setCRNKey (crnPublic, crnDomain, crnSignature);
-    }
+
     Json::Value getConsensusInfo () override;
     Json::Value getServerInfo (bool human, bool admin) override;
     std::array<StateAccounting::Counters, 5> getServerAccountingInfo() override;
@@ -2167,12 +2153,12 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
         }
 
         // CRN Public Key
-        if (getCRNPublicKey().size ())
+        if (app_.isCRN())
         {
             info[jss::crn_public_key] = toBase58 (
                 TokenType::TOKEN_NODE_PUBLIC,
-                getCRNPublicKey());
-            info[jss::crn_domain_name] = getCRNDomain();
+                app_.getCRN().id().publicKey());
+            info[jss::crn_domain_name] = app_.getCRN().id().domain();
         }
         else
         {
