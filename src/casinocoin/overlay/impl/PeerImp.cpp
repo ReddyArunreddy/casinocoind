@@ -28,13 +28,13 @@
 #include <casinocoin/app/ledger/InboundLedgers.h>
 #include <casinocoin/app/ledger/LedgerMaster.h>
 #include <casinocoin/app/ledger/InboundTransactions.h>
+#include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/app/misc/Transaction.h>
 #include <casinocoin/app/misc/Validations.h>
 #include <casinocoin/app/misc/ValidatorList.h>
-#include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/tx/apply.h>
 #include <casinocoin/basics/random.h>
 #include <casinocoin/basics/StringUtilities.h>
@@ -103,8 +103,8 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , slot_ (slot)
     , request_(std::move(request))
     , headers_(request_.fields)
+    , crn_(nullptr)
 {
-    JLOG(journal_.info()) << "Peer[" << id_ << "] created";
 }
 
 PeerImp::~PeerImp ()
@@ -117,7 +117,6 @@ PeerImp::~PeerImp ()
         overlay_.onPeerDeactivate(id_);
     overlay_.peerFinder().on_closed (slot_);
     overlay_.remove (slot_);
-    JLOG(journal_.info()) << "Peer[" << id_ << "] removed";
 }
 
 void
@@ -345,38 +344,17 @@ PeerImp::json()
             break;
     }
 
-    if (crnPublicKey_)
+    if (crn_)
     {
         JLOG(journal_.info()) <<
-            "Peer is CRN, reporting more detailed data (PK:" << *crnPublicKey_ << ")";
-        // report this node measurement and self-measurement
-//         ret[jss::state_accounting] = accounting_.json();
-//         for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-//             i <= protocol::nsSHUTTING; ++i)
-//         {
-//             uint8_t index = i-1;
-//             auto& status = ret[jss::state_accounting][StatusAccounting::statuses_[index]];
-//             status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-//             status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-//         }
+            "Peer is CRN, reporting more detailed data (PK:" << toBase58(TOKEN_NODE_PUBLIC, crn_->id().publicKey()) << ")";
 
-         // report self-measurement only
-        Json::Value selfStateAccounting = Json::objectValue;
-        for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-            i <= protocol::nsSHUTTING; ++i)
-        {
-            uint8_t index = i-1;
-            selfStateAccounting[StatusAccounting::statuses_[index]] = Json::objectValue;
-            auto& status = selfStateAccounting[StatusAccounting::statuses_[index]];
-            status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-            status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-        }
-        ret[jss::state_accounting] = selfStateAccounting;
+        ret[jss::crn] = crn_->json();
     }
 
     if (last_status_.has_newstatus ())
     {
-        if (last_status_.newstatus() > StatusAccounting::statuses_.size() ||
+        if (last_status_.newstatus() > CRNPerformance::StatusAccounting::statuses_.size() ||
             last_status_.newstatus() < 1)
         {
             JLOG(journal_.warn()) <<
@@ -385,7 +363,7 @@ PeerImp::json()
         else
         {
             ret[jss::status] =
-                    StatusAccounting::statuses_[last_status_.newstatus () - 1];
+                    CRNPerformance::StatusAccounting::statuses_[last_status_.newstatus () - 1];
         }
     }
 
@@ -1334,7 +1312,8 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     if (!last_status_.has_newstatus () || m->has_newstatus ())
     {
         last_status_ = *m;
-        accounting_.mode(m->newstatus());
+        if (crn_)
+            crn_->performance().accounting().mode(m->newstatus());
     }
     else
     {
@@ -1394,13 +1373,11 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     if (m->has_ledgerseq() &&
         app_.getLedgerMaster().getValidatedLedgerAge() < 15min)
     {
-        if (crnPublicKey_ &&
-            app_.isCRN() &&
-            (m->ledgerseq() % app_.getCRNPerformance().getReportingPeriod()) == 0)
+        if (crn_ && (m->ledgerseq() % crn_->performance().getReportingPeriod()) == 0)
         // reset accounting data
         {
             JLOG(p_journal_.info()) << "Reset accounting data";
-            accounting_.reset();
+            crn_->performance().accounting().reset();
         }
         checkSanity (m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
     }
@@ -1811,46 +1788,21 @@ message TMReportState
 */
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState";
-    if (m->status_size() != nodeSelfAccounting_.size())
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
+
+    if (!crn_)
     {
-        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: reported statuses count == " << m->status_size()
-                                << "  != status supported count == " << nodeSelfAccounting_.size();
-        return;
+        PublicKey crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
+        std::string domain = m->domain();
+        std::string domainSignature = m->signature();
+
+        crn_ = make_CRN(crnIncomingPubKey, domain, domainSignature,
+                        app_.getOPs(), app_.getLedgerMaster().getCurrentLedgerIndex(),
+                        journal_);
     }
 
-    PublicKey crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
-    if (!crnPublicKey_)
-    {
-        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState no public key set, setting new one";
-        crnPublicKey_ = crnIncomingPubKey;
-    }
-    else if (!(*crnPublicKey_ == crnIncomingPubKey))
-    {
-        JLOG(journal_.warn()) << "PeerImp::onMessage TMReportState public key mismatch"
-                                << " incomingPK: " << crnIncomingPubKey
-                                << " ourPK: " << *crnPublicKey_
-                                ;
-        return;
-    }
+    crn_->onOverlayMessage(m);
 
-    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: reporting performance period: "
-                            << m->ledgerseqbegin() << "-" << m->ledgerseqend()
-                            << " curr status: " << static_cast<uint32_t>(m->currstatus())
-                            << " crnPk: " << *crnPublicKey_
-                            ;
-    for (int i = 0; i < m->status_size(); ++i)
-    {
-        const protocol::TMReportState::Status& singleStatus = m->status(i);
-        uint32_t index = static_cast<uint32_t>(singleStatus.mode()) - 1;
-        nodeSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.duration());
-        nodeSelfAccounting_[index].transitions = singleStatus.transitions();
-
-        JLOG(journal_.info()) << "PeerImp::onMessage TMReportState: spent: " << nodeSelfAccounting_[index].dur.count()
-                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
-                                << "transitioned: " << nodeSelfAccounting_[index].transitions << " times"
-                                ;
-    }
 }
 
 //--------------------------------------------------------------------------
@@ -2492,92 +2444,16 @@ PeerImp::isHighLatency() const
     return latency_.count() >= Tuning::peerHighLatency;
 }
 
-//-------------------------------------------------------------------------------------
-static std::array<char const*, 5> const statusNames {{
-    "connecting",
-    "connected",
-    "monitoring",
-    "validating",
-    "shutting"}};
-
-std::array<Json::StaticString const, 5> const
-PeerImp::StatusAccounting::statuses_ = {{
-    Json::StaticString(statusNames[0]),
-    Json::StaticString(statusNames[1]),
-    Json::StaticString(statusNames[2]),
-    Json::StaticString(statusNames[3]),
-    Json::StaticString(statusNames[4])}};
-
-PeerImp::StatusAccounting::StatusAccounting()
+uint32_t PeerImp::latency() const
 {
-    mode_ = protocol::nsCONNECTING;
-    counters_[protocol::nsCONNECTING-1].transitions = 1;
-    start_ = std::chrono::system_clock::now();
+    std::lock_guard<std::mutex> sl (recentLock_);
+    return  latency_.count();
 }
 
-void PeerImp::StatusAccounting::reset()
+Peer::Sanity PeerImp::sanity() const
 {
-    std::unique_lock<std::mutex> lock (mutex_);
-
-    for (auto counter : counters_)
-        counter.reset();
-
-    ++counters_[mode_-1].transitions;
-    counters_[mode_-1].dur = std::chrono::seconds(1);
-
-    start_ = std::chrono::system_clock::now();
+    std::lock_guard<std::mutex> sl (recentLock_);
+    return sanity_;
 }
-
-void PeerImp::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
-{
-    if (nodeStatus == mode_)
-        return;
-
-    auto now = std::chrono::system_clock::now();
-
-    std::lock_guard<std::mutex> lock (mutex_);
-    ++counters_[nodeStatus-1].transitions;
-    counters_[mode_-1].dur += std::chrono::duration_cast<
-        std::chrono::seconds>(now - start_);
-
-    mode_ = nodeStatus;
-    start_ = now;
-}
-
-Json::Value PeerImp::StatusAccounting::json() const
-{
-    auto counters = snapshot();
-
-    Json::Value ret = Json::objectValue;
-
-    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-        i <= protocol::nsSHUTTING; ++i)
-    {
-        uint8_t index = i-1;
-        ret[statuses_[index]] = Json::objectValue;
-        auto& status = ret[statuses_[index]];
-        status[jss::transitions] = counters[index].transitions;
-        status[jss::duration_sec] = std::to_string (counters[index].dur.count());
-    }
-
-    return ret;
-}
-
-std::array<PeerImp::StatusAccounting::Counters, 5> PeerImp::StatusAccounting::snapshot() const
-{
-    std::unique_lock<std::mutex> lock (mutex_);
-
-    auto counters = counters_;
-    auto const start = start_;
-    auto const mode = mode_;
-
-    lock.unlock();
-
-    counters[mode-1].dur += std::chrono::duration_cast<
-        std::chrono::seconds>(std::chrono::system_clock::now() - start);
-
-    return counters;
-}
-//-------------------------------------------------------------------------------------
 
 } // casinocoin

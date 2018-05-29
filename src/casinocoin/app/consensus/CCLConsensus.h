@@ -152,22 +152,6 @@ public:
     void
     setValidationKeys(SecretKey const& valSecret, PublicKey const& valPublic);
 
-    /** Returns CRN public key */
-    PublicKey const&
-    getCRNPublicKey() const;
-
-    /** Returns CRN domain name */
-    std::string const&
-    getCRNDomain() const;
-
-    /** Returns CRN signature */
-    std::string const&
-    getCRNSignature() const;
-
-    /** Set relay node public key. */
-    void
-    setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature);
-
 private:
     friend class Consensus<CCLConsensus, CCLCxTraits>;
 

@@ -53,6 +53,9 @@
 
 namespace casinocoin {
 
+class CRN;
+
+
 class PeerImp
     : public Peer
     , public std::enable_shared_from_this <PeerImp>
@@ -85,78 +88,7 @@ public:
         ,active
     };
 
-    enum class Sanity
-    {
-        insane
-        ,unknown
-        ,sane
-    };
-
     using ptr = std::shared_ptr <PeerImp>;
-
-    /**
-     * Status accounting records two attributes for each possible node status:
-     * 1) Amount of time spent in each status (in seconds). This value is
-     *    updated upon each status transition.
-     * 2) Number of transitions to each status.
-     *
-     * This data can be polled through peers with 'details' attribute set.
-     */
-    class StatusAccounting
-    {
-    public:
-        struct Counters
-        {
-            std::uint32_t transitions = 0;
-            std::chrono::seconds dur = std::chrono::seconds (0);
-
-            void reset()
-            {
-                transitions = 0;
-                dur = std::chrono::seconds (0);
-            }
-        };
-
-        explicit StatusAccounting ();
-
-        /**
-         * Reset status counters to their default state
-         */
-        void reset();
-
-        /**
-         * Record status transition. Update duration spent in previous
-         * status.
-         *
-         * @param nodeStatus New status.
-         */
-        void mode (protocol::NodeStatus nodeStatus);
-
-        /**
-         * Output status counters in JSON format.
-         *
-         * @return JSON object.
-         */
-        Json::Value json() const;
-
-        /**
-         * Returns current status of counters + duration in current status
-         *
-         * @return array of Counters.
-         */
-        std::array<Counters, 5> snapshot() const;
-
-        static std::array<Json::StaticString const, 5> const statuses_;
-    private:
-        mutable std::mutex mutex_;
-
-        std::chrono::system_clock::time_point start_;
-        protocol::NodeStatus mode_;
-        std::array<Counters, 5> counters_;
-
-        static Json::StaticString const transitions_;
-        static Json::StaticString const dur_;
-    };
 
 private:
     using clock_type    = std::chrono::steady_clock;
@@ -193,14 +125,13 @@ private:
     OverlayImpl& overlay_;
     bool m_inbound;
     State state_;          // Current state
-    std::atomic<Sanity> sanity_;
+    std::atomic<Peer::Sanity> sanity_;
     clock_type::time_point insaneTime_;
     bool detaching_ = false;
     // Node public key of peer.
     PublicKey publicKey_;
     std::string name_;
     uint256 sharedValue_;
-    boost::optional<PublicKey> crnPublicKey_; // jrojek TODO: compare it with cfg list of relay nodes
 
     // The indices of the smallest and largest ledgers this peer has available
     //
@@ -233,11 +164,10 @@ private:
     int no_ping_ = 0;
     std::unique_ptr <LoadEvent> load_event_;
     bool hopsAware_ = false;
+    std::unique_ptr<CRN> crn_;
 
     friend class OverlayImpl;
 
-    StatusAccounting accounting_;
-    std::array<StatusAccounting::Counters, 5> nodeSelfAccounting_;
 public:
     PeerImp (PeerImp const&) = delete;
     PeerImp& operator= (PeerImp const&) = delete;
@@ -397,6 +327,12 @@ public:
 
     bool
     isHighLatency() const override;
+
+    uint32_t
+    latency() const override;
+
+    Peer::Sanity
+    sanity() const override;
 
     void
     fail(std::string const& reason);

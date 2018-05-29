@@ -42,7 +42,7 @@
 #include <casinocoin/app/main/NodeStoreScheduler.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
 #include <casinocoin/app/misc/CRNList.h>
-#include <casinocoin/app/misc/CRNPerformance.h>
+#include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
@@ -305,7 +305,7 @@ public:
     std::unique_ptr <CRNList> relaynodes_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
-    std::unique_ptr <CRNPerformance> m_crnPerformance;
+    std::unique_ptr <CRN> m_crn;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
     std::unique_ptr <Validations> mValidations;
@@ -404,10 +404,10 @@ public:
     getMasterTransaction () override { return m_txMaster; }
 
     bool
-    isCRN() override { return m_crnPerformance != nullptr; }
+    isCRN() override { return m_crn != nullptr; }
 
-    CRNPerformance&
-    getCRNPerformance() override { return *m_crnPerformance; }
+    CRN&
+    getCRN() override { assert(m_crn);return *m_crn; }
 
     NodeCache&
     getTempNodeCache () override { return m_tempNodeCache; }
@@ -648,7 +648,7 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
 
-    , m_crnPerformance (nullptr)
+    , m_crn (nullptr)
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
@@ -885,22 +885,14 @@ bool ApplicationImp::setup()
         if (config().exists (SECTION_CRN_CONFIG))
         {
             // check for 'domain' and 'publickey' values
-            std::pair <std::string, bool> domainName = config().section (SECTION_CRN_CONFIG).find("domain");
-            std::pair <std::string, bool> publicKey = config().section (SECTION_CRN_CONFIG).find("publickey");
-            std::pair <std::string, bool> signature = config().section (SECTION_CRN_CONFIG).find("signature");
-            if(domainName.second && publicKey.second && signature.second)
+            if (config().section (SECTION_CRN_CONFIG).find("domain").second &&
+                config().section (SECTION_CRN_CONFIG).find("publickey").second &&
+                config().section (SECTION_CRN_CONFIG).find("signature").second)
             {
-                JLOG(m_journal.info()) << "Set this node as CRN Node";
-                boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
-
-                m_networkOPs->setCRNKey (*crnPublicKey, domainName.first, signature.first);
-
-
-                m_crnPerformance = make_CRNPerformance(getOPs(),
-                                                       m_ledgerMaster->getCurrentLedgerIndex(),
-                                                       *crnPublicKey,
-                                                       logs_->journal("CRN"));
-
+                m_crn = make_CRN(config().section (SECTION_CRN_CONFIG),
+                                 getOPs(),
+                                 m_ledgerMaster->getCurrentLedgerIndex(),
+                                 logs_->journal("App_CRN"));
             }
             else
             {
