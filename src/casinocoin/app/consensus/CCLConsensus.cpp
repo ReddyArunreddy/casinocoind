@@ -31,7 +31,7 @@
 #include <casinocoin/app/ledger/LocalTxs.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
-#include <casinocoin/app/misc/CRNPerformance.h>
+#include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
@@ -321,9 +321,9 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
     // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
-    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRNPerformance().getReportingPeriod()) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRN().performance().getReportingPeriod()) == 0)
     {
-        app_.getCRNPerformance().submit(prevLedger, app_);
+        app_.getCRN().performance().broadcast(prevLedger, app_);
     }
 
     // Add pseudo-transactions to the set
@@ -468,28 +468,13 @@ CCLConsensus::doAccept(
         JLOG(j_.info()) << "CNF Val " << newLCLHash;
     }
     // jrojek TODO: this, or something similar,
-    // anyhow we need a way to automatically report CRN statuses
+    // anyhow we need a way to automatically report CRNPerformance statuses
     // and it should be free, something similar to CCLConsensus::validate but for CRN
     // could work.
-//    else if (relaying_ && !consensusFail)
-//    {
-//        if (((sharedLCL.seq() + 1) % 256) == 0)
-//        // next ledger is flag ledger
-//        {
-//            app_.getCRNPerformance().submit(sharedLCL);
-//        }
-//    }
+
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
 
-    if (/*relaying_ &&*/ !consensusFail)
-    {
-//        if (((sharedLCL.seq() + 1) % 256) == 0)
-        // next ledger is flag ledger
-//        {
-//            app_.getCRNPerformance().submit(sharedLCL.ledger_);
-//        }
-    }
 
     // See if we can accept a ledger as fully-validated
     ledgerMaster_.consensusBuilt(sharedLCL.ledger_, getJson(true));
@@ -926,31 +911,6 @@ CCLConsensus::setValidationKeys(
 {
     valSecret_ = valSecret;
     valPublic_ = valPublic;
-}
-
-PublicKey const&
-CCLConsensus::getCRNPublicKey() const
-{
-    return crnPublic_;
-}
-
-std::string const&
-CCLConsensus::getCRNDomain() const
-{
-    return crnDomain_;
-}
-
-std::string const&
-CCLConsensus::getCRNSignature() const
-{
-    return crnSignature_;
-}
-
-void CCLConsensus::setCRNKey(PublicKey const& crnPublic, std::string const& crnDomain, std::string const& crnSignature)
-{
-    crnPublic_ = crnPublic;
-    crnDomain_ = crnDomain;
-    crnSignature_ = crnSignature;
 }
 
 void
