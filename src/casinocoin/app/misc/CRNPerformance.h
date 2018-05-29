@@ -91,7 +91,7 @@ public:
             }
         };
 
-        explicit StatusAccounting ();
+        explicit StatusAccounting (beast::Journal journal);
 
         /**
          * Reset status counters to their default state
@@ -127,6 +127,8 @@ public:
         std::chrono::system_clock::time_point start_;
         protocol::NodeStatus mode_;
         std::array<Counters, 5> counters_;
+
+        beast::Journal j_;
 
         static Json::StaticString const transitions_;
         static Json::StaticString const dur_;

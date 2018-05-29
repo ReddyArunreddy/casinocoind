@@ -91,28 +91,28 @@ CRNPerformance::StatusAccounting &CRNPerformanceImpl::accounting()
 
 Json::Value CRNPerformanceImpl::json() const
 {
-    Json::Value ret;
     // report this node measurement and self-measurement
-//         ret[jss::state_accounting] = accounting_.json();
-//         for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-//             i <= protocol::nsSHUTTING; ++i)
-//         {
-//             uint8_t index = i-1;
-//             auto& status = ret[jss::state_accounting][StatusAccounting::statuses_[index]];
-//             status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-//             status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-//         }
-
-     // report self-measurement only
+    Json::Value ret = accounting_.json();
     for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-        i <= protocol::nsSHUTTING; ++i)
+         i <= protocol::nsSHUTTING; ++i)
     {
         uint8_t index = i-1;
-        ret[StatusAccounting::statuses_[index]] = Json::objectValue;
         auto& status = ret[StatusAccounting::statuses_[index]];
         status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
         status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
     }
+
+     // report self-measurement only
+//    Json::Value ret;
+//    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+//        i <= protocol::nsSHUTTING; ++i)
+//    {
+//        uint8_t index = i-1;
+//        ret[StatusAccounting::statuses_[index]] = Json::objectValue;
+//        auto& status = ret[StatusAccounting::statuses_[index]];
+//        status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
+//        status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
+//    }
     return ret;
 }
 
@@ -231,7 +231,8 @@ CRNPerformance::StatusAccounting::statuses_ = {{
     Json::StaticString(statusNames[3]),
     Json::StaticString(statusNames[4])}};
 
-CRNPerformance::StatusAccounting::StatusAccounting()
+CRNPerformance::StatusAccounting::StatusAccounting(beast::Journal journal)
+    : j_(journal)
 {
     mode_ = protocol::nsCONNECTING;
     counters_[protocol::nsCONNECTING-1].transitions = 1;
@@ -244,10 +245,6 @@ void CRNPerformance::StatusAccounting::reset()
 
     for (auto counter : counters_)
         counter.reset();
-
-    ++counters_[mode_-1].transitions;
-    counters_[mode_-1].dur = std::chrono::seconds(1);
-
     start_ = std::chrono::system_clock::now();
 }
 
@@ -256,6 +253,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     if (nodeStatus == mode_)
         return;
 
+    JLOG(j_.info()) << "changing operating mode from " << mode_ << " to " << nodeStatus << " trans before: " << counters_[nodeStatus-1].transitions;
     auto now = std::chrono::system_clock::now();
 
     std::lock_guard<std::mutex> lock (mutex_);
@@ -263,6 +261,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     counters_[mode_-1].dur += std::chrono::duration_cast<
         std::chrono::seconds>(now - start_);
 
+    JLOG(j_.info()) << "trans after: " << counters_[nodeStatus-1].transitions;
     mode_ = nodeStatus;
     start_ = now;
 }
@@ -301,8 +300,8 @@ std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformance::Status
 
     return counters;
 }
-//-------------------------------------------------------------------------------------
 
+//-------------------------------------------------------------------------------------
 
 
 std::unique_ptr<CRNPerformance> make_CRNPerformance(NetworkOPs& networkOps,
