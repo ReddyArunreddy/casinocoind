@@ -52,8 +52,11 @@ public:
     StatusAccounting& accounting() override;
     Json::Value json () const override;
 
-    void broadcast (std::shared_ptr<ReadView const> const& lastClosedLedger,
+    void prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
                     Application& app) override;
+
+    void broadcast () override;
+    void sendTo(std::shared_ptr<Peer> const& peer) override;
 
     bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) override;
 
@@ -67,6 +70,8 @@ protected:
     std::array<StatusAccounting::Counters,5> lastSnapshot_;
     std::array<StatusAccounting::Counters, 5> peerSelfAccounting_;
     uint32_t latency_;
+    protocol::TMReportState preparedReport_;
+
 private:
     std::array<StatusAccounting::Counters,5>
     mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
@@ -116,7 +121,7 @@ Json::Value CRNPerformanceImpl::json() const
     return ret;
 }
 
-void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastClosedLedger, Application& app)
+void CRNPerformanceImpl::prepareReport(const std::shared_ptr<const ReadView> &lastClosedLedger, Application &app)
 {
     // LCL must be 'reporting' ledger
     JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
@@ -124,9 +129,16 @@ void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastCl
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<StatusAccounting::Counters, 5> counters =
-            mapServerAccountingToPeerAccounting(networkOps.getServerAccountingInfo());
+            mapServerAccountingToPeerAccounting(networkOppreparedReport_.getServerAccountingInfo());
 
-    protocol::TMReportState s;
+    preparedReport_.clear_status();
+    preparedReport_.clear_currstatus();
+    preparedReport_.clear_ledgerseqbegin();
+    preparedReport_.clear_ledgerseqend();
+    preparedReport_.clear_crnpubkey();
+    preparedReport_.clear_domain();
+    preparedReport_.clear_signature();
+    preparedReport_.clear_latency();
 
     for (uint32_t i = 0; i < 5; i++)
     {
@@ -137,19 +149,19 @@ void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastCl
         lastSnapshot_[i].dur = counters[i].dur;
         lastSnapshot_[i].transitions = counters[i].transitions;
 
-        protocol::TMReportState::Status* newStatus = s.add_status ();
+        protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
         newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
         newStatus->set_duration(counterToReport.dur.count());
         newStatus->set_transitions(counterToReport.transitions);
     }
-    s.set_currstatus(currentStatus);
-    s.set_ledgerseqbegin(lastSnapshotSeq_);
-    s.set_ledgerseqend(lastClosedLedger->info().seq);
+    preparedReport_.set_currstatus(currentStatus);
+    preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
+    preparedReport_.set_ledgerseqend(lastClosedLedger->info().seq);
 
     auto const pk = id.publicKey().slice();
-    s.set_crnpubkey(pk.data(), pk.size());
-    s.set_domain(id.domain());
-    s.set_signature(id.signature());
+    preparedReport_.set_crnpubkey(pk.data(), pk.size());
+    preparedReport_.set_domain(id.domain());
+    preparedReport_.set_signature(id.signature());
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers
     // (since latency reported by Peer is already averaged from last 8 mesaurements
@@ -163,12 +175,24 @@ void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastCl
         }
     }
     latency_ = myLatency;
-    s.set_latency(myLatency);
-
-    app.overlay ().foreach (send_always (
-        std::make_shared<Message> (s, protocol::mtREPORT_STATE)));
+    preparedReport_.set_latency(myLatency);
 
     lastSnapshotSeq_ = lastClosedLedger->info().seq;
+
+}
+
+void CRNPerformanceImpl::sendTo(const std::shared_ptr<Peer> &peer)
+{
+    JLOG(j_.info()) << "CRNPerformanceImpl::sendTo TMDFSReportStateResp: peerID" << peer->id();
+    app.overlay ().foreach (send_if (
+        std::make_shared<Message>(preparedReport_, protocol::mtDFS_REPORT_STATE_RESP),
+        match_peer(*peer)));
+}
+
+void CRNPerformanceImpl::broadcast()
+{
+    app.overlay ().foreach (send_always (
+        std::make_shared<Message> (preparedReport_, protocol::mtREPORT_STATE)));
 }
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)

@@ -167,6 +167,10 @@ public:
     relay (protocol::TMValidation& m,
         uint256 const& uid) = 0;
 
+    virtual
+    void
+    startDFSReportStateCrawl(NodeID rootID) = 0;
+
     /** Visit every active peer and return a value
         The functor must:
         - Be callable as:

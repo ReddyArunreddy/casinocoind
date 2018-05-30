@@ -318,18 +318,29 @@ CCLConsensus::onClose(
             false);
     }
 
+    // jrojek TODO enable check
     // CRN report their performance in selected periods
-    // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
-    // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
+    //        if (prevLedger->rules().enabled(featureCRN))
+    //        {
     if (app_.isCRN() && (prevLedger->info().seq % app_.getCRN().performance().getReportingPeriod()) == 0)
     {
-        app_.getCRN().performance().broadcast(prevLedger, app_);
+        app_.getCRN().performance().prepareReport(prevLedger, app_);
+        app_.getCRN().performance().broadcast();
     }
+    //        }
 
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
         ((prevLedger->info().seq % 256) == 0))
     {
+        // jrojek TODO enable check
+        //        if (prevLedger->rules().enabled(featureCRN))
+        //        {
+        if ((prevLedger->info().seq % (1024 - 10)) == 0)
+        {
+            app_.overlay().startDFSReportStateCrawl(nodeID_);
+        }
+        //        }
         // previous ledger was flag ledger, add pseudo-transactions
         auto const validations =
             app_.getValidations().getValidations(prevLedger->info().parentHash);
@@ -346,11 +357,15 @@ CCLConsensus::onClose(
                 prevLedger, validations, initialSet);
 
 
-            if ((prevLedger->info().seq % (256 * 4)) == 0)
+            // jrojek TODO enable check
+            //        if (prevLedger->rules().enabled(featureCRN))
+            //        {
+            if ((prevLedger->info().seq % (1024)) == 0)
             {
                 // every fourth flag ledger we distribute fees. add CRNRound pseudo-transaction
                 // jrojek TODO
             }
+            //        }
         }
     }
 

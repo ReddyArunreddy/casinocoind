@@ -57,9 +57,10 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual void broadcast (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                            Application& app) = 0;
-
+    virtual void prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
+                                Application& app) = 0;
+    virtual void broadcast () = 0;
+    virtual void sendTo(std::shared_ptr<Peer> const& peer) = 0;
     /**
      * ---------------
      * inbound methods

@@ -1771,21 +1771,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
     }
 }
 
-/*
-message TMReportState
-{
-    required NodeStatus currStatus      = 1;
-    required ledgerSeqBegin             = 2;
-    required ledgerSeqEnd               = 3;
-    message Status
-    {
-        required string name            = 4;
-        required uint32 transitions     = 5;
-        required uint32 duration        = 6;
-    }
-    repeated Status status              = 7;
-}
-*/
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
     JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
@@ -1802,6 +1787,18 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
     }
 
     crn_->onOverlayMessage(m);
+
+}
+
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateReq> &m)
+{
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateReq.";
+}
+
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateResp> &m)
+{
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateResp.";
+
 
 }
 

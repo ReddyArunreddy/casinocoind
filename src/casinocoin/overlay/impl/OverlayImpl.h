@@ -125,6 +125,8 @@ private:
     std::atomic <Peer::id_t> next_id_;
     int timer_count_;
 
+    std::map<NodeID, protocol::TMReportState> reportStateCrawl_;
+
     //--------------------------------------------------------------------------
 
 public:
@@ -192,6 +194,9 @@ public:
     void
     relay (protocol::TMValidation& m,
         uint256 const& uid) override;
+
+    void
+    startDFSReportStateCrawl(NodeID rootID) override;
 
     //--------------------------------------------------------------------------
     //

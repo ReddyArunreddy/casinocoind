@@ -166,6 +166,7 @@ private:
     bool hopsAware_ = false;
     std::unique_ptr<CRN> crn_;
 
+
     friend class OverlayImpl;
 
 public:
@@ -435,6 +436,8 @@ public:
     void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
     void onMessage (std::shared_ptr <protocol::TMReportState> const& m);
+    void onMessage (std::shared_ptr <protocol::TMDFSReportStateReq> const& m);
+    void onMessage (std::shared_ptr <protocol::TMDFSReportStateResp> const& m);
 
 private:
     State state() const

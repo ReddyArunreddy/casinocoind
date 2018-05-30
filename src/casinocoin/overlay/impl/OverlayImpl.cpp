@@ -793,9 +793,7 @@ OverlayImpl::crawl()
     for_each ([&](std::shared_ptr<PeerImp>&& sp)
     {
         auto& pv = av.append(Json::Value(Json::objectValue));
-        pv[jss::public_key] = beast::detail::base64_encode(
-            sp->getNodePublic().data(),
-                sp->getNodePublic().size());
+        pv[jss::public_key] = toBase58(TOKEN_NODE_PUBLIC, sp->getNodePublic());
         pv[jss::type] = sp->slot()->inbound() ?
             "in" : "out";
         pv[jss::uptime] =
@@ -963,6 +961,13 @@ OverlayImpl::relay (protocol::TMValidation& m,
         if (! m.has_hops() || p->hopsAware())
             p->send(sm);
     });
+}
+
+void OverlayImpl::startDFSReportStateCrawl(NodeID rootID)
+{
+    reportStateCrawl_.clear();
+    reportStateCrawl_.insert(std::pair<NodeID,protocol::TMReportState>(rootID, protocol::TMReportState()));
+
 }
 
 //------------------------------------------------------------------------------
