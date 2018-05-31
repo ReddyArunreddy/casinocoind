@@ -125,7 +125,6 @@ private:
     std::atomic <Peer::id_t> next_id_;
     int timer_count_;
 
-    std::map<NodeID, protocol::TMReportState> reportStateCrawl_;
 
     //--------------------------------------------------------------------------
 

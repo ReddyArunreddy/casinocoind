@@ -52,8 +52,12 @@ public:
     StatusAccounting& accounting() override;
     Json::Value json () const override;
 
-    void prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                    Application& app) override;
+    protocol::TMReportState
+    prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
+                   Application& app) override;
+
+    protocol::TMReportState const& getPreparedReport() const override;
+
 
     void broadcast () override;
     void sendTo(std::shared_ptr<Peer> const& peer) override;
@@ -121,7 +125,9 @@ Json::Value CRNPerformanceImpl::json() const
     return ret;
 }
 
-void CRNPerformanceImpl::prepareReport(const std::shared_ptr<const ReadView> &lastClosedLedger, Application &app)
+protocol::TMReportState
+CRNPerformanceImpl::prepareReport (
+        const std::shared_ptr<const ReadView> &lastClosedLedger, Application &app)
 {
     // LCL must be 'reporting' ledger
     JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
@@ -178,7 +184,13 @@ void CRNPerformanceImpl::prepareReport(const std::shared_ptr<const ReadView> &la
     preparedReport_.set_latency(myLatency);
 
     lastSnapshotSeq_ = lastClosedLedger->info().seq;
+    return preparedReport_;
 
+}
+
+protocol::TMReportState const& CRNPerformanceImpl::getPreparedReport() const
+{
+    return preparedReport_;
 }
 
 void CRNPerformanceImpl::sendTo(const std::shared_ptr<Peer> &peer)

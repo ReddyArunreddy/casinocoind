@@ -57,8 +57,12 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual void prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                                Application& app) = 0;
+    virtual protocol::TMReportState
+    prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
+                   Application& app) = 0;
+
+    virtual protocol::TMReportState const& getPreparedReport() const = 0;
+
     virtual void broadcast () = 0;
     virtual void sendTo(std::shared_ptr<Peer> const& peer) = 0;
     /**
