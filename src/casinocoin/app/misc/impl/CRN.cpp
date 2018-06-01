@@ -47,6 +47,7 @@ CRN::CRN(const PublicKey &pubKey,
          beast::Journal j)
     : id_(pubKey, domain, domainSignature, j)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    , j_(j)
 {
 
 }
@@ -57,6 +58,7 @@ CRN::CRN(Section const& relaynodeConfig,
          beast::Journal j)
     : id_(relaynodeConfig, j)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    , j_(j)
 {
 
 }
@@ -87,6 +89,13 @@ CRNPerformance& CRN::performance() const
 {
     assert(performance_);
     return *performance_;
+}
+
+bool CRN::activated() const
+{
+    bool crnActivated = false;
+    JLOG(j_.info()) << "CRN Activated: " << crnActivated;
+    return crnActivated;
 }
 
 std::unique_ptr<CRN> make_CRN(const Section &relaynodeConfig,
