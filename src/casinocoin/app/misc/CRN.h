@@ -57,9 +57,12 @@ public:
 
     CRNPerformance& performance() const;
 
+    bool activated() const;
+
 private:
     CRNId id_;
     std::unique_ptr<CRNPerformance> performance_;
+    beast::Journal j_;
 };
 
 std::unique_ptr<CRN> make_CRN(Section const& relaynodeConfig,
