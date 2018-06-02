@@ -42,6 +42,7 @@
 #include <casinocoin/beast/core/LexicalCast.h>
 #include <casinocoin/consensus/LedgerTiming.h>
 #include <casinocoin/overlay/Overlay.h>
+#include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/protocol/Feature.h>
 #include <casinocoin/protocol/digest.h>
@@ -325,7 +326,8 @@ CCLConsensus::onClose(
     if (app_.isCRN() && (prevLedger->info().seq % app_.getCRN().performance().getReportingPeriod()) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger, app_);
-        app_.getCRN().performance().broadcast();
+        app_.overlay().startDFSReportStateCrawl();
+    //        app_.getCRN().performance().broadcast();
     }
     //        }
 
@@ -338,7 +340,7 @@ CCLConsensus::onClose(
         //        {
         if ((prevLedger->info().seq % (1024 - 10)) == 0)
         {
-            app_.overlay().startDFSReportStateCrawl(nodeID_);
+            app_.overlay().startDFSReportStateCrawl();
         }
         //        }
         // previous ledger was flag ledger, add pseudo-transactions

@@ -169,7 +169,7 @@ public:
 
     virtual
     void
-    startDFSReportStateCrawl(NodeID rootID) = 0;
+    startDFSReportStateCrawl() = 0;
 
     /** Visit every active peer and return a value
         The functor must:

@@ -104,6 +104,7 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
     , crn_(nullptr)
+    , dfsReportState_(app, overlay, socket_.get_io_service(), *this, journal_)
 {
 }
 
@@ -368,6 +369,11 @@ PeerImp::json()
     }
 
     return ret;
+}
+
+TMDFSReportState &PeerImp::dfsReportState()
+{
+    return dfsReportState_;
 }
 
 //------------------------------------------------------------------------------
@@ -1773,7 +1779,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState. That one is probably deprecated";
 
     if (!crn_)
     {
@@ -1790,16 +1796,24 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
 }
 
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateReq> &m)
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateReq.";
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportState.";
+    protocol::TMDFSReportStateAck ack;
+    ack.set_doweneedthis(1);
+    send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
+
+    if (m->type() == protocol::TMDFSReportState::rtREQ)
+        dfsReportState_.evaluateRequest(m);
+    if (m->type() == protocol::TMDFSReportState::rtRESP)
+        dfsReportState_.evaluateResponse(m);
 }
 
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateResp> &m)
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateResp.";
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateAck.";
 
-
+    dfsReportState_.evaluateAck(m);
 }
 
 //--------------------------------------------------------------------------

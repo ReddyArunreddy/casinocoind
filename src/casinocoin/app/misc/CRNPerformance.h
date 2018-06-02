@@ -63,8 +63,7 @@ public:
 
     virtual protocol::TMReportState const& getPreparedReport() const = 0;
 
-    virtual void broadcast () = 0;
-    virtual void sendTo(std::shared_ptr<Peer> const& peer) = 0;
+    virtual void broadcast (Application &app) = 0;
     /**
      * ---------------
      * inbound methods

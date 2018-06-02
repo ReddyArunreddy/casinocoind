@@ -20,8 +20,8 @@ enum MessageType
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
     mtREPORT_STATE          = 43;
-    mtDFS_REPORT_STATE_REQ  = 44;
-    mtDFS_REPORT_STATE_RESP = 45;
+    mtDFS_REPORT_STATE      = 44;
+    mtDFS_REPORT_STATE_ACK  = 45;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -202,18 +202,26 @@ message TMReportState
     required string signature           = 11;
 }
 
-message TMDFSReportStateReq
+message TMDFSReportState
 {
-    required map<bytes, TMReportState> reports      = 1;
-    required map<bytes, bool> visited               = 2;
-    repeated bytes dfsList                          = 3;
+    enum reportType {
+        rtREQ  = 0; // we want a reply
+        rtRESP = 1; // this is a reply
+    }
+    required reportType type               = 1;
+
+    message PubKeyReportMap
+    {
+      required string pubKey               = 2;
+      required TMReportState report        = 3;
+    }
+    repeated PubKeyReportMap reports       = 4;
+    repeated string visited                = 5;
 }
 
-message TMDFSReportStateResp
+message TMDFSReportStateAck
 {
-    required map<bytes, TMReportState> reports      = 1;
-    required map<bytes, bool> visited               = 2;
-    repeated bytes dfsList                          = 3;
+    required uint32 doWeNeedThis    = 1;  // yes since you are asserting that the packet size isn't 0 in Message 
 }
 
 // Announce to the network our position on a closing ledger

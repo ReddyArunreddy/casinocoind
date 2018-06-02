@@ -74,8 +74,8 @@ TrafficCount::category TrafficCount::categorize (
             (type == protocol::mtPEERS) ||
             (type == protocol::mtGET_PEERS) ||
             (type == protocol::mtREPORT_STATE) ||
-            (type == protocol::mtDFS_REPORT_STATE_REQ) ||
-            (type == protocol::mtDFS_REPORT_STATE_RESP))
+            (type == protocol::mtDFS_REPORT_STATE) ||
+            (type == protocol::mtDFS_REPORT_STATE_ACK))
         return TrafficCount::category::CT_overlay;
 
     if (type == protocol::mtTRANSACTION)

@@ -39,22 +39,35 @@
 
 namespace casinocoin {
 
-class TMDFSReportState
+class TMDFSReportState : public std::enable_shared_from_this<TMDFSReportState>
+
 {
 public:
-    TMDFSReportState(Application& app, OverlayImpl& overlay, beast::Journal journal);
+    TMDFSReportState(Application& app,
+                     OverlayImpl& overlay,
+                     boost::asio::io_service& io_service,
+                     PeerImp& parent,
+                     beast::Journal journal);
 
     bool start();
 
-    void onMessage (std::shared_ptr <protocol::TMDFSReportStateReq> const& m);
-    void onMessage (std::shared_ptr <protocol::TMDFSReportStateResp> const& m);
+    void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
+    void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
+    void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
 
 private:
+    using error_code = boost::system::error_code;
+
     void reset();
+
+    void setTimer(std::string const& pubKeyString);
+    void cancelTimer(std::string const& pubKeyString);
+    void onTimer (error_code ec);
 
     std::chrono::system_clock::time_point start_;
     Application& app_;
     OverlayImpl& overlay_;
+    PeerImp& parentPeer_;
     beast::Journal journal_;
 
     std::string pubKeyString_;
@@ -63,6 +76,13 @@ private:
     std::map<std::string, protocol::TMReportState> reportState_;
     std::map<std::string, bool> visited_;
     std::deque<std::string> dfs_;
+
+    std::string lastReqRecipient_;
+    protocol::TMDFSReportState lastReq_;
+    boost::asio::io_service::strand strand_;
+    boost::asio::io_service& io_service_;
+    std::map<std::string, std::unique_ptr<boost::asio::basic_waitable_timer<std::chrono::steady_clock>>> timers_;
+
 
 };
 

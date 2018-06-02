@@ -195,7 +195,7 @@ public:
         uint256 const& uid) override;
 
     void
-    startDFSReportStateCrawl(NodeID rootID) override;
+    startDFSReportStateCrawl() override;
 
     //--------------------------------------------------------------------------
     //

@@ -64,8 +64,8 @@ protocolMessageName (int type)
     case protocol::mtVALIDATION:        return "validation";
     case protocol::mtGET_OBJECTS:       return "get_objects";
     case protocol::mtREPORT_STATE:      return "report_state";
-    case protocol::mtDFS_REPORT_STATE_REQ:      return "dfs_report_state_req";
-    case protocol::mtDFS_REPORT_STATE_RESP:     return "dfs_report_state_resp";
+    case protocol::mtDFS_REPORT_STATE:          return "dfs_report_state";
+    case protocol::mtDFS_REPORT_STATE_ACK:      return "dfs_report_state_ack";
     default:
         break;
     };
@@ -138,8 +138,8 @@ invokeProtocolMessage (Buffers const& buffers, Handler& handler)
     case protocol::mtVALIDATION:    ec = detail::invoke<protocol::TMValidation> (type, buffers, handler); break;
     case protocol::mtGET_OBJECTS:   ec = detail::invoke<protocol::TMGetObjectByHash> (type, buffers, handler); break;
     case protocol::mtREPORT_STATE:  ec = detail::invoke<protocol::TMReportState> (type, buffers, handler); break;
-    case protocol::mtDFS_REPORT_STATE_REQ:  ec = detail::invoke<protocol::TMDFSReportStateReq> (type, buffers, handler); break;
-    case protocol::mtDFS_REPORT_STATE_RESP:  ec = detail::invoke<protocol::TMDFSReportStateResp> (type, buffers, handler); break;
+    case protocol::mtDFS_REPORT_STATE:      ec = detail::invoke<protocol::TMDFSReportState> (type, buffers, handler); break;
+    case protocol::mtDFS_REPORT_STATE_ACK:  ec = detail::invoke<protocol::TMDFSReportStateAck> (type, buffers, handler); break;
     default:
         ec = handler.onMessageUnknown (type);
         break;

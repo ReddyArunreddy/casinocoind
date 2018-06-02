@@ -768,7 +768,7 @@ OverlayImpl::selectPeers (PeerSet& set, std::size_t limit,
 
 /** The number of active peers on the network
     Active peers are only those peers that have completed the handshake
-    and are running the Ripple protocol.
+    and are running the Casinocoin protocol.
 */
 std::size_t
 OverlayImpl::size()
@@ -963,11 +963,13 @@ OverlayImpl::relay (protocol::TMValidation& m,
     });
 }
 
-void OverlayImpl::startDFSReportStateCrawl(NodeID rootID)
+void OverlayImpl::startDFSReportStateCrawl()
 {
-    reportStateCrawl_.clear();
-    reportStateCrawl_.insert(std::pair<NodeID,protocol::TMReportState>(rootID, protocol::TMReportState()));
-
+    Overlay::PeerSequence activePeers = getActivePeers();
+    if (activePeers.size() > 0)
+    {
+        activePeers[0]->dfsReportState().start();
+    }
 }
 
 //------------------------------------------------------------------------------

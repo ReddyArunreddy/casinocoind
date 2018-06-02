@@ -59,8 +59,7 @@ public:
     protocol::TMReportState const& getPreparedReport() const override;
 
 
-    void broadcast () override;
-    void sendTo(std::shared_ptr<Peer> const& peer) override;
+    void broadcast (Application &app) override;
 
     bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) override;
 
@@ -90,6 +89,7 @@ CRNPerformanceImpl::CRNPerformanceImpl(
     , lastSnapshotSeq_(startupSeq)
     , id(crnId)
     , j_(journal)
+    , accounting_(j_)
 {
 }
 
@@ -135,7 +135,7 @@ CRNPerformanceImpl::prepareReport (
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<StatusAccounting::Counters, 5> counters =
-            mapServerAccountingToPeerAccounting(networkOppreparedReport_.getServerAccountingInfo());
+            mapServerAccountingToPeerAccounting(networkOps.getServerAccountingInfo());
 
     preparedReport_.clear_status();
     preparedReport_.clear_currstatus();
@@ -193,15 +193,7 @@ protocol::TMReportState const& CRNPerformanceImpl::getPreparedReport() const
     return preparedReport_;
 }
 
-void CRNPerformanceImpl::sendTo(const std::shared_ptr<Peer> &peer)
-{
-    JLOG(j_.info()) << "CRNPerformanceImpl::sendTo TMDFSReportStateResp: peerID" << peer->id();
-    app.overlay ().foreach (send_if (
-        std::make_shared<Message>(preparedReport_, protocol::mtDFS_REPORT_STATE_RESP),
-        match_peer(*peer)));
-}
-
-void CRNPerformanceImpl::broadcast()
+void CRNPerformanceImpl::broadcast(Application &app)
 {
     app.overlay ().foreach (send_always (
         std::make_shared<Message> (preparedReport_, protocol::mtREPORT_STATE)));
@@ -209,6 +201,7 @@ void CRNPerformanceImpl::broadcast()
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
 {
+    JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: it is basically deprecated i guess";
     if (m->status_size() != peerSelfAccounting_.size())
     {
         JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
