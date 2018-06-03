@@ -104,7 +104,7 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
     , crn_(nullptr)
-    , dfsReportState_(app, overlay, socket_.get_io_service(), *this, journal_)
+    , dfsReportState_(app, overlay, *this, journal_)
 {
 }
 

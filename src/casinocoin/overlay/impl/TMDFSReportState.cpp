@@ -33,7 +33,6 @@ namespace casinocoin {
 
 TMDFSReportState::TMDFSReportState(Application& app,
                                    OverlayImpl& overlay,
-                                   boost::asio::io_service& io_service,
                                    PeerImp& parent,
                                    beast::Journal journal)
     : app_(app)
@@ -41,8 +40,6 @@ TMDFSReportState::TMDFSReportState(Application& app,
     , parentPeer_(parent)
     , journal_(journal)
     , pubKeyString_(toBase58(TOKEN_NODE_PUBLIC, app_.nodeIdentity().first))
-    , strand_(io_service)
-    , io_service_(io_service)
 {
     JLOG(journal_.info()) << "TMDFSReportState::TMDFSReportState() created for " << pubKeyString_ << " peer POV for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
 }
@@ -54,18 +51,6 @@ bool TMDFSReportState::start()
         JLOG(journal_.warn()) << "TMDFSReportState::start() is already started at " << std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_).count();
         return false;
     }
-
-    reset();
-
-    if (app_.isCRN())
-    {
-        reportState_.insert(std::pair<std::string, protocol::TMReportState>(
-                                pubKeyString_,
-                                app_.getCRN().performance().getPreparedReport()));
-    }
-
-    visited_.insert(std::pair<std::string, bool>(pubKeyString_, true));
-    dfs_.push_back(pubKeyString_);
 
     // msg
     protocol::TMDFSReportState msg;
@@ -80,7 +65,7 @@ bool TMDFSReportState::start()
 
     lastReq_ = msg;
     lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    setTimer(lastReqRecipient_);
+    overlay_.addDFSReportTimer(lastReqRecipient_, this);
 
     JLOG(journal_.warn()) << "TMDFSReportState::start() checkpoint 1";
 
@@ -88,22 +73,6 @@ bool TMDFSReportState::start()
     JLOG(journal_.warn()) << "TMDFSReportState::start() checkpoint 2";
 
     return true;
-
-//    Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
-//    if (knownPeers.size() > 0)
-//    {
-//        lastReq_ = msg;
-//        lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, knownPeers[0]->getNodePublic());
-//        setTimer(lastReqRecipient_);
-//        overlay_.foreach (send_if (
-//            std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE_REQ),
-//            match_peer(knownPeers[0].get())));
-//    }
-//    else
-//    {
-//        JLOG(journal_.warn()) << "TMDFSReportState::start() "
-//                              << "Something went terribly wrong, no active peers discovered";
-//    }
 }
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
@@ -156,7 +125,7 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
 
             lastReq_ = forwardMsg;
             lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
-            setTimer(lastReqRecipient_);
+            overlay_.addDFSReportTimer(lastReqRecipient_, this);
             overlay_.foreach (send_if (
                                   std::make_shared<Message>(forwardMsg, protocol::mtDFS_REPORT_STATE),
                                   match_peer(singlePeer.get())));
@@ -175,13 +144,6 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     // if we reach this point this means that we already visited all our peers and we know of their state
     forwardMsg.set_type(protocol::TMDFSReportState::rtRESP);
     parentPeer_.send(std::make_shared<Message>(forwardMsg, protocol::mtDFS_REPORT_STATE));
-
-
-    // jrojek TODO: On request, need to add current node to the lists,
-    //              check for first peer which is not already on the list
-    //              and call request on that peer
-    //              when all peers are on the list already, return Response to caller
-    // open point: how to determine the caller? in a message! (last entry in dfs list)
 }
 
 void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSReportState> &m)
@@ -215,7 +177,7 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
             m->set_type(protocol::TMDFSReportState::rtREQ);
             lastReq_ = *m;
             lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
-            setTimer(lastReqRecipient_);
+            overlay_.addDFSReportTimer(lastReqRecipient_, this);
             overlay_.foreach (send_if (
                                   std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE),
                                   match_peer(singlePeer.get())));
@@ -232,70 +194,27 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
 
     parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-    // jrojek TODO: when response is received, need to check if there are still
-    //              peers on our list who were not visited, and call request on them, if not
-    //              call Response on caller
+    JLOG(journal_.info()) << "Crawl locally concluded. current stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
 }
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::evaluateAck TMDFSReportStateAck for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    cancelTimer(toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()));
+    overlay_.cancelDFSReportTimer(toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()));
 }
 
-void TMDFSReportState::reset()
+void TMDFSReportState::onDeadlineTimer(DeadlineTimer &timer)
 {
-    reportState_.clear();
-    visited_.clear();
-    dfs_.clear();
-}
-
-void TMDFSReportState::setTimer( std::string const& pubKeyString)
-{
-    // jrojek TODO: resolve timer issues
-    JLOG(journal_.info()) << "TMDFSReportState::setTimer for node " << pubKeyString;
-    return;
-    error_code ec;
-    timers_[pubKeyString] = std::make_unique<boost::asio::basic_waitable_timer<std::chrono::steady_clock>>(io_service_);
-    timers_[pubKeyString]->expires_from_now(std::chrono::seconds(2), ec);
-    if (ec)
-    {
-        JLOG(journal_.error()) <<
-            "setTimer: " << ec.message();
-        return;
-    }
-
-    timers_[pubKeyString]->async_wait(strand_.wrap(std::bind(
-        &TMDFSReportState::onTimer, shared_from_this(),
-            beast::asio::placeholders::error)));
-}
-
-void TMDFSReportState::cancelTimer(const std::string &pubKeyString)
-{
-    JLOG(journal_.info()) << "TMDFSReportState::cancelTimer node " << pubKeyString;
-    error_code ec;
-    timers_[pubKeyString]->cancel(ec);
-    timers_.erase(pubKeyString);
-}
-
-void TMDFSReportState::onTimer(error_code ec)
-{
-    // jrojek TODO: resolve timer issues
-    JLOG(journal_.warn()) << "TMDFSReportState::onTimer node " << lastReqRecipient_<< " didn't ACK in timely manner";
-    return;
+    JLOG(journal_.info()) << "TMDFSReportState::onDeadlineTimer";
     // jrojek this might be because node just recently gone offline
     // or because node does not support CRN feature. Either way, we decide that this node is already
     // visited and do not account its state
-    if (ec)
-    {
-        JLOG(journal_.error()) <<
-            "TMDFSReportState::onTimer: " << ec.message();
-    }
-    timers_.erase(lastReqRecipient_);
+    overlay_.removeDFSReportTimer(lastReqRecipient_, timer);
 
     lastReq_.add_visited(lastReqRecipient_);
     lastReq_.set_type(protocol::TMDFSReportState::rtRESP);
     evaluateResponse(std::make_shared<protocol::TMDFSReportState>(lastReq_));
+    JLOG(journal_.info()) << "TMDFSReportState::onDeadlineTimer quit fine";
 }
 
 } // namespace casinocoin

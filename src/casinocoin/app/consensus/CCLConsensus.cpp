@@ -323,7 +323,7 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRN().performance().getReportingPeriod()) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() / 8)) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger, app_);
         app_.overlay().startDFSReportStateCrawl();

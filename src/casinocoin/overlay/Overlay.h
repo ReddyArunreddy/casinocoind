@@ -33,6 +33,7 @@
 #include <casinocoin/beast/asio/ssl_bundle.h>
 #include <beast/http/message.hpp>
 #include <casinocoin/core/Stoppable.h>
+#include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/beast/utility/PropertyStream.h>
 #include <memory>
 #include <type_traits>
@@ -170,6 +171,18 @@ public:
     virtual
     void
     startDFSReportStateCrawl() = 0;
+
+    virtual
+    void
+    removeDFSReportTimer(std::string const& nodePubKey, DeadlineTimer& timer) = 0;
+
+    virtual
+    void
+    addDFSReportTimer(std::string const& nodePubKey, DeadlineTimer::Listener* listener) = 0;
+
+    virtual
+    void
+    cancelDFSReportTimer(std::string const& nodePubKey) = 0;
 
     /** Visit every active peer and return a value
         The functor must:

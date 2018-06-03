@@ -29,6 +29,7 @@
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/app/misc/ValidatorList.h>
 #include <casinocoin/core/DatabaseCon.h>
+#include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/basics/contract.h>
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/basics/make_SSLContext.h>
@@ -970,6 +971,35 @@ void OverlayImpl::startDFSReportStateCrawl()
     {
         activePeers[0]->dfsReportState().start();
     }
+}
+
+void OverlayImpl::removeDFSReportTimer(std::string const& nodePubKey, DeadlineTimer &timer)
+{
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    if ( *(dfsTimers_.at(nodePubKey).get()) == timer)
+    {
+        JLOG(journal_.info()) << "OverlayImpl::removeDFSReportTimer found interesting timer. removing";
+        dfsTimers_.erase(nodePubKey);
+    }
+}
+
+void OverlayImpl::addDFSReportTimer(std::string const& nodePubKey, DeadlineTimer::Listener *listener)
+{
+    JLOG(journal_.info()) << "TMDFSReportState::setTimer for node " << nodePubKey;
+
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    dfsTimers_[nodePubKey] = std::make_unique<DeadlineTimer>(listener);
+    dfsTimers_[nodePubKey]->setExpiration(2s);
+    JLOG(journal_.info()) << "TMDFSReportState::setTimer quit fine";
+}
+
+void OverlayImpl::cancelDFSReportTimer(std::string const& nodePubKey)
+{
+    JLOG(journal_.info()) << "TMDFSReportState::cancelTimer node " << nodePubKey;
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    dfsTimers_[nodePubKey]->cancel();
+    dfsTimers_.erase(nodePubKey);
+    JLOG(journal_.info()) << "TMDFSReportState::cancelTimer quit fine";
 }
 
 //------------------------------------------------------------------------------

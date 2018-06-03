@@ -36,16 +36,15 @@
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
 #include <casinocoin/overlay/impl/OverlayImpl.h>
+#include <casinocoin/core/DeadlineTimer.h>
 
 namespace casinocoin {
 
-class TMDFSReportState : public std::enable_shared_from_this<TMDFSReportState>
-
+class TMDFSReportState : public DeadlineTimer::Listener
 {
 public:
     TMDFSReportState(Application& app,
                      OverlayImpl& overlay,
-                     boost::asio::io_service& io_service,
                      PeerImp& parent,
                      beast::Journal journal);
 
@@ -56,13 +55,7 @@ public:
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
 
 private:
-    using error_code = boost::system::error_code;
-
-    void reset();
-
-    void setTimer(std::string const& pubKeyString);
-    void cancelTimer(std::string const& pubKeyString);
-    void onTimer (error_code ec);
+    void onDeadlineTimer (DeadlineTimer& timer) override;
 
     std::chrono::system_clock::time_point start_;
     Application& app_;
@@ -79,9 +72,6 @@ private:
 
     std::string lastReqRecipient_;
     protocol::TMDFSReportState lastReq_;
-    boost::asio::io_service::strand strand_;
-    boost::asio::io_service& io_service_;
-    std::map<std::string, std::unique_ptr<boost::asio::basic_waitable_timer<std::chrono::steady_clock>>> timers_;
 
 
 };

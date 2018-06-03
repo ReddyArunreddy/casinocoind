@@ -125,10 +125,12 @@ private:
     std::atomic <Peer::id_t> next_id_;
     int timer_count_;
 
+    std::map<std::string, std::unique_ptr<DeadlineTimer>> dfsTimers_;
 
     //--------------------------------------------------------------------------
 
 public:
+
     OverlayImpl (Application& app, Setup const& setup, Stoppable& parent,
         ServerHandler& serverHandler, Resource::Manager& resourceManager,
         Resolver& resolver, boost::asio::io_service& io_service,
@@ -197,6 +199,14 @@ public:
     void
     startDFSReportStateCrawl() override;
 
+    void
+    removeDFSReportTimer(std::string const& nodePubKey, DeadlineTimer& timer) override;
+
+    void
+    addDFSReportTimer(std::string const& nodePubKey, DeadlineTimer::Listener* listener) override;
+
+    void
+    cancelDFSReportTimer(std::string const& nodePubKey) override;
     //--------------------------------------------------------------------------
     //
     // OverlayImpl

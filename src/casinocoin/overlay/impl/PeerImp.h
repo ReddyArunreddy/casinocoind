@@ -522,7 +522,7 @@ PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& s
     , response_(std::move(response))
     , headers_(response_.fields)
     , crn_(nullptr)
-    , dfsReportState_(app, overlay, socket_.get_io_service(), *this, journal_)
+    , dfsReportState_(app, overlay, *this, journal_)
 {
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));
