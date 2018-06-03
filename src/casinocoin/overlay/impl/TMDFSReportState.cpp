@@ -280,7 +280,9 @@ void TMDFSReportState::cancelTimer(const std::string &pubKeyString)
 
 void TMDFSReportState::onTimer(error_code ec)
 {
+    // jrojek TODO: resolve timer issues
     JLOG(journal_.warn()) << "TMDFSReportState::onTimer node " << lastReqRecipient_<< " didn't ACK in timely manner";
+    return;
     // jrojek this might be because node just recently gone offline
     // or because node does not support CRN feature. Either way, we decide that this node is already
     // visited and do not account its state
