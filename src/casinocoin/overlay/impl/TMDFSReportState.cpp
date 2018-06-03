@@ -73,12 +73,19 @@ bool TMDFSReportState::start()
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = msg.add_reports ();
         newEntry->set_pubkey(pubKeyString_);
-        newEntry->set_allocated_report(std::make_shared<protocol::TMReportState>(app_.getCRN().performance().getPreparedReport()).get());
+        newEntry->set_allocated_report( new protocol::TMReportState(app_.getCRN().performance().getPreparedReport()));
     }
     msg.add_visited(pubKeyString_);
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
+    lastReq_ = msg;
+    lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
+    setTimer(lastReqRecipient_);
+
+    JLOG(journal_.warn()) << "TMDFSReportState::start() checkpoint 1";
+
     parentPeer_.send(std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE));
+    JLOG(journal_.warn()) << "TMDFSReportState::start() checkpoint 2";
 
     return true;
 
@@ -123,7 +130,7 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = forwardMsg.add_reports ();
         newEntry->set_pubkey(pubKeyString_);
-        newEntry->set_allocated_report(std::make_shared<protocol::TMReportState>(app_.getCRN().performance().getPreparedReport()).get());
+        newEntry->set_allocated_report( new protocol::TMReportState(app_.getCRN().performance().getPreparedReport()));
     }
     forwardMsg.add_visited(pubKeyString_);
 
@@ -218,7 +225,7 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
     else
     {
-        JLOG(journal_.warn()) << "TMDFSReportState::start() "
+        JLOG(journal_.warn()) << "TMDFSReportState::evaluateResponse() "
                               << "Something went terribly wrong, no active peers discovered";
 
         return;
@@ -245,7 +252,9 @@ void TMDFSReportState::reset()
 
 void TMDFSReportState::setTimer( std::string const& pubKeyString)
 {
+    // jrojek TODO: resolve timer issues
     JLOG(journal_.info()) << "TMDFSReportState::setTimer for node " << pubKeyString;
+    return;
     error_code ec;
     timers_[pubKeyString] = std::make_unique<boost::asio::basic_waitable_timer<std::chrono::steady_clock>>(io_service_);
     timers_[pubKeyString]->expires_from_now(std::chrono::seconds(2), ec);
