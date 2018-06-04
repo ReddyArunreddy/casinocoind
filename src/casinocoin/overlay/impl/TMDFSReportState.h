@@ -47,7 +47,7 @@ public:
                      OverlayImpl& overlay,
                      PeerImp& parent,
                      beast::Journal journal);
-
+    ~TMDFSReportState();
     bool start();
 
     void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);

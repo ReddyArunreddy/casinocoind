@@ -130,8 +130,8 @@ CRNPerformanceImpl::prepareReport (
         const std::shared_ptr<const ReadView> &lastClosedLedger, Application &app)
 {
     // LCL must be 'reporting' ledger
-    JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
-    assert ((lastClosedLedger->info().seq % getReportingPeriod()) == 0);
+//    JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
+//    assert ((lastClosedLedger->info().seq % getReportingPeriod()) == 0);
 
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<StatusAccounting::Counters, 5> counters =
