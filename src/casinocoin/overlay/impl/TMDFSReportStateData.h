@@ -19,12 +19,12 @@
 
 //==============================================================================
 /*
-    2018-05-30  jrojek        created
+    2018-06-04  jrojek        created
 */
 //==============================================================================
 
-#ifndef CASINOCOIN_OVERLAY_TMDFSREPORTSTATE_H_INCLUDED
-#define CASINOCOIN_OVERLAY_TMDFSREPORTSTATE_H_INCLUDED
+#ifndef CASINOCOIN_OVERLAY_TMDFSREPORTSTATEDATA_H_INCLUDED
+#define CASINOCOIN_OVERLAY_TMDFSREPORTSTATEDATA_H_INCLUDED
 
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/app/misc/CRN.h>
@@ -34,34 +34,42 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
-#include <casinocoin/overlay/impl/OverlayImpl.h>
 #include <casinocoin/core/DeadlineTimer.h>
 
 namespace casinocoin {
+class OverlayImpl;
 
-class TMDFSReportState
+class TMDFSReportStateData : public DeadlineTimer::Listener
 {
 public:
-    TMDFSReportState(Application& app,
-                     OverlayImpl& overlay,
-                     PeerImp& parent,
-                     beast::Journal journal);
-    ~TMDFSReportState();
-    void start();
+    TMDFSReportStateData(OverlayImpl& overlay,
+                         beast::Journal journal);
 
-    void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
-    void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
-    void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
+
+    void restartTimer(std::string const& initiatorPubKey,
+                      std::string const& currRecipient,
+                      protocol::TMDFSReportState const& currPayload);
+
+    void cancelTimer(std::string const& initiatorPubKey);
+
+    protocol::TMDFSReportState& getLastRequest(std::string const& initiatorPubKey);
+    std::string& getLastRecipient(std::string const& initiatorPubKey);
 
 private:
-    Application& app_;
-    OverlayImpl& overlay_;
-    PeerImp& parentPeer_;
-    beast::Journal journal_;
+    void onDeadlineTimer (DeadlineTimer& timer) override;
 
-    std::string pubKeyString_;
+    // jrojek: all maps contain base58 public key of initiator
+    // (first entry on dfs list of TMDFSReportState) and a corresponding attribute
+    std::map<std::string, std::string> lastReqRecipient_;
+    std::map<std::string, protocol::TMDFSReportState> lastReq_;
+    std::map<std::string, std::unique_ptr<DeadlineTimer>> dfsTimers_;
+
+    std::recursive_mutex mutex_;
+
+    OverlayImpl& overlay_;
+    beast::Journal journal_;
 };
 
 } // namespace casinocoin
 
-#endif // CASINOCOIN_OVERLAY_TMDFSREPORTSTATE_H_INCLUDED
+#endif // CASINOCOIN_OVERLAY_TMDFSREPORTSTATEDATA_H_INCLUDED

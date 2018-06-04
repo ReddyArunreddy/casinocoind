@@ -1800,7 +1800,7 @@ void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
 {
     JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportState.";
     protocol::TMDFSReportStateAck ack;
-    ack.set_doweneedthis(1);
+    ack.set_dfsroot(m->dfs(0));
     send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
 
     if (m->type() == protocol::TMDFSReportState::rtREQ)

@@ -41,25 +41,14 @@ TMDFSReportState::TMDFSReportState(Application& app,
     , journal_(journal)
     , pubKeyString_(toBase58(TOKEN_NODE_PUBLIC, app_.nodeIdentity().first))
 {
-    JLOG(journal_.info()) << "TMDFSReportState::TMDFSReportState() created for " << pubKeyString_ << " peer POV for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
 }
 
 TMDFSReportState::~TMDFSReportState()
 {
-    JLOG(journal_.info()) << "TMDFSReportState::~TMDFSReportState() removed for " << pubKeyString_ << " peer POV for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
 }
 
-bool TMDFSReportState::start()
+void TMDFSReportState::start()
 {
-    if (isStarted_)
-    {
-        JLOG(journal_.warn()) << "TMDFSReportState::start() is already started at " << std::chrono::duration_cast<std::chrono::seconds>(std::chrono::system_clock::now() - start_).count();
-        return false;
-    }
-
-    JLOG(journal_.info()) << "TMDFSReportState::start() set ME " << pubKeyString_ << " send req to: " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-
-    // msg
     protocol::TMDFSReportState msg;
     if (app_.isCRN())
     {
@@ -71,16 +60,13 @@ bool TMDFSReportState::start()
     msg.add_dfs(pubKeyString_);
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
-    lastReq_ = msg;
-    lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    overlay_.addDFSReportTimer(lastReqRecipient_, this);
+    overlay_.getDFSReportStateData().restartTimer(pubKeyString_,
+                                                  toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
+                                                  msg);
 
     parentPeer_.send(std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE));
 
-    isStarted_ = true;
-
     // jrojek TODO: add whole crawl timeout
-    return true;
 }
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
@@ -102,13 +88,13 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
         }
     }
 
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
-    auto visitedListCheck = m->mutable_visited();
-    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck visited nodes " << *iter;
-    auto dfsListCheck = m->mutable_dfs();
-    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() dfs nodes " << *iter;
+//    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
+//    auto visitedListCheck = m->mutable_visited();
+//    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
+//        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck visited nodes " << *iter;
+//    auto dfsListCheck = m->mutable_dfs();
+//    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
+//        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() dfs nodes " << *iter;
 
 
     protocol::TMDFSReportState forwardMsg = *m;
@@ -141,9 +127,10 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
             forwardMsg.set_type(protocol::TMDFSReportState::rtREQ);
             forwardMsg.add_dfs(pubKeyString_);
 
-            lastReq_ = forwardMsg;
-            lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
-            overlay_.addDFSReportTimer(lastReqRecipient_, this);
+            overlay_.getDFSReportStateData().restartTimer(forwardMsg.dfs(0),
+                                                          toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
+                                                          forwardMsg);
+
             singlePeer->send(std::make_shared<Message>(forwardMsg, protocol::mtDFS_REPORT_STATE));
 
             return;
@@ -172,16 +159,15 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         return;
     }
 
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
-    auto visitedListCheck = m->mutable_visited();
-    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck visited nodes " << *iter;
-    auto dfsListCheck = m->mutable_dfs();
-    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() dfs nodes " << *iter;
+//    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
+//    auto visitedListCheck = m->mutable_visited();
+//    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
+//        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck visited nodes " << *iter;
+//    auto dfsListCheck = m->mutable_dfs();
+//    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
+//        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() dfs nodes " << *iter;
 
 
-    std::shared_ptr<Peer> storedLastReqRecipientPeer;
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
     {
@@ -197,15 +183,14 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
                     break;
                 }
             }
-            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == lastReqRecipient_)
-                    storedLastReqRecipientPeer = singlePeer;
             if (alreadyVisited)
                 continue;
 
             m->set_type(protocol::TMDFSReportState::rtREQ);
-            lastReq_ = *m;
-            lastReqRecipient_ = toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
-            overlay_.addDFSReportTimer(lastReqRecipient_, this);
+            overlay_.getDFSReportStateData().restartTimer(m->dfs(0),
+                                                          toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
+                                                          *m);
+
             singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
             return;
         }
@@ -218,62 +203,62 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
 
     JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl. dfs size == " << m->dfs_size();
-    if (isStarted_)
+
+    auto dfsList = m->mutable_dfs();
+    if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
     {
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl concluded. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
-        isStarted_ = false;
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() removing 'me' " << pubKeyString_ << " from DFS list";
+        dfsList->RemoveLast();
     }
     else
     {
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl locally concluded. current stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
-
-        auto dfsList = m->mutable_dfs();
-        if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' " << pubKeyString_ << " from DFS list";
+        return;
+    }
+    if (dfsList->size() > 0)
+    {
+        for (auto const& singlePeer : knownPeers)
         {
-            JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() removing 'me' " << pubKeyString_ << " from DFS list";
-            dfsList->RemoveLast();
-        }
-        else
-        {
-            JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' " << pubKeyString_ << " from DFS list";
-        }
-        if (dfsList->size() > 0)
-        {
-            for (auto const& singlePeer : knownPeers)
+            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
             {
-                if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
-                {
-                    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() found response endpoint: " << dfsList->Get(dfsList->size() - 1) << " responding!";
-                    singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-                    break;
-                }
+                JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() found response endpoint: " << dfsList->Get(dfsList->size() - 1) << " responding!";
+                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+                break;
             }
         }
-        else
+    }
+    else
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size() << " known peers count: " << knownPeers.size();
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
+        for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
         {
-            JLOG(journal_.warn()) << "TMDFSReportState::evaluateResponse() crawl not concluded globally but dfs list exhausted";
+            protocol::TMReportState const& rep = iter->report();
+            JLOG(journal_.info()) << " currStatus " << rep.currstatus()
+                                  << " ledgerSeqBegin " << rep.ledgerseqbegin()
+                                  << " ledgerSeqEnd " << rep.ledgerseqend()
+                                  << " latency " << rep.latency()
+                                  << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
+                                  << " domain " << rep.domain()
+                                  << " signature " << rep.signature();
+            for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
+            {
+                JLOG(journal_.info()) << "mode " << iterStatuses->mode()
+                                      << "transitions " << iterStatuses->transitions()
+                                      << "duration " << iterStatuses->duration();
+            }
         }
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
+
+        // jrojek TODO: apply some formula to determine Yes/No eligibility for fee payout
+        // jrojek TODO: and spread the news with app_
     }
 }
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::evaluateAck() TMDFSReportStateAck for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    overlay_.cancelDFSReportTimer(toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()));
-}
-
-void TMDFSReportState::onDeadlineTimer(DeadlineTimer &timer)
-{
-    JLOG(journal_.info()) << "TMDFSReportState::onDeadlineTimer";
-    // jrojek this might be because node just recently gone offline
-    // or because node does not support CRN feature. Either way, we decide that this node is already
-    // visited and do not account its state
-    overlay_.removeDFSReportTimer(lastReqRecipient_, timer);
-
-    lastReq_.add_visited(lastReqRecipient_);
-    lastReq_.set_type(protocol::TMDFSReportState::rtRESP);
-    evaluateResponse(std::make_shared<protocol::TMDFSReportState>(lastReq_));
-    JLOG(journal_.info()) << "TMDFSReportState::onDeadlineTimer quit fine";
+    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot());
 }
 
 } // namespace casinocoin

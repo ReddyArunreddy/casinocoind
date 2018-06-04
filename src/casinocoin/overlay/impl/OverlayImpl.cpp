@@ -163,6 +163,7 @@ OverlayImpl::OverlayImpl (
     , m_resolver (resolver)
     , next_id_(1)
     , timer_count_(0)
+    , dfsCrawlReportData_(*this, journal_)
 {
     beast::PropertyStream::Source::add (m_peerFinder.get());
 }
@@ -964,6 +965,11 @@ OverlayImpl::relay (protocol::TMValidation& m,
     });
 }
 
+TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
+{
+    return dfsCrawlReportData_;
+}
+
 void OverlayImpl::startDFSReportStateCrawl()
 {
     JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl";
@@ -973,57 +979,6 @@ void OverlayImpl::startDFSReportStateCrawl()
     {
         activePeers[0]->dfsReportState().start();
     }
-}
-
-void OverlayImpl::addDFSReportTimer(std::string const& nodePubKey, DeadlineTimer::Listener *listener)
-{
-    JLOG(journal_.info()) << "OverlayImpl::addDFSReportTimer node " << nodePubKey;
-
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-
-    JLOG(journal_.info()) << "OverlayImpl::addDFSReportTimer list of existing timers:";
-    for (auto iter = dfsTimers_.begin(); iter != dfsTimers_.end(); ++iter)
-        JLOG(journal_.info()) << "OverlayImpl::addDFSReportTimer:" << iter->first;
-
-    dfsTimers_[nodePubKey] = std::make_unique<DeadlineTimer>(listener);
-    dfsTimers_[nodePubKey]->setExpiration(1s);
-}
-
-void OverlayImpl::removeDFSReportTimer(std::string const& nodePubKey, DeadlineTimer &timer)
-{
-    JLOG(journal_.info()) << "OverlayImpl::removeDFSReportTimer node " << nodePubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-
-    JLOG(journal_.info()) << "OverlayImpl::removeDFSReportTimer list of existing timers:";
-    for (auto iter = dfsTimers_.begin(); iter != dfsTimers_.end(); ++iter)
-        JLOG(journal_.info()) << "OverlayImpl::removeDFSReportTimer:" << iter->first;
-
-    if ( *(dfsTimers_.at(nodePubKey).get()) == timer)
-    {
-        JLOG(journal_.info()) << "OverlayImpl::removeDFSReportTimer found interesting timer. removing";
-        dfsTimers_.erase(nodePubKey);
-    }
-}
-
-void OverlayImpl::cancelDFSReportTimer(std::string const& nodePubKey)
-{
-    JLOG(journal_.info()) << "OverlayImpl::cancelDFSReportTimer node " << nodePubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-
-    JLOG(journal_.info()) << "OverlayImpl::cancelDFSReportTimer list of existing timers:";
-    for (auto iter = dfsTimers_.begin(); iter != dfsTimers_.end(); ++iter)
-        JLOG(journal_.info()) << "OverlayImpl::cancelDFSReportTimer:" << iter->first;
-
-    if (dfsTimers_.find(nodePubKey) != dfsTimers_.end())
-    {
-        dfsTimers_[nodePubKey]->cancel();
-        dfsTimers_.erase(nodePubKey);
-    }
-    else
-    {
-        JLOG(journal_.info()) << "OverlayImpl::cancelDFSReportTimer couldn't find timer for node: " << nodePubKey;
-    }
-    JLOG(journal_.info()) << "OverlayImpl::cancelDFSReportTimer quit fine";
 }
 
 //------------------------------------------------------------------------------

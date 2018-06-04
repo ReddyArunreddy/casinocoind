@@ -58,7 +58,7 @@ public:
      * ---------------
     */
     virtual protocol::TMReportState
-    prepareReport (std::shared_ptr<ReadView const> const& lastClosedLedger,
+    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
                    Application& app) = 0;
 
     virtual protocol::TMReportState const& getPreparedReport() const = 0;

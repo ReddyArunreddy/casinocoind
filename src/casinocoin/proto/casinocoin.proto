@@ -222,7 +222,7 @@ message TMDFSReportState
 
 message TMDFSReportStateAck
 {
-    required uint32 doWeNeedThis    = 1;  // yes since you are asserting that the packet size isn't 0 in Message 
+    required string dfsRoot                = 1;  
 }
 
 // Announce to the network our position on a closing ledger
