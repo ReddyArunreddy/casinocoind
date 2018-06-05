@@ -65,8 +65,6 @@ void TMDFSReportState::start()
                                                   msg);
 
     parentPeer_.send(std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE));
-
-    // jrojek TODO: add whole crawl timeout
 }
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
@@ -75,7 +73,8 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
 
     if (m->type() != protocol::TMDFSReportState::rtREQ)
     {
-        JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() TMDFSReportState evaluating req but it is not a req";
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
+                               << "TMDFSReportState evaluating req but it is not a req";
         return;
     }
 
@@ -83,19 +82,11 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     {
         if (visitedNode == pubKeyString_)
         {
-            JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() TMDFSReportState received Req in a node which is already on the list! " << pubKeyString_;
+            JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
+                                   << "TMDFSReportState received Req in a node which is already on the list! " << pubKeyString_;
             return;
         }
     }
-
-//    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
-//    auto visitedListCheck = m->mutable_visited();
-//    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
-//        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() statecheck visited nodes " << *iter;
-//    auto dfsListCheck = m->mutable_dfs();
-//    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
-//        JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() dfs nodes " << *iter;
-
 
     protocol::TMDFSReportState forwardMsg = *m;
     if (app_.isCRN())
@@ -138,8 +129,8 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     }
     else
     {
-        JLOG(journal_.warn()) << "TMDFSReportState::evaluateRequest() "
-                              << "Something went terribly wrong, no active peers discovered";
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
+                               << "Something went terribly wrong, no active peers discovered";
         return;
     }
 
@@ -158,15 +149,6 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() TMDFSReportState evaluating resp but it is not a resp";
         return;
     }
-
-//    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck: visited " << m->visited_size() << " reports: " << m->reports_size() << " dfs: " << m->dfs_size();
-//    auto visitedListCheck = m->mutable_visited();
-//    for ( auto iter = visitedListCheck->begin(); iter != visitedListCheck->end(); ++iter)
-//        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() statecheck visited nodes " << *iter;
-//    auto dfsListCheck = m->mutable_dfs();
-//    for ( auto iter = dfsListCheck->begin(); iter != dfsListCheck->end(); ++iter)
-//        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() dfs nodes " << *iter;
-
 
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
@@ -197,22 +179,18 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
     else
     {
-        JLOG(journal_.warn()) << "TMDFSReportState::evaluateResponse() "
-                              << "Something went terribly wrong, no active peers discovered";
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() "
+                               << "Something went terribly wrong, no active peers discovered";
         return;
     }
 
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl. dfs size == " << m->dfs_size();
-
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
-    {
-        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() removing 'me' " << pubKeyString_ << " from DFS list";
         dfsList->RemoveLast();
-    }
     else
     {
-        JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' " << pubKeyString_ << " from DFS list";
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' "
+                               << pubKeyString_ << " from DFS list";
         return;
     }
     if (dfsList->size() > 0)
@@ -221,7 +199,6 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         {
             if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
             {
-                JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() found response endpoint: " << dfsList->Get(dfsList->size() - 1) << " responding!";
                 singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
                 break;
             }
@@ -257,7 +234,6 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateAck() TMDFSReportStateAck for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
     overlay_.getDFSReportStateData().cancelTimer(m->dfsroot());
 }
 

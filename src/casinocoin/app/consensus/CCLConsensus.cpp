@@ -323,7 +323,7 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 5)) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 10)) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
     }
@@ -337,14 +337,6 @@ CCLConsensus::onClose(
     if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
         ((prevLedger->info().seq % 256) == 0))
     {
-        // jrojek TODO enable check
-        //        if (prevLedger->rules().enabled(featureCRN))
-        //        {
-//        if ((prevLedger->info().seq % (1024 - 10)) == 0)
-//        {
-//            app_.overlay().startDFSReportStateCrawl();
-//        }
-        //        }
         // previous ledger was flag ledger, add pseudo-transactions
         auto const validations =
             app_.getValidations().getValidations(prevLedger->info().parentHash);
@@ -366,7 +358,7 @@ CCLConsensus::onClose(
             //        {
             if ((prevLedger->info().seq % (1024)) == 0)
             {
-                // every fourth flag ledger we distribute fees. add CRNRound pseudo-transaction
+                // every 1024 ledgers we distribute fees. add CRNRound pseudo-transaction
                 // jrojek TODO
             }
             //        }

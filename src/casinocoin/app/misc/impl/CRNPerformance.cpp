@@ -203,7 +203,6 @@ void CRNPerformanceImpl::broadcast(Application &app)
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
 {
-    JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: it is basically deprecated i guess";
     if (m->status_size() != peerSelfAccounting_.size())
     {
         JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
@@ -228,8 +227,6 @@ bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMRepo
 
 std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformanceImpl::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
 {
-    JLOG(j_.info()) << "CRNPerformanceImpl::mapServerAccountingToPeerAccounting";
-
     std::array<StatusAccounting::Counters, 5> ret;
     for (uint32_t i = 0; i < 5; i++)
     {
