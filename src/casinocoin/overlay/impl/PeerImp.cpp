@@ -104,6 +104,7 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
     , crn_(nullptr)
+    , dfsReportState_(app, overlay, *this, journal_)
 {
 }
 
@@ -368,6 +369,11 @@ PeerImp::json()
     }
 
     return ret;
+}
+
+TMDFSReportState &PeerImp::dfsReportState()
+{
+    return dfsReportState_;
 }
 
 //------------------------------------------------------------------------------
@@ -1771,24 +1777,9 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
     }
 }
 
-/*
-message TMReportState
-{
-    required NodeStatus currStatus      = 1;
-    required ledgerSeqBegin             = 2;
-    required ledgerSeqEnd               = 3;
-    message Status
-    {
-        required string name            = 4;
-        required uint32 transitions     = 5;
-        required uint32 duration        = 6;
-    }
-    repeated Status status              = 7;
-}
-*/
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState. That one is probably deprecated";
 
     if (!crn_)
     {
@@ -1803,6 +1794,26 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
     crn_->onOverlayMessage(m);
 
+}
+
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
+{
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportState.";
+    protocol::TMDFSReportStateAck ack;
+    ack.set_dfsroot(m->dfs(0));
+    send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
+
+    if (m->type() == protocol::TMDFSReportState::rtREQ)
+        dfsReportState_.evaluateRequest(m);
+    if (m->type() == protocol::TMDFSReportState::rtRESP)
+        dfsReportState_.evaluateResponse(m);
+}
+
+void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
+{
+    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateAck.";
+
+    dfsReportState_.evaluateAck(m);
 }
 
 //--------------------------------------------------------------------------

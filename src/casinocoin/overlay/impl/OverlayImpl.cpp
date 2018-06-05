@@ -29,6 +29,7 @@
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/app/misc/ValidatorList.h>
 #include <casinocoin/core/DatabaseCon.h>
+#include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/basics/contract.h>
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/basics/make_SSLContext.h>
@@ -162,6 +163,7 @@ OverlayImpl::OverlayImpl (
     , m_resolver (resolver)
     , next_id_(1)
     , timer_count_(0)
+    , dfsCrawlReportData_(*this, journal_)
 {
     beast::PropertyStream::Source::add (m_peerFinder.get());
 }
@@ -768,7 +770,7 @@ OverlayImpl::selectPeers (PeerSet& set, std::size_t limit,
 
 /** The number of active peers on the network
     Active peers are only those peers that have completed the handshake
-    and are running the Ripple protocol.
+    and are running the Casinocoin protocol.
 */
 std::size_t
 OverlayImpl::size()
@@ -793,9 +795,7 @@ OverlayImpl::crawl()
     for_each ([&](std::shared_ptr<PeerImp>&& sp)
     {
         auto& pv = av.append(Json::Value(Json::objectValue));
-        pv[jss::public_key] = beast::detail::base64_encode(
-            sp->getNodePublic().data(),
-                sp->getNodePublic().size());
+        pv[jss::public_key] = toBase58(TOKEN_NODE_PUBLIC, sp->getNodePublic());
         pv[jss::type] = sp->slot()->inbound() ?
             "in" : "out";
         pv[jss::uptime] =
@@ -963,6 +963,22 @@ OverlayImpl::relay (protocol::TMValidation& m,
         if (! m.has_hops() || p->hopsAware())
             p->send(sm);
     });
+}
+
+TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
+{
+    return dfsCrawlReportData_;
+}
+
+void OverlayImpl::startDFSReportStateCrawl()
+{
+    JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl";
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    Overlay::PeerSequence activePeers = getActivePeers();
+    if (activePeers.size() > 0)
+    {
+        activePeers[0]->dfsReportState().start();
+    }
 }
 
 //------------------------------------------------------------------------------

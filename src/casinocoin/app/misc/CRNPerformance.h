@@ -47,7 +47,7 @@ public:
      * info methods
      * ---------------
     */
-    virtual uint32_t getReportingPeriod() const { return 64; }
+    static uint32_t getReportingPeriod() { return 64; }
 
     /** Returns a Json::objectValue. */
     virtual Json::Value json () const = 0;
@@ -57,9 +57,13 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual void broadcast (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                            Application& app) = 0;
+    virtual protocol::TMReportState
+    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
+                   Application& app) = 0;
 
+    virtual protocol::TMReportState const& getPreparedReport() const = 0;
+
+    virtual void broadcast (Application &app) = 0;
     /**
      * ---------------
      * inbound methods
@@ -91,7 +95,7 @@ public:
             }
         };
 
-        explicit StatusAccounting ();
+        explicit StatusAccounting (beast::Journal journal);
 
         /**
          * Reset status counters to their default state
@@ -127,6 +131,8 @@ public:
         std::chrono::system_clock::time_point start_;
         protocol::NodeStatus mode_;
         std::array<Counters, 5> counters_;
+
+        beast::Journal j_;
 
         static Json::StaticString const transitions_;
         static Json::StaticString const dur_;

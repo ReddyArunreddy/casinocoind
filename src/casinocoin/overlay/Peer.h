@@ -34,6 +34,8 @@
 
 namespace casinocoin {
 
+class TMDFSReportState;
+
 namespace Resource {
 class Charge;
 }
@@ -113,6 +115,8 @@ public:
     virtual
     Json::Value json() = 0;
 
+    virtual
+    TMDFSReportState& dfsReportState() = 0;
     //
     // Ledger
     //

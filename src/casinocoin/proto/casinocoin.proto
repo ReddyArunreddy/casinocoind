@@ -20,6 +20,8 @@ enum MessageType
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
     mtREPORT_STATE          = 43;
+    mtDFS_REPORT_STATE      = 44;
+    mtDFS_REPORT_STATE_ACK  = 45;
 
     // <available>          = 10;
     // <available>          = 11;
@@ -198,6 +200,29 @@ message TMReportState
     required bytes crnPubKey            = 9;
     required string domain              = 10;
     required string signature           = 11;
+}
+
+message TMDFSReportState
+{
+    enum reportType {
+        rtREQ  = 0; // we want a reply
+        rtRESP = 1; // this is a reply
+    }
+    required reportType type               = 1;
+
+    message PubKeyReportMap
+    {
+      required string pubKey               = 2;
+      required TMReportState report        = 3;
+    }
+    repeated PubKeyReportMap reports       = 4;
+    repeated string visited                = 5;
+    repeated string dfs                    = 6; 
+}
+
+message TMDFSReportStateAck
+{
+    required string dfsRoot                = 1;  
 }
 
 // Announce to the network our position on a closing ledger

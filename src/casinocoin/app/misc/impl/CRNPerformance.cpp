@@ -52,8 +52,14 @@ public:
     StatusAccounting& accounting() override;
     Json::Value json () const override;
 
-    void broadcast (std::shared_ptr<ReadView const> const& lastClosedLedger,
-                    Application& app) override;
+    protocol::TMReportState
+    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
+                   Application& app) override;
+
+    protocol::TMReportState const& getPreparedReport() const override;
+
+
+    void broadcast (Application &app) override;
 
     bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) override;
 
@@ -67,9 +73,15 @@ protected:
     std::array<StatusAccounting::Counters,5> lastSnapshot_;
     std::array<StatusAccounting::Counters, 5> peerSelfAccounting_;
     uint32_t latency_;
+    protocol::TMReportState preparedReport_;
+
 private:
+    void initializePerformanceReport();
+
     std::array<StatusAccounting::Counters,5>
     mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
+
+    std::mutex mutable recentLock_;
 };
 
 CRNPerformanceImpl::CRNPerformanceImpl(
@@ -81,7 +93,9 @@ CRNPerformanceImpl::CRNPerformanceImpl(
     , lastSnapshotSeq_(startupSeq)
     , id(crnId)
     , j_(journal)
+    , accounting_(j_)
 {
+    initializePerformanceReport();
 }
 
 CRNPerformance::StatusAccounting &CRNPerformanceImpl::accounting()
@@ -91,42 +105,48 @@ CRNPerformance::StatusAccounting &CRNPerformanceImpl::accounting()
 
 Json::Value CRNPerformanceImpl::json() const
 {
-    Json::Value ret;
     // report this node measurement and self-measurement
-//         ret[jss::state_accounting] = accounting_.json();
-//         for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-//             i <= protocol::nsSHUTTING; ++i)
-//         {
-//             uint8_t index = i-1;
-//             auto& status = ret[jss::state_accounting][StatusAccounting::statuses_[index]];
-//             status[jss::self_transitions] = nodeSelfAccounting_[index].transitions;
-//             status[jss::self_duration_sec] = std::to_string (nodeSelfAccounting_[index].dur.count());
-//         }
-
-     // report self-measurement only
+    Json::Value ret = accounting_.json();
     for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-        i <= protocol::nsSHUTTING; ++i)
+         i <= protocol::nsSHUTTING; ++i)
     {
         uint8_t index = i-1;
-        ret[StatusAccounting::statuses_[index]] = Json::objectValue;
         auto& status = ret[StatusAccounting::statuses_[index]];
         status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
         status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
     }
+
+     // report self-measurement only
+//    Json::Value ret;
+//    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
+//        i <= protocol::nsSHUTTING; ++i)
+//    {
+//        uint8_t index = i-1;
+//        ret[StatusAccounting::statuses_[index]] = Json::objectValue;
+//        auto& status = ret[StatusAccounting::statuses_[index]];
+//        status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
+//        status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
+//    }
     return ret;
 }
 
-void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastClosedLedger, Application& app)
+protocol::TMReportState
+CRNPerformanceImpl::prepareReport (
+        LedgerIndex const& lastClosedLedgerSeq, Application &app)
 {
-    // LCL must be 'reporting' ledger
-    JLOG(j_.debug()) << "CRNPerformanceImpl::submit: " << lastClosedLedger->info().seq << " % " << getReportingPeriod() << " == " << (lastClosedLedger->info().seq % getReportingPeriod());
-    assert ((lastClosedLedger->info().seq % getReportingPeriod()) == 0);
-
+    std::lock_guard<std::mutex> sl(recentLock_);
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<StatusAccounting::Counters, 5> counters =
             mapServerAccountingToPeerAccounting(networkOps.getServerAccountingInfo());
 
-    protocol::TMReportState s;
+    preparedReport_.clear_status();
+    preparedReport_.clear_currstatus();
+    preparedReport_.clear_ledgerseqbegin();
+    preparedReport_.clear_ledgerseqend();
+    preparedReport_.clear_crnpubkey();
+    preparedReport_.clear_domain();
+    preparedReport_.clear_signature();
+    preparedReport_.clear_latency();
 
     for (uint32_t i = 0; i < 5; i++)
     {
@@ -137,19 +157,19 @@ void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastCl
         lastSnapshot_[i].dur = counters[i].dur;
         lastSnapshot_[i].transitions = counters[i].transitions;
 
-        protocol::TMReportState::Status* newStatus = s.add_status ();
+        protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
         newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
         newStatus->set_duration(counterToReport.dur.count());
         newStatus->set_transitions(counterToReport.transitions);
     }
-    s.set_currstatus(currentStatus);
-    s.set_ledgerseqbegin(lastSnapshotSeq_);
-    s.set_ledgerseqend(lastClosedLedger->info().seq);
+    preparedReport_.set_currstatus(currentStatus);
+    preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
+    preparedReport_.set_ledgerseqend(lastClosedLedgerSeq);
 
     auto const pk = id.publicKey().slice();
-    s.set_crnpubkey(pk.data(), pk.size());
-    s.set_domain(id.domain());
-    s.set_signature(id.signature());
+    preparedReport_.set_crnpubkey(pk.data(), pk.size());
+    preparedReport_.set_domain(id.domain());
+    preparedReport_.set_signature(id.signature());
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers
     // (since latency reported by Peer is already averaged from last 8 mesaurements
@@ -163,19 +183,29 @@ void CRNPerformanceImpl::broadcast(std::shared_ptr<ReadView const> const& lastCl
         }
     }
     latency_ = myLatency;
-    s.set_latency(myLatency);
+    preparedReport_.set_latency(myLatency);
 
+    lastSnapshotSeq_ = lastClosedLedgerSeq;
+    return preparedReport_;
+
+}
+
+protocol::TMReportState const& CRNPerformanceImpl::getPreparedReport() const
+{
+    return preparedReport_;
+}
+
+void CRNPerformanceImpl::broadcast(Application &app)
+{
     app.overlay ().foreach (send_always (
-        std::make_shared<Message> (s, protocol::mtREPORT_STATE)));
-
-    lastSnapshotSeq_ = lastClosedLedger->info().seq;
+        std::make_shared<Message> (preparedReport_, protocol::mtREPORT_STATE)));
 }
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
 {
     if (m->status_size() != peerSelfAccounting_.size())
     {
-        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
+        JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
                                 << "  != status supported count == " << peerSelfAccounting_.size();
         return false;
     }
@@ -187,33 +217,46 @@ bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMRepo
         uint32_t index = static_cast<uint32_t>(singleStatus.mode()) - 1;
         peerSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.duration());
         peerSelfAccounting_[index].transitions = singleStatus.transitions();
-        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: spent: " << peerSelfAccounting_[index].dur.count()
-                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
-                                << "transitioned: " << peerSelfAccounting_[index].transitions << " times"
-                                << " latency = " << latency_;
+//        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: spent: " << peerSelfAccounting_[index].dur.count()
+//                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
+//                                << "transitioned: " << peerSelfAccounting_[index].transitions << " times"
+//                                << " latency = " << latency_;
     }
     return true;
 }
 
 std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformanceImpl::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
 {
-    JLOG(j_.info()) << "CRNPerformanceImpl::mapServerAccountingToPeerAccounting";
-
     std::array<StatusAccounting::Counters, 5> ret;
     for (uint32_t i = 0; i < 5; i++)
     {
         auto &entry = ret[(networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))) - 1];
         entry.dur += std::chrono::seconds(serverAccounting[i].dur.count() / 1000 / 1000);
         entry.transitions += serverAccounting[i].transitions;
-        JLOG(j_.info()) << "CRNPerformanceImpl::mapServerAccountingToPeerAccounting TMReportState:"
-                        << " OperatingMode(" << i << ") -> protocol::NodeStatus(" << networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i)) << ")"
-                        << " serverAccounting[" << i << "]dur:" << serverAccounting[i].dur.count() << " transitions:" << serverAccounting[i].transitions
-                        << " ret             [" << (networkOps.getNodeStatus(static_cast<NetworkOPs::OperatingMode>(i))) - 1 << "]dur:" << entry.dur.count() << " transitions:" << entry.transitions
-                        ;
     }
     return ret;
 }
 
+void CRNPerformanceImpl::initializePerformanceReport()
+{
+    for (uint32_t i = 0; i < 5; i++)
+    {
+        protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
+        newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
+        newStatus->set_duration(0);
+        newStatus->set_transitions(0);
+    }
+    protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
+    preparedReport_.set_currstatus(currentStatus);
+    preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
+    preparedReport_.set_ledgerseqend(lastSnapshotSeq_);
+
+    auto const pk = id.publicKey().slice();
+    preparedReport_.set_crnpubkey(pk.data(), pk.size());
+    preparedReport_.set_domain(id.domain());
+    preparedReport_.set_signature(id.signature());
+    preparedReport_.set_latency(10000);
+}
 
 //-------------------------------------------------------------------------------------
 static std::array<char const*, 5> const statusNames {{
@@ -231,7 +274,8 @@ CRNPerformance::StatusAccounting::statuses_ = {{
     Json::StaticString(statusNames[3]),
     Json::StaticString(statusNames[4])}};
 
-CRNPerformance::StatusAccounting::StatusAccounting()
+CRNPerformance::StatusAccounting::StatusAccounting(beast::Journal journal)
+    : j_(journal)
 {
     mode_ = protocol::nsCONNECTING;
     counters_[protocol::nsCONNECTING-1].transitions = 1;
@@ -244,10 +288,6 @@ void CRNPerformance::StatusAccounting::reset()
 
     for (auto counter : counters_)
         counter.reset();
-
-    ++counters_[mode_-1].transitions;
-    counters_[mode_-1].dur = std::chrono::seconds(1);
-
     start_ = std::chrono::system_clock::now();
 }
 
@@ -256,6 +296,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     if (nodeStatus == mode_)
         return;
 
+    JLOG(j_.info()) << "changing operating mode from " << mode_ << " to " << nodeStatus << " trans before: " << counters_[nodeStatus-1].transitions;
     auto now = std::chrono::system_clock::now();
 
     std::lock_guard<std::mutex> lock (mutex_);
@@ -263,6 +304,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     counters_[mode_-1].dur += std::chrono::duration_cast<
         std::chrono::seconds>(now - start_);
 
+    JLOG(j_.info()) << "trans after: " << counters_[nodeStatus-1].transitions;
     mode_ = nodeStatus;
     start_ = now;
 }
@@ -301,8 +343,8 @@ std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformance::Status
 
     return counters;
 }
-//-------------------------------------------------------------------------------------
 
+//-------------------------------------------------------------------------------------
 
 
 std::unique_ptr<CRNPerformance> make_CRNPerformance(NetworkOPs& networkOps,

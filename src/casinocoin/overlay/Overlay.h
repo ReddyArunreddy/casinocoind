@@ -33,6 +33,7 @@
 #include <casinocoin/beast/asio/ssl_bundle.h>
 #include <beast/http/message.hpp>
 #include <casinocoin/core/Stoppable.h>
+#include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/beast/utility/PropertyStream.h>
 #include <memory>
 #include <type_traits>
@@ -43,6 +44,8 @@
 namespace boost { namespace asio { namespace ssl { class context; } } }
 
 namespace casinocoin {
+
+class TMDFSReportStateData;
 
 /** Manages the set of connected peers. */
 class Overlay
@@ -166,6 +169,14 @@ public:
     void
     relay (protocol::TMValidation& m,
         uint256 const& uid) = 0;
+
+    virtual
+    TMDFSReportStateData&
+    getDFSReportStateData() = 0;
+
+    virtual
+    void
+    startDFSReportStateCrawl() = 0;
 
     /** Visit every active peer and return a value
         The functor must:

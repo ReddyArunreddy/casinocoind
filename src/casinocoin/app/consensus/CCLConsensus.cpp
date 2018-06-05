@@ -42,6 +42,7 @@
 #include <casinocoin/beast/core/LexicalCast.h>
 #include <casinocoin/consensus/LedgerTiming.h>
 #include <casinocoin/overlay/Overlay.h>
+#include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/protocol/Feature.h>
 #include <casinocoin/protocol/digest.h>
@@ -318,13 +319,19 @@ CCLConsensus::onClose(
             false);
     }
 
+    // jrojek TODO enable check
     // CRN report their performance in selected periods
-    // jrojek TODO... hmm, if it really is going to be 1000 nodes then must figure
-    // out some cheaper mechanism. now it adds 1000 txes every n ledgers, not so good...
-    if (app_.isCRN() && (prevLedger->info().seq % app_.getCRN().performance().getReportingPeriod()) == 0)
+    //        if (prevLedger->rules().enabled(featureCRN))
+    //        {
+    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 10)) == 0)
     {
-        app_.getCRN().performance().broadcast(prevLedger, app_);
+        app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
     }
+    if (proposing && !wrongLCL && prevLedger->info().seq % CRNPerformance::getReportingPeriod() == 0)
+    {
+        app_.overlay().startDFSReportStateCrawl();
+    }
+    //        }
 
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
@@ -346,11 +353,15 @@ CCLConsensus::onClose(
                 prevLedger, validations, initialSet);
 
 
-            if ((prevLedger->info().seq % (256 * 4)) == 0)
+            // jrojek TODO enable check
+            //        if (prevLedger->rules().enabled(featureCRN))
+            //        {
+            if ((prevLedger->info().seq % (1024)) == 0)
             {
-                // every fourth flag ledger we distribute fees. add CRNRound pseudo-transaction
+                // every 1024 ledgers we distribute fees. add CRNRound pseudo-transaction
                 // jrojek TODO
             }
+            //        }
         }
     }
 
