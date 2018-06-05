@@ -37,6 +37,8 @@ namespace casinocoin {
 class CRN
 {
 public:
+    using EligibilityMap = std::map<PublicKey, bool>;
+
     CRN(PublicKey const& pubKey,
         std::string const& domain,
         std::string const& domainSignature,

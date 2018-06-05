@@ -74,12 +74,15 @@ class TxQ;
 class Validations;
 class ValidatorList;
 class ValidatorSite;
-class CRNList;
+
 class Cluster;
-class CRN;
 
 class DatabaseCon;
 class SHAMapStore;
+
+class CRN;
+class CRNList;
+class CRNRound;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
 
@@ -150,6 +153,7 @@ public:
     virtual OrderBookDB&            getOrderBookDB () = 0;
     virtual TransactionMaster&      getMasterTransaction () = 0;
     virtual CRN&                    getCRN() = 0;
+    virtual CRNRound&               getCRNRound() = 0;
 
     virtual
     std::pair<PublicKey, SecretKey> const&
