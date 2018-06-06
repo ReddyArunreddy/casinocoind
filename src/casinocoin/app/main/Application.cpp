@@ -43,6 +43,7 @@
 #include <casinocoin/app/misc/AmendmentTable.h>
 #include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
@@ -306,6 +307,7 @@ public:
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <CRN> m_crn;
+    std::unique_ptr <CRNRound> m_crnRound;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
     std::unique_ptr <Validations> mValidations;
@@ -408,6 +410,9 @@ public:
 
     CRN&
     getCRN() override { assert(m_crn);return *m_crn; }
+
+    CRNRound&
+    getCRNRound() override { return *m_crnRound; }
 
     NodeCache&
     getTempNodeCache () override { return m_tempNodeCache; }
@@ -649,6 +654,7 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
 
     , m_crn (nullptr)
+    , m_crnRound(make_CRNRound(MAJORITY_FRACTION, logs_->journal("CRNRound")))
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
