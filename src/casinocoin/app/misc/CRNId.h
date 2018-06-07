@@ -20,6 +20,7 @@
 //==============================================================================
 /*
     2018-05-15  jrojek          Created
+    2018-05-30  ajochems        Setting properties from config file
 */
 //==============================================================================
 
@@ -34,19 +35,20 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/protocol/AccountID.h>
 #include <casinocoin/protocol/JsonFields.h>
-
+#include <casinocoin/app/ledger/LedgerMaster.h>
 
 namespace casinocoin {
 
-// jrojek TODO fill that class with section contents, add section to CFG file (possibly ajohems?)
 class CRNId
 {
 public:
     CRNId(const CRNId&) = delete;
 
     CRNId(Section const& relaynodeConfig,
-          beast::Journal j)
+          beast::Journal j,
+          LedgerMaster& ledgerMaster)
         : j_(j)
+        , m_ledgerMaster (ledgerMaster)
     {
         std::pair <std::string, bool> domainName = relaynodeConfig.find("domain");
         std::pair <std::string, bool> publicKey = relaynodeConfig.find("publickey");
@@ -67,11 +69,13 @@ public:
     CRNId(PublicKey const& pubKey,
            std::string const& domain,
            std::string const& domainSignature,
-           beast::Journal j)
+           beast::Journal j,
+           LedgerMaster& ledgerMaster)
         : pubKey_(pubKey)
         , domain_(domain)
         , signature_(domainSignature)
         , j_(j)
+        , m_ledgerMaster (ledgerMaster)
     {
     }
 
@@ -80,9 +84,10 @@ public:
         Json::Value ret = Json::objectValue;
         ret[jss::crn_public_key] = toBase58(TOKEN_NODE_PUBLIC, pubKey_);
         ret[jss::crn_domain_name] = domain_;
-        ret[jss::crn_domain_signature] = signature_;
+        ret[jss::crn_activated] = activated();
         return ret;
     }
+
     PublicKey const& publicKey() const
     {
         return pubKey_;
@@ -96,6 +101,34 @@ public:
     std::string const& signature() const
     {
         return signature_;
+    }
+
+    bool activated() const
+    {
+        bool activated_ = false;
+        // get the account id for the CRN
+        boost::optional <AccountID> accountID = calcAccountID(pubKey_);
+        // get the last validated ledger
+        auto const ledger = m_ledgerMaster.getValidatedLedger();
+        if(ledger)
+        {
+            auto const sleAccepted = ledger->read(keylet::account(*accountID));
+            if (sleAccepted)
+            {
+                STAmount amount = sleAccepted->getFieldAmount (sfBalance);
+                JLOG(j_.info()) << "CRN Account Balance: " << amount.getFullText ();
+                // check if the account balance is >= defined reserve
+                if(amount >= 100000000000000)
+                {
+                    activated_ = true;
+                }
+            }
+        }
+        else
+        {
+            JLOG(j_.info()) << "CRN No Validated Ledger for Activated.";
+        }
+        return activated_;
     }
 
     bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const
@@ -133,8 +166,8 @@ private:
     AccountID accountId_;
     std::string domain_;
     std::string signature_;
-
     beast::Journal j_;
+    LedgerMaster& m_ledgerMaster;
 };
 
 }

@@ -44,8 +44,9 @@ CRN::CRN(const PublicKey &pubKey,
          const std::string &domainSignature,
          NetworkOPs &networkOps,
          const LedgerIndex &startupSeq,
-         beast::Journal j)
-    : id_(pubKey, domain, domainSignature, j)
+         beast::Journal j,
+         LedgerMaster& ledgerMaster)
+    : id_(pubKey, domain, domainSignature, j, ledgerMaster)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
     , j_(j)
 {
@@ -55,8 +56,9 @@ CRN::CRN(const PublicKey &pubKey,
 CRN::CRN(Section const& relaynodeConfig,
          NetworkOPs& networkOps,
          LedgerIndex const& startupSeq,
-         beast::Journal j)
-    : id_(relaynodeConfig, j)
+         beast::Journal j,
+         LedgerMaster& ledgerMaster)
+    : id_(relaynodeConfig, j, ledgerMaster)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
     , j_(j)
 {
@@ -101,12 +103,14 @@ bool CRN::activated() const
 std::unique_ptr<CRN> make_CRN(const Section &relaynodeConfig,
                               NetworkOPs &networkOps,
                               const LedgerIndex &startupSeq,
-                              beast::Journal j)
+                              beast::Journal j,
+                              LedgerMaster& ledgerMaster)
 {
     return std::make_unique<CRN>(relaynodeConfig,
                                  networkOps,
                                  startupSeq,
-                                 j);
+                                 j,
+                                 ledgerMaster);
 }
 
 std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
@@ -114,14 +118,16 @@ std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
                               const std::string &domainSignature,
                               NetworkOPs &networkOps,
                               const LedgerIndex &startupSeq,
-                              beast::Journal j)
+                              beast::Journal j,
+                              LedgerMaster& ledgerMaster)
 {
     return std::make_unique<CRN>(pubKey,
                                  domain,
                                  domainSignature,
                                  networkOps,
                                  startupSeq,
-                                 j);
+                                 j,
+                                 ledgerMaster);
 }
 
 

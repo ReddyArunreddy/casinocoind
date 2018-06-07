@@ -44,12 +44,14 @@ public:
         std::string const& domainSignature,
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
-        beast::Journal j);
+        beast::Journal j,
+        LedgerMaster& ledgerMaster);
 
     CRN(Section const& relaynodeConfig,
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
-        beast::Journal j);
+        beast::Journal j,
+        LedgerMaster& ledgerMaster);
 
     bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m);
 
@@ -70,14 +72,16 @@ private:
 std::unique_ptr<CRN> make_CRN(Section const& relaynodeConfig,
                               NetworkOPs& networkOps,
                               LedgerIndex const& startupSeq,
-                              beast::Journal j);
+                              beast::Journal j,
+                              LedgerMaster& ledgerMaster);
 
 std::unique_ptr<CRN> make_CRN(PublicKey const& pubKey,
                               std::string const& domain,
                               std::string const& domainSignature,
                               NetworkOPs& networkOps,
                               LedgerIndex const& startupSeq,
-                              beast::Journal j);
+                              beast::Journal j,
+                              LedgerMaster& ledgerMaster);
 
 }
 #endif // CASINOCOIN_PROTOCOL_CRN_H
