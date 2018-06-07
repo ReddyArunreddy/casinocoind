@@ -898,7 +898,8 @@ bool ApplicationImp::setup()
                 m_crn = make_CRN(config().section (SECTION_CRN_CONFIG),
                                  getOPs(),
                                  m_ledgerMaster->getCurrentLedgerIndex(),
-                                 logs_->journal("App_CRN"));
+                                 logs_->journal("App_CRN"),
+                                 *m_ledgerMaster);
             }
             else
             {

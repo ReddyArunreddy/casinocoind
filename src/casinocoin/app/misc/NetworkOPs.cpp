@@ -2160,26 +2160,7 @@ Json::Value NetworkOPsImp::getServerInfo (bool human, bool admin)
                 TokenType::TOKEN_NODE_PUBLIC,
                 app_.getCRN().id().publicKey());
             info[jss::crn_domain_name] = app_.getCRN().id().domain();
-            // get the account id for the CRN
-            boost::optional <AccountID> accountID = calcAccountID(app_.getCRN().id().publicKey());
-            // get the last validated ledger
-            auto const ledger = app_.getLedgerMaster().getValidatedLedger();
-            bool crnActivated = false;
-            if(ledger)
-            {
-                auto const sleAccepted = ledger->read(keylet::account(*accountID));
-                if (sleAccepted)
-                {
-                    STAmount amount = sleAccepted->getFieldAmount (sfBalance);
-                    JLOG(m_journal.info()) << "CRN Account Balance: " << amount.getFullText ();
-                    // check if the account balance is >= defined reserve
-                    if(amount >= 100000000000000)
-                    {
-                        crnActivated = true;
-                    }
-                }
-            }
-            info[jss::crn_activated] = crnActivated;
+            info[jss::crn_activated] = app_.getCRN().id().activated();
         }
         else
         {
