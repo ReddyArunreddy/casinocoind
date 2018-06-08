@@ -326,6 +326,7 @@ CCLConsensus::onClose(
     if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 10)) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
+        app_.getCRN().performance().broadcast(app_);
     }
     if (proposing && !wrongLCL && prevLedger->info().seq % CRNPerformance::getReportingPeriod() == 0)
     {
