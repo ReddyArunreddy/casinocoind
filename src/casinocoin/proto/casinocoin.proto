@@ -199,7 +199,8 @@ message TMReportState
     required uint32 latency             = 8;
     required bytes crnPubKey            = 9;
     required string domain              = 10;
-    required string signature           = 11;
+    optional string signature           = 11;
+    required bool activated             = 12;
 }
 
 message TMDFSReportState

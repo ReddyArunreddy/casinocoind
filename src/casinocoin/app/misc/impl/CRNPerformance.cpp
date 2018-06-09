@@ -147,21 +147,23 @@ CRNPerformanceImpl::prepareReport (
     preparedReport_.clear_domain();
     preparedReport_.clear_signature();
     preparedReport_.clear_latency();
+    preparedReport_.clear_activated();
 
-    for (uint32_t i = 0; i < 5; i++)
-    {
-        StatusAccounting::Counters counterToReport;
-        counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
-        counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
+    // ajochems: no connection status reporting for now
+    // for (uint32_t i = 0; i < 5; i++)
+    // {
+    //     StatusAccounting::Counters counterToReport;
+    //     counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
+    //     counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
 
-        lastSnapshot_[i].dur = counters[i].dur;
-        lastSnapshot_[i].transitions = counters[i].transitions;
+    //     lastSnapshot_[i].dur = counters[i].dur;
+    //     lastSnapshot_[i].transitions = counters[i].transitions;
 
-        protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
-        newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
-        newStatus->set_duration(counterToReport.dur.count());
-        newStatus->set_transitions(counterToReport.transitions);
-    }
+    //     protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
+    //     newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
+    //     newStatus->set_duration(counterToReport.dur.count());
+    //     newStatus->set_transitions(counterToReport.transitions);
+    // }
     preparedReport_.set_currstatus(currentStatus);
     preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
     preparedReport_.set_ledgerseqend(lastClosedLedgerSeq);
@@ -169,7 +171,9 @@ CRNPerformanceImpl::prepareReport (
     auto const pk = id.publicKey().slice();
     preparedReport_.set_crnpubkey(pk.data(), pk.size());
     preparedReport_.set_domain(id.domain());
-    preparedReport_.set_signature(id.signature());
+    preparedReport_.set_activated(id.activated());
+    // ajochems: hide the signiture from the public
+    // preparedReport_.set_signature(id.signature());
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers
     // (since latency reported by Peer is already averaged from last 8 mesaurements
@@ -184,7 +188,6 @@ CRNPerformanceImpl::prepareReport (
     }
     latency_ = myLatency;
     preparedReport_.set_latency(myLatency);
-
     lastSnapshotSeq_ = lastClosedLedgerSeq;
     return preparedReport_;
 
