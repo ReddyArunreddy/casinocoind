@@ -38,6 +38,7 @@ class CRN
 {
 public:
     using EligibilityMap = std::map<PublicKey, bool>;
+    using EligibilityPaymentMap = std::map<PublicKey, CSCAmount>;
 
     CRN(PublicKey const& pubKey,
         std::string const& domain,

@@ -31,6 +31,7 @@
 #include <casinocoin/app/ledger/LocalTxs.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
+#include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -359,8 +360,7 @@ CCLConsensus::onClose(
             //        {
             if ((prevLedger->info().seq % (1024)) == 0)
             {
-                // every 1024 ledgers we distribute fees. add CRNRound pseudo-transaction
-                // jrojek TODO
+                app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
             }
             //        }
         }
@@ -886,8 +886,8 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
 
     if (((ledger.seq() + 1) % 1024) == 0)
     {
-        // jrojek TODO: every 1024 ledgers re-distribute collected fees
-        // to eligible CRNs
+        JLOG(j_.debug()) << "next ledger % 1024 == 0, evaluate CRNRound";
+        app_.getCRNRound().doValidation(ledger.ledger_, *v);
     }
 
     auto const signingHash = v->sign(valSecret_);

@@ -48,7 +48,10 @@ private:
     hash_map<PublicKey, uint32> yesVotes_;
     hash_map<PublicKey, uint32> nayVotes_;
     CSCAmount feeDistributionVote_;
+    CSCAmount feeRemainFromShare_;
+    bool votingFinished_ = false;
 
+    CRN::EligibilityPaymentMap paymentMap_;
 public:
     using YesNayVotes = std::pair<uint32, uint32>;
 
@@ -62,6 +65,9 @@ public:
 
     void tally (CRN::EligibilityMap const& nodes)
     {
+        if (votingFinished_)
+            return;
+
         ++mTrustedValidations;
 
         for (auto iter = nodes.begin(); iter != nodes.end() ; ++iter)
@@ -73,16 +79,46 @@ public:
         }
     }
 
-    CRN::EligibilityMap votes () const
+    void setVotingFinished()
     {
-        CRN::EligibilityMap ret;
+        votingFinished_ = true;
+
+        std::vector<PublicKey> eligibleList;
         for ( auto const& yesVote : yesVotes_)
         {
-            ret.insert(std::pair<PublicKey, bool>(yesVote.first, isEligible(yesVote.first)));
+            if (isEligible(yesVote.first))
+                eligibleList.push_back(yesVote.first);
         }
-        return ret;
+
+        div_t share = div(feeDistributionVote_.drops(), eligibleList.size());
+        feeRemainFromShare_ = share.rem;
+
+        for ( auto const& eligibleNode : eligibleList)
+            paymentMap_.insert(std::pair<PublicKey, CSCAmount>(eligibleNode, CSCAmount(share.quot)));
     }
 
+    CRN::EligibilityPaymentMap votes () const
+    {
+        if (!votingFinished_)
+            return CRN::EligibilityPaymentMap();
+
+        return paymentMap_;
+    }
+
+    void setFeeDistributionVote(CSCAmount const& feeDistributionVote)
+    {
+        if (votingFinished_)
+            return;
+
+        feeDistributionVote_ = feeDistributionVote;
+    }
+
+    CSCAmount feeDistributionVote() const
+    {
+        return CSCAmount(feeDistributionVote_ - feeRemainFromShare_);
+    }
+
+private:
     bool isEligible(PublicKey const& crnNode) const
     {
         uint32_t votesCombined = 0;
@@ -96,16 +132,6 @@ public:
             votesCombined -= itNay->second;
 
         return votesCombined >= mThreshold;
-    }
-
-    void setFeeDistributionVote(CSCAmount const& feeDistributionVote)
-    {
-        feeDistributionVote_ = feeDistributionVote;
-    }
-
-    CSCAmount const& feeDistributionVote() const
-    {
-        return feeDistributionVote_;
     }
 };
 
@@ -222,6 +248,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
     }
     crnVote->mThreshold = std::max(1, (crnVote->mTrustedValidations * majorityFraction_) / 256);
     crnVote->setFeeDistributionVote(CSCAmount(feeToDistribute.getVotes()));
+    crnVote->setVotingFinished();
 
     JLOG (j_.info()) <<
         "Received " << crnVote->mTrustedValidations <<
@@ -236,13 +263,15 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         STArray crnArray(sfCRNs);
         STAmount feeToDistributeST(crnVote->feeDistributionVote());
 
-        CRN::EligibilityMap txVoteMap = crnVote->votes();
+        CRN::EligibilityPaymentMap txVoteMap = crnVote->votes();
         for ( auto iter = txVoteMap.begin(); iter != txVoteMap.end(); ++iter)
         {
             crnArray.push_back (STObject (sfCRN));
             auto& entry = crnArray.back ();
             entry.emplace_back (STBlob (sfPublicKey, iter->first.data(), iter->first.size()));
-            entry.emplace_back (STUInt8 (sfCRNEligibility, iter->second ? 1 : 0));
+            STAmount crnFeeDistributed(iter->second);
+            crnFeeDistributed.setFName(sfCRN_FeeDistributed);
+            entry.emplace_back (crnFeeDistributed);
         }
 
         JLOG(j_.warn()) <<
@@ -260,7 +289,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         uint256 txID = crnRoundTx.getTransactionID ();
 
         JLOG(j_.warn()) <<
-            "Vote: " << txID;
+            "CRNRound tx id: " << txID;
 
         Serializer s;
         crnRoundTx.add (s);

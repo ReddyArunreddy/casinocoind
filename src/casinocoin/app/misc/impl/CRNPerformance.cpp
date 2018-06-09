@@ -188,6 +188,7 @@ CRNPerformanceImpl::prepareReport (
     }
     latency_ = myLatency;
     preparedReport_.set_latency(myLatency);
+
     lastSnapshotSeq_ = lastClosedLedgerSeq;
     return preparedReport_;
 

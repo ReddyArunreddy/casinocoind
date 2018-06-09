@@ -70,6 +70,18 @@ Change::preflight (PreflightContext const& ctx)
         return temBAD_SEQUENCE;
     }
 
+    if (ctx.tx.getTxnType() == ttCRN_ROUND)
+    {
+        STArray crnArray = ctx.tx.getFieldArray(sfCRNs);
+        for ( auto const& crnObject : crnArray)
+        {
+            if (!crnObject.isFieldPresent(sfPublicKey))
+            {
+                JLOG(ctx.j.warn()) << "CRNRound malformed transaction";
+                return temMALFORMED;
+            }
+        }
+    }
     return tesSUCCESS;
 }
 
@@ -241,21 +253,52 @@ Change::applyFee()
 
 TER Change::applyCRN_Round()
 {
-    auto const k = keylet::crnRound();
+    auto const keyletCrnRound = keylet::crnRound();
 
-    SLE::pointer crnRoundObject = view().peek(k);
+    SLE::pointer crnRoundObject = view().peek(keyletCrnRound);
 
     if (!crnRoundObject)
     {
-        crnRoundObject = std::make_shared<SLE>(k);
+        crnRoundObject = std::make_shared<SLE>(keyletCrnRound);
         view().insert(crnRoundObject);
     }
 
-//    crnRoundObject->
-    // jrojek TODO: evaluate CRN round object to apply it.
-    JLOG(j_.warn()) << "CRN Round have concluded and is applied (ok, it's not, but will be soon";
+    STArray crnArray = ctx_.tx.getFieldArray(sfCRNs);
+    for ( STObject const& crnObject : crnArray)
+    {
+        if (!crnObject.isFieldPresent(sfPublicKey))
+        {
+            JLOG(j_.error()) << "CRNRound malformed transaction. Should be caught in preflight";
+            return temMALFORMED;
+        }
+        Blob pkBlob = crnObject.getFieldVL(sfPublicKey);
+        PublicKey crnPubKey(Slice(pkBlob.data(), pkBlob.size()));
+        AccountID dstAccountID = calcAccountID(crnPubKey);
 
+        auto const keyletDstAccount = keylet::account(dstAccountID);
+        SLE::pointer sleDst = view().peek (keyletDstAccount);
+        if (!sleDst)
+        {
+            JLOG(j_.error()) << "CRNRound malformed transaction. Fee receiver account: " <<toBase58(dstAccountID)
+                             << "does not exist.";
+            return temMALFORMED;
+        }
+        view().update (sleDst);
+
+        sleDst->setFieldAmount(sfBalance,
+                               sleDst->getFieldAmount(sfBalance) + crnObject.getFieldAmount(sfCRN_FeeDistributed));
+
+        // Re-arm the password change fee if we can and need to.
+        if ((sleDst->getFlags () & lsfPasswordSpent))
+            sleDst->clearFlag (lsfPasswordSpent);
+    }
+
+    crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
+    crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, ctx_.tx.getFieldAmount(sfCRN_FeeDistributed));
+
+    JLOG(j_.warn()) << "Fee have been distributed";
     return tesSUCCESS;
 }
 
 }
+
