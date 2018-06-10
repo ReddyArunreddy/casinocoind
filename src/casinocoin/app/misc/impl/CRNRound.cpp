@@ -181,6 +181,9 @@ CRNRoundImpl::CRNRoundImpl(int majorityFraction, beast::Journal journal)
 
 void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClosedLedger, STObject &baseValidation)
 {
+    JLOG (j_.info()) <<
+        "CRNRoundImpl::doValidation with " << eligibilityMap_.size() << " candidates";
+
     std::lock_guard <std::mutex> sl (mutex_);
 
     STArray crnArray(sfCRNs);
@@ -200,13 +203,9 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
-    // tx structure:     add ("SetCRNRound", ttCRN_ROUND)
-//    << SOElement (sfCRNs,                SOE_REQUIRED)
-//    << SOElement (sfCRN_FeeDistributed,  SOE_REQUIRED)
-//    obj.setAccountID (sfAccount, AccountID());
+    std::lock_guard <std::mutex> sl (mutex_);
 
     detail::VotableInteger<std::int64_t> feeToDistribute (0, lastFeeDistributionPosition_.drops());
-
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like

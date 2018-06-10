@@ -358,7 +358,7 @@ CCLConsensus::onClose(
             // jrojek TODO enable check
             //        if (prevLedger->rules().enabled(featureCRN))
             //        {
-            if ((prevLedger->info().seq % (1024)) == 0)
+            if ((prevLedger->info().seq % (300)) == 0)
             {
                 app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
             }
@@ -884,7 +884,7 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
 
-    if (((ledger.seq() + 1) % 1024) == 0)
+    if (((ledger.seq() + 1) % 300) == 0)
     {
         JLOG(j_.debug()) << "next ledger % 1024 == 0, evaluate CRNRound";
         app_.getCRNRound().doValidation(ledger.ledger_, *v);

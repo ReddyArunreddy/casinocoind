@@ -150,20 +150,22 @@ CRNPerformanceImpl::prepareReport (
     preparedReport_.clear_activated();
 
     // ajochems: no connection status reporting for now
-    // for (uint32_t i = 0; i < 5; i++)
-    // {
-    //     StatusAccounting::Counters counterToReport;
-    //     counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
-    //     counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
+    // jrojek:  we need to report state for peer crawling procedure, but we can strip down
+    //          message to minimum when broadcasting ;)
+     for (uint32_t i = 0; i < 5; i++)
+     {
+         StatusAccounting::Counters counterToReport;
+         counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
+         counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
 
-    //     lastSnapshot_[i].dur = counters[i].dur;
-    //     lastSnapshot_[i].transitions = counters[i].transitions;
+         lastSnapshot_[i].dur = counters[i].dur;
+         lastSnapshot_[i].transitions = counters[i].transitions;
 
-    //     protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
-    //     newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
-    //     newStatus->set_duration(counterToReport.dur.count());
-    //     newStatus->set_transitions(counterToReport.transitions);
-    // }
+         protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
+         newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
+         newStatus->set_duration(counterToReport.dur.count());
+         newStatus->set_transitions(counterToReport.transitions);
+     }
     preparedReport_.set_currstatus(currentStatus);
     preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
     preparedReport_.set_ledgerseqend(lastClosedLedgerSeq);
@@ -196,17 +198,22 @@ CRNPerformanceImpl::prepareReport (
 
 protocol::TMReportState const& CRNPerformanceImpl::getPreparedReport() const
 {
+    std::lock_guard<std::mutex> sl(recentLock_);
     return preparedReport_;
 }
 
 void CRNPerformanceImpl::broadcast(Application &app)
 {
+    std::lock_guard<std::mutex> sl(recentLock_);
+    protocol::TMReportState strippedStateReport = preparedReport_;
+    strippedStateReport.clear_status();
     app.overlay ().foreach (send_always (
-        std::make_shared<Message> (preparedReport_, protocol::mtREPORT_STATE)));
+        std::make_shared<Message> (strippedStateReport, protocol::mtREPORT_STATE)));
 }
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
 {
+    std::lock_guard<std::mutex> sl(recentLock_);
     if (m->status_size() != peerSelfAccounting_.size())
     {
         JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()

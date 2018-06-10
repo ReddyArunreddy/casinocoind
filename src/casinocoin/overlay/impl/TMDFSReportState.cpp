@@ -28,6 +28,7 @@
 #include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/impl/PeerImp.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
+#include <casinocoin/app/misc/CRNRound.h>
 
 namespace casinocoin {
 
@@ -208,6 +209,8 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     {
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size() << " known peers count: " << knownPeers.size();
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
+        CRN::EligibilityMap eligibilityMap;
+
         for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
         {
             protocol::TMReportState const& rep = iter->report();
@@ -224,9 +227,13 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
                                       << "transitions " << iterStatuses->transitions()
                                       << "duration " << iterStatuses->duration();
             }
+
+
+            eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), true));
         }
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 
+        app_.getCRNRound().updatePosition(eligibilityMap);
         // jrojek TODO: apply some formula to determine Yes/No eligibility for fee payout
         // jrojek TODO: and spread the news with app_
     }
