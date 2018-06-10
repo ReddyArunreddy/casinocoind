@@ -47,7 +47,7 @@ public:
      * info methods
      * ---------------
     */
-    static uint32_t getReportingPeriod() { return 64; }
+    static uint32_t getReportingPeriod() { return 100; }
 
     /** Returns a Json::objectValue. */
     virtual Json::Value json () const = 0;

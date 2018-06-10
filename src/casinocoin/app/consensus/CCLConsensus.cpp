@@ -336,33 +336,37 @@ CCLConsensus::onClose(
     //        }
 
     // Add pseudo-transactions to the set
-    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
-        ((prevLedger->info().seq % 256) == 0))
+    if ((app_.config().standalone() || (proposing && !wrongLCL)))
     {
-        // previous ledger was flag ledger, add pseudo-transactions
         auto const validations =
-            app_.getValidations().getValidations(prevLedger->info().parentHash);
+                app_.getValidations().getValidations(prevLedger->info().parentHash);
 
         std::size_t const count = std::count_if(
-            validations.begin(), validations.end(), [](auto const& v) {
-                return v.second->isTrusted();
-            });
+                    validations.begin(), validations.end(), [](auto const& v) {
+            return v.second->isTrusted();
+        });
 
-        if (count >= app_.validators().quorum())
+        if ((prevLedger->info().seq % 256) == 0)
         {
-            feeVote_->doVoting(prevLedger, validations, initialSet);
-            app_.getAmendmentTable().doVoting(
-                prevLedger, validations, initialSet);
-
-
-            // jrojek TODO enable check
-            //        if (prevLedger->rules().enabled(featureCRN))
-            //        {
-            if ((prevLedger->info().seq % (300)) == 0)
+            // previous ledger was flag ledger, add pseudo-transactions
+            if (count >= app_.validators().quorum())
             {
-                app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
+                feeVote_->doVoting(prevLedger, validations, initialSet);
+                app_.getAmendmentTable().doVoting(
+                            prevLedger, validations, initialSet);
+
             }
-            //        }
+        }
+        if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod() * 3) == 0)
+        {
+            if (count >= app_.validators().quorum())
+            {
+                // jrojek TODO enable check
+                //        if (prevLedger->rules().enabled(featureCRN))
+                //        {
+                app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
+                //        }
+            }
         }
     }
 
@@ -884,7 +888,7 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
 
-    if (((ledger.seq() + 1) % 300) == 0)
+    if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod() * 3) == 0)
     {
         JLOG(j_.debug()) << "next ledger % 1024 == 0, evaluate CRNRound";
         app_.getCRNRound().doValidation(ledger.ledger_, *v);
