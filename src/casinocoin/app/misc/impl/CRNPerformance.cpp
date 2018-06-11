@@ -214,12 +214,12 @@ void CRNPerformanceImpl::broadcast(Application &app)
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
 {
     std::lock_guard<std::mutex> sl(recentLock_);
-    if (m->status_size() != peerSelfAccounting_.size())
-    {
-        JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
-                                << "  != status supported count == " << peerSelfAccounting_.size();
-        return false;
-    }
+//    if (m->status_size() != peerSelfAccounting_.size())
+//    {
+//        JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
+//                                << "  != status supported count == " << peerSelfAccounting_.size();
+//        return false;
+//    }
 
     latency_ = m->latency();
     for (int i = 0; i < m->status_size(); ++i)

@@ -89,6 +89,8 @@ public:
             if (isEligible(yesVote.first))
                 eligibleList.push_back(yesVote.first);
         }
+        if (eligibleList.size() == 0)
+            return;
 
         div_t share = div(feeDistributionVote_.drops(), eligibleList.size());
         feeRemainFromShare_ = share.rem;
@@ -203,9 +205,9 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
-    std::lock_guard <std::mutex> sl (mutex_);
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting validations: " << parentValidations.size();
 
-    detail::VotableInteger<std::int64_t> feeToDistribute (0, lastFeeDistributionPosition_.drops());
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, SYSTEM_CURRENCY_START);
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like
@@ -220,6 +222,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
             // get all votes for CRNs of given validator
             STArray const& crnVotesOfNode =
                     singleValidation.second->getFieldArray(sfCRNs);
+            JLOG(j_.info()) << "CRNRoundImpl::doVoting size of passed CRN array: " << crnVotesOfNode.size();
             for ( auto voteOfNodeIter = crnVotesOfNode.begin(); voteOfNodeIter != crnVotesOfNode.end(); ++voteOfNodeIter)
             {
                 STObject const& crnSTObject = *voteOfNodeIter;
@@ -236,17 +239,20 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         }
         if (singleValidation.second->isFieldPresent(sfCRN_FeeDistributed))
         {
-            feeToDistribute.addVote(singleValidation.second->isFieldPresent(sfCRN_FeeDistributed));
+            feeToDistribute.addVote(singleValidation.second->getFieldAmount(sfCRN_FeeDistributed).csc().drops());
         }
         else
         {
             feeToDistribute.noVote();
         }
-
+        JLOG(j_.info()) << "CRNRoundImpl::doVoting evaluation of one validation finished";
         crnVote->tally (singleNodePosition);
     }
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting out of validations loop";
     crnVote->mThreshold = std::max(1, (crnVote->mTrustedValidations * majorityFraction_) / 256);
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting threshold calculated at: " << crnVote->mThreshold;
     crnVote->setFeeDistributionVote(CSCAmount(feeToDistribute.getVotes()));
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting setFeeDistributionVote set";
     crnVote->setVotingFinished();
 
     JLOG (j_.info()) <<
@@ -309,6 +315,8 @@ void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
     // call from outside to update our position
     std::lock_guard <std::mutex> sl (mutex_);
     eligibilityMap_ = currentPosition;
+    JLOG (j_.info()) <<
+        "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
 }
 
 

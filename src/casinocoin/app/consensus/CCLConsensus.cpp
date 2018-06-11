@@ -324,13 +324,16 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 30)) == 0)
+    if (app_.isCRN() && ((prevLedger->info().seq + 30) % CRNPerformance::getReportingPeriod()) == 0)
     {
+        JLOG(j_.info()) << "CCLConsensus::onClose prepareReport";
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
+        JLOG(j_.info()) << "CCLConsensus::onClose broadcast";
         app_.getCRN().performance().broadcast(app_);
     }
-    if (proposing && !wrongLCL && (prevLedger->info().seq % CRNPerformance::getReportingPeriod() - 25) == 0)
+    if (proposing && !wrongLCL && ((prevLedger->info().seq + 25) % CRNPerformance::getReportingPeriod()) == 0)
     {
+        JLOG(j_.info()) << "CCLConsensus::onClose startDFSReportStateCrawl";
         app_.overlay().startDFSReportStateCrawl();
     }
     //        }
@@ -364,6 +367,7 @@ CCLConsensus::onClose(
                 // jrojek TODO enable check
                 //        if (prevLedger->rules().enabled(featureCRN))
                 //        {
+                JLOG(j_.info()) << "CCLConsensus::onClose doVoting on CRNRound";
                 app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
                 //        }
             }
@@ -890,7 +894,8 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
 
     if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
     {
-        JLOG(j_.debug()) << "next ledger % 1024 == 0, evaluate CRNRound";
+        JLOG(j_.info()) << "CCLConsensus::onClose doValidation on CRNRound";
+
         app_.getCRNRound().doValidation(ledger.ledger_, *v);
     }
 

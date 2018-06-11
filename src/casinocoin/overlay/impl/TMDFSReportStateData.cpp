@@ -35,29 +35,50 @@ TMDFSReportStateData::TMDFSReportStateData(OverlayImpl& overlay,
 {
 }
 
-void TMDFSReportStateData::restartTimer(std::string const& initiatorPubKey,
-                                                    std::string const& currRecipient,
-                                                    protocol::TMDFSReportState const& currPayload)
+void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
+                                        std::string const& currRecipient,
+                                        protocol::TMDFSReportState const& currPayload)
 {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    if (dfsTimers_.find(initiatorPubKey) == dfsTimers_.end())
-        dfsTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer() begin";
+    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
+        ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
-    dfsTimers_[initiatorPubKey]->setExpiration(1s);
+    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
+        responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+
+    ackTimers_[initiatorPubKey]->setExpiration(1s);
+    responseTimers_[initiatorPubKey]->setExpiration(20s);
+
     lastReqRecipient_[initiatorPubKey] = currRecipient;
     lastReq_[initiatorPubKey] = currPayload;
+    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer() end";
 }
 
-void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey)
+void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
 {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    if (dfsTimers_.find(initiatorPubKey) != dfsTimers_.end())
-        dfsTimers_[initiatorPubKey]->cancel();
-    else
-        JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find timer for root node: "
-                              << initiatorPubKey;
+    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer() type: " << type << " begin";
+    if (type == ACK_TIMER)
+    {
+        if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
+            ackTimers_[initiatorPubKey]->cancel();
+        else
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find ACK_TIMER for root node: "
+                                  << initiatorPubKey;
+    }
+    else if (type == RESPONSE_TIMER)
+    {
+        if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
+            responseTimers_[initiatorPubKey]->cancel();
+        else
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find RESPONSE_TIMER for root node: "
+                                  << initiatorPubKey;
+    }
+    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer() type: " << type << " end";
+
 }
 
 protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
@@ -76,10 +97,11 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     // or because node does not support CRN feature. Either way, we decide that this node is already
     // visited and do not account its state
     std::lock_guard<decltype(mutex_)> lock(mutex_);
+    JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer()";
     timer.cancel();
 
     std::string initiator;
-    for (auto iter = dfsTimers_.begin(); iter != dfsTimers_.end(); ++iter)
+    for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
     {
         if (*(iter->second) == timer)
         {
@@ -87,6 +109,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
             break;
         }
     }
+    cancelTimer(initiator, RESPONSE_TIMER);
     lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
     lastReq_[initiator].set_type(protocol::TMDFSReportState::rtRESP);
 

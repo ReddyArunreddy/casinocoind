@@ -82,6 +82,7 @@ Change::preflight (PreflightContext const& ctx)
             }
         }
     }
+    JLOG(ctx.j.warn()) << "preflight OK";
     return tesSUCCESS;
 }
 
@@ -253,6 +254,7 @@ Change::applyFee()
 
 TER Change::applyCRN_Round()
 {
+    JLOG(j_.warn()) << "applyCRN_Round";
     auto const keyletCrnRound = keylet::crnRound();
 
     SLE::pointer crnRoundObject = view().peek(keyletCrnRound);
@@ -266,6 +268,7 @@ TER Change::applyCRN_Round()
     STArray crnArray = ctx_.tx.getFieldArray(sfCRNs);
     for ( STObject const& crnObject : crnArray)
     {
+        JLOG(j_.warn()) << "applyCRN_Round evaluating crn objects";
         if (!crnObject.isFieldPresent(sfPublicKey))
         {
             JLOG(j_.error()) << "CRNRound malformed transaction. Should be caught in preflight";
@@ -292,10 +295,13 @@ TER Change::applyCRN_Round()
             sleDst->clearFlag (lsfPasswordSpent);
     }
 
+    JLOG(j_.warn()) << "applyCRN_Round almost done";
     crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
     crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, ctx_.tx.getFieldAmount(sfCRN_FeeDistributed));
 
     // here, drops are added back to the pool
+    JLOG(j_.warn()) << "applyCRN_Round redistribute fee";
+
     ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());
 
     JLOG(j_.warn()) << "Fee have been distributed";

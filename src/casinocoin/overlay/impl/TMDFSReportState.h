@@ -39,6 +39,10 @@
 
 namespace casinocoin {
 
+// jrojek TODO: add separate timer to protect crawl break
+// when some node respond with ACK but does not respond in sane time
+// we should mark it as suspicious node and evaluate it accordingly in future
+
 class TMDFSReportState
 {
 public:

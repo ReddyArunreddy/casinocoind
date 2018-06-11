@@ -186,21 +186,21 @@ message TMStatusChange
 
 message TMReportState
 {
-    required NodeStatus currStatus      = 1;
-    required uint32 ledgerSeqBegin      = 2;
-    required uint32 ledgerSeqEnd        = 3;
+    optional NodeStatus currStatus      = 1;
+    optional uint32 ledgerSeqBegin      = 2;
+    optional uint32 ledgerSeqEnd        = 3;
     message Status
     {
-        required NodeStatus mode        = 4;
-        required uint32 transitions     = 5;
-        required uint32 duration        = 6;
+        optional NodeStatus mode        = 4;
+        optional uint32 transitions     = 5;
+        optional uint32 duration        = 6;
     }
     repeated Status status              = 7;
-    required uint32 latency             = 8;
-    required bytes crnPubKey            = 9;
-    required string domain              = 10;
+    optional uint32 latency             = 8;
+    optional bytes crnPubKey            = 9;
+    optional string domain              = 10;
     optional string signature           = 11;
-    required bool activated             = 12;
+    optional bool activated             = 12;
 }
 
 message TMDFSReportState

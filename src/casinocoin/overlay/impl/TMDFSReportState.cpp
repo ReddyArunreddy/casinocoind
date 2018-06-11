@@ -61,22 +61,26 @@ void TMDFSReportState::start()
     msg.add_dfs(pubKeyString_);
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
-    overlay_.getDFSReportStateData().restartTimer(pubKeyString_,
+    overlay_.getDFSReportStateData().restartTimers(pubKeyString_,
                                                   toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
                                                   msg);
 
     parentPeer_.send(std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE));
+    JLOG(journal_.info()) << "TMDFSReportState::start TMDFSReportState";
 }
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
 
-    if (m->type() != protocol::TMDFSReportState::rtREQ)
+    protocol::TMDFSReportState forwardMsg = *m;
+    if (forwardMsg.type() != protocol::TMDFSReportState::rtREQ)
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
                                << "TMDFSReportState evaluating req but it is not a req";
-        return;
+        // jrojek... need to protect this situation not to break whole crawl procedure somehow
+        // jrojek... for now just retrieve 'valid state'
+        forwardMsg.set_type(protocol::TMDFSReportState::rtREQ);
     }
 
     for (std::string const& visitedNode : m->visited())
@@ -85,11 +89,11 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
         {
             JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
                                    << "TMDFSReportState received Req in a node which is already on the list! " << pubKeyString_;
-            return;
+            // jrojek... ignore this case for now
         }
     }
 
-    protocol::TMDFSReportState forwardMsg = *m;
+    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 1";
     if (app_.isCRN())
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = forwardMsg.add_reports ();
@@ -115,13 +119,15 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
             }
             if (alreadyVisited)
                 continue;
+            JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 2";
 
             forwardMsg.set_type(protocol::TMDFSReportState::rtREQ);
             forwardMsg.add_dfs(pubKeyString_);
 
-            overlay_.getDFSReportStateData().restartTimer(forwardMsg.dfs(0),
+            overlay_.getDFSReportStateData().restartTimers(forwardMsg.dfs(0),
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           forwardMsg);
+            JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 3";
 
             singlePeer->send(std::make_shared<Message>(forwardMsg, protocol::mtDFS_REPORT_STATE));
 
@@ -138,6 +144,7 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     // if we reach this point this means that we already visited all our peers and we know of their state
     forwardMsg.set_type(protocol::TMDFSReportState::rtRESP);
 
+    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 4";
     parentPeer_.send(std::make_shared<Message>(forwardMsg, protocol::mtDFS_REPORT_STATE));
 }
 
@@ -148,7 +155,9 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     if (m->type() != protocol::TMDFSReportState::rtRESP)
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() TMDFSReportState evaluating resp but it is not a resp";
-        return;
+        // jrojek... need to protect this situation not to break whole crawl procedure somehow
+        // jrojek... for now just retrieve 'valid state'
+        m->set_type(protocol::TMDFSReportState::rtRESP);
     }
 
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
@@ -169,11 +178,15 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
             if (alreadyVisited)
                 continue;
 
+            JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 1";
             m->set_type(protocol::TMDFSReportState::rtREQ);
-            overlay_.getDFSReportStateData().restartTimer(m->dfs(0),
+            JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 1.1 dfsSize " << m->dfs_size();
+            overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), TMDFSReportStateData::RESPONSE_TIMER);
+            overlay_.getDFSReportStateData().restartTimers(m->dfs(0),
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           *m);
 
+            JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 2";
             singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
             return;
         }
@@ -185,9 +198,15 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         return;
     }
 
+    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 3";
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 4";
+        overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), TMDFSReportStateData::RESPONSE_TIMER);
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 5";
         dfsList->RemoveLast();
+    }
     else
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' "
@@ -196,10 +215,12 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
     if (dfsList->size() > 0)
     {
+        JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 6";
         for (auto const& singlePeer : knownPeers)
         {
             if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
             {
+                JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()) << " chkpt: 7";
                 singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
                 break;
             }
@@ -241,7 +262,8 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot());
+    JLOG(journal_.info()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
+    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), TMDFSReportStateData::ACK_TIMER);
 }
 
 } // namespace casinocoin
