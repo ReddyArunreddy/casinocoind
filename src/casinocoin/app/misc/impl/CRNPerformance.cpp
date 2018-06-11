@@ -267,6 +267,7 @@ void CRNPerformanceImpl::initializePerformanceReport()
     preparedReport_.set_domain(id.domain());
     preparedReport_.set_signature(id.signature());
     preparedReport_.set_latency(10000);
+    preparedReport_.set_activated(false);
 }
 
 //-------------------------------------------------------------------------------------
