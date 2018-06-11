@@ -269,6 +269,9 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         STAmount feeToDistributeST(crnVote->feeDistributionVote());
 
         CRN::EligibilityPaymentMap txVoteMap = crnVote->votes();
+        if (txVoteMap.size() == 0)
+            return;
+
         for ( auto iter = txVoteMap.begin(); iter != txVoteMap.end(); ++iter)
         {
             crnArray.push_back (STObject (sfCRN));
