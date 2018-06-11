@@ -285,8 +285,7 @@ TER Change::applyCRN_Round()
         }
         view().update (sleDst);
 
-        sleDst->setFieldAmount(sfBalance,
-                               sleDst->getFieldAmount(sfBalance) + crnObject.getFieldAmount(sfCRN_FeeDistributed));
+        sleDst->setFieldAmount(sfBalance, sleDst->getFieldAmount(sfBalance) + crnObject.getFieldAmount(sfCRN_FeeDistributed));
 
         // Re-arm the password change fee if we can and need to.
         if ((sleDst->getFlags () & lsfPasswordSpent))
@@ -295,6 +294,9 @@ TER Change::applyCRN_Round()
 
     crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
     crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, ctx_.tx.getFieldAmount(sfCRN_FeeDistributed));
+
+    // here, drops are added back to the pool
+    ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());
 
     JLOG(j_.warn()) << "Fee have been distributed";
     return tesSUCCESS;

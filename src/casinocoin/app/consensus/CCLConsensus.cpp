@@ -324,12 +324,12 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 10)) == 0)
+    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 30)) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
         app_.getCRN().performance().broadcast(app_);
     }
-    if (proposing && !wrongLCL && prevLedger->info().seq % CRNPerformance::getReportingPeriod() == 0)
+    if (proposing && !wrongLCL && (prevLedger->info().seq % CRNPerformance::getReportingPeriod() - 25) == 0)
     {
         app_.overlay().startDFSReportStateCrawl();
     }
@@ -357,7 +357,7 @@ CCLConsensus::onClose(
 
             }
         }
-        if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod() * 3) == 0)
+        if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod()) == 0)
         {
             if (count >= app_.validators().quorum())
             {
@@ -888,7 +888,7 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
 
-    if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod() * 3) == 0)
+    if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
     {
         JLOG(j_.debug()) << "next ledger % 1024 == 0, evaluate CRNRound";
         app_.getCRNRound().doValidation(ledger.ledger_, *v);

@@ -58,7 +58,7 @@ getLedgerFeeIndex ();
 
 // get the index of the node that holds the Community Relay Node
 uint256
-getLedgerFeeIndex ();
+getLedgerCRN_RoundIndex ();
 
 uint256
 getAccountRootIndex (AccountID const& account);

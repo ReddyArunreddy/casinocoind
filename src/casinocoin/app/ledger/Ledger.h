@@ -224,12 +224,13 @@ public:
     rawDestroyCSC (CSCAmount const& fee) override
     {
         // HERE ARE DROPS DESTROYED
-        // 
-        // in the future we will divide the fee over the validating nodes!
-
-        // jrojek TODO: redirect that back to the pool via ttCRN_FEE_DISTRIB + ttCRN_ROUND
         info_.drops -= fee;
-        
+    }
+
+    void
+    rawRedistributeCSC (CSCAmount const& dropsRedistributed) override
+    {
+        info_.drops += dropsRedistributed;
     }
 
     //
