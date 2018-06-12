@@ -156,6 +156,7 @@ TxFormats::TxFormats ()
     // jrojek TODO: well, might require huge refactoring
     // as this might not be completly what it is meant to be
     add ("SetCRNRound", ttCRN_ROUND)
+        << SOElement (sfLedgerSequence,      SOE_OPTIONAL)
         << SOElement (sfCRNs,                SOE_REQUIRED)
         << SOElement (sfCRN_FeeDistributed,  SOE_REQUIRED)
         ;

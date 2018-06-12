@@ -221,13 +221,17 @@ bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMRepo
 //        return false;
 //    }
 
-    latency_ = m->latency();
+    if (m->has_latency())
+        latency_ = m->latency();
+    else
+        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage latency missing in msg";
+
     for (int i = 0; i < m->status_size(); ++i)
     {
         const protocol::TMReportState::Status& singleStatus = m->status(i);
-        uint32_t index = static_cast<uint32_t>(singleStatus.mode()) - 1;
-        peerSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.duration());
-        peerSelfAccounting_[index].transitions = singleStatus.transitions();
+        uint32_t index = static_cast<uint32_t>(singleStatus.has_mode() ? singleStatus.mode() : 1) - 1;
+        peerSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.has_duration() ? singleStatus.duration() : 0);
+        peerSelfAccounting_[index].transitions = singleStatus.has_transitions() ? singleStatus.transitions() : 888;
 //        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: spent: " << peerSelfAccounting_[index].dur.count()
 //                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
 //                                << "transitioned: " << peerSelfAccounting_[index].transitions << " times"

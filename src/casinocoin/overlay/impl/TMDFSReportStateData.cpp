@@ -135,9 +135,9 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     if (knownPeers.size() > 0)
     // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
     {
-        lastReq_[initiator].set_type(protocol::TMDFSReportState::rtREQ);
         knownPeers[0]->dfsReportState().evaluateResponse(std::make_shared<protocol::TMDFSReportState>(lastReq_[initiator]));
     }
+    lastReq_[initiator].set_type(protocol::TMDFSReportState::rtREQ);
 }
 
 }

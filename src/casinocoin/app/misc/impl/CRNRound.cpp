@@ -268,7 +268,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 
 
     {
-        LedgerIndex seq = lastClosedLedger->seq() + 1;
+        auto const seq = lastClosedLedger->info().seq + 1;
         STArray crnArray(sfCRNs);
         STAmount feeToDistributeST(crnVote->feeDistributionVote());
 
@@ -292,17 +292,24 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         JLOG(j_.warn()) <<
             "We are voting for a CRNEligibility";
 
+        beast::Journal journ (j_);
         try
         {
             STTx crnRoundTx (ttCRN_ROUND,
-                [seq, crnArray, feeToDistributeST](auto& obj)
+                [seq, crnArray, feeToDistributeST, journ](auto& obj)
                 {
+                    JLOG(journ.warn()) << "tx creation checkpoint0";
                     obj[sfAccount] = AccountID();
+                    JLOG(journ.warn()) << "tx creation checkpoint1";
                     obj[sfLedgerSequence] = seq;
+                    JLOG(journ.warn()) << "tx creation checkpoint2";
                     obj[sfCRN_FeeDistributed] = feeToDistributeST;
+                    JLOG(journ.warn()) << "tx creation checkpoint3";
                     obj.setFieldArray(sfCRNs, crnArray);
+                    JLOG(journ.warn()) << "tx creation checkpoint4";
                 });
 
+            JLOG(j_.warn()) << "Tx created";
             uint256 txID = crnRoundTx.getTransactionID ();
 
             JLOG(j_.warn()) <<
@@ -311,7 +318,11 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
             Serializer s;
             crnRoundTx.add (s);
 
+            JLOG(j_.warn()) << "tx serialized";
+
             auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
+
+            JLOG(j_.warn()) << "tx hashed";
 
             if (!initialPosition->addGiveItem (tItem, true, false))
             {
@@ -321,7 +332,12 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         }
         catch(std::runtime_error const& err)
         {
-            JLOG(j_.error()) << "caught exception during creation of ttCRN_ROUND tx: " << err.what();
+            JLOG(j_.error()) << "caught runtime_error during creation of ttCRN_ROUND tx: " << err.what();
+            return;
+        }
+        catch(...)
+        {
+            JLOG(j_.error()) << "caught other exception during creation of ttCRN_ROUND tx";
             return;
         }
     }
