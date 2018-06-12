@@ -231,26 +231,28 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size() << " known peers count: " << knownPeers.size();
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
         CRN::EligibilityMap eligibilityMap;
-
         for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
         {
             protocol::TMReportState const& rep = iter->report();
-            JLOG(journal_.info()) << " currStatus " << rep.currstatus()
-                                  << " ledgerSeqBegin " << rep.ledgerseqbegin()
-                                  << " ledgerSeqEnd " << rep.ledgerseqend()
-                                  << " latency " << rep.latency()
-                                  << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
-                                  << " domain " << rep.domain()
-                                  << " signature " << rep.signature();
-            for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
+            if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
             {
-                JLOG(journal_.info()) << "mode " << iterStatuses->mode()
-                                      << "transitions " << iterStatuses->transitions()
-                                      << "duration " << iterStatuses->duration();
+                JLOG(journal_.info()) << " currStatus " << rep.currstatus()
+                                      << " ledgerSeqBegin " << rep.ledgerseqbegin()
+                                      << " ledgerSeqEnd " << rep.ledgerseqend()
+                                      << " latency " << rep.latency()
+                                      << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
+                                      << " domain " << rep.domain()
+                                      << " signature " << rep.signature();
+                for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
+                {
+                    JLOG(journal_.info()) << "mode " << iterStatuses->mode()
+                                          << "transitions " << iterStatuses->transitions()
+                                          << "duration " << iterStatuses->duration();
+                }
+
+
+                eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), true));
             }
-
-
-            eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), true));
         }
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 

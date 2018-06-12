@@ -123,6 +123,10 @@ public:
 private:
     bool isEligible(PublicKey const& crnNode) const
     {
+        // jrojek TODO: REMOVE THIS
+        return true;
+
+
         uint32_t votesCombined = 0;
 
         auto const& itYes = yesVotes_.find (crnNode);
@@ -207,7 +211,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 {
     JLOG(j_.info()) << "CRNRoundImpl::doVoting validations: " << parentValidations.size();
 
-    detail::VotableInteger<std::int64_t> feeToDistribute (0, SYSTEM_CURRENCY_START);
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, 0);
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like
@@ -270,7 +274,10 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 
         CRN::EligibilityPaymentMap txVoteMap = crnVote->votes();
         if (txVoteMap.size() == 0)
+        {
+            JLOG(j_.warn()) << "No nodes eligible for payout. giving up this time";
             return;
+        }
 
         for ( auto iter = txVoteMap.begin(); iter != txVoteMap.end(); ++iter)
         {
