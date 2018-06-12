@@ -211,7 +211,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 {
     JLOG(j_.info()) << "CRNRoundImpl::doVoting validations: " << parentValidations.size();
 
-    detail::VotableInteger<std::int64_t> feeToDistribute (0, 0);
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, 10);
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like
@@ -290,31 +290,39 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         }
 
         JLOG(j_.warn()) <<
-            "We are voting for a CRNEligibility: ";
+            "We are voting for a CRNEligibility";
 
-        STTx crnRoundTx (ttCRN_ROUND,
-            [seq, crnArray, feeToDistributeST](auto& obj)
-            {
-                obj[sfAccount] = AccountID();
-                obj[sfLedgerSequence] = seq;
-                obj[sfCRN_FeeDistributed] = feeToDistributeST;
-                obj.setFieldArray(sfCRNs, crnArray);
-            });
-
-        uint256 txID = crnRoundTx.getTransactionID ();
-
-        JLOG(j_.warn()) <<
-            "CRNRound tx id: " << txID;
-
-        Serializer s;
-        crnRoundTx.add (s);
-
-        auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
-
-        if (!initialPosition->addGiveItem (tItem, true, false))
+        try
         {
+            STTx crnRoundTx (ttCRN_ROUND,
+                [seq, crnArray, feeToDistributeST](auto& obj)
+                {
+                    obj[sfAccount] = AccountID();
+                    obj[sfLedgerSequence] = seq;
+                    obj[sfCRN_FeeDistributed] = feeToDistributeST;
+                    obj.setFieldArray(sfCRNs, crnArray);
+                });
+
+            uint256 txID = crnRoundTx.getTransactionID ();
+
             JLOG(j_.warn()) <<
-                "Ledger already had crn eligibility vote change";
+                "CRNRound tx id: " << txID;
+
+            Serializer s;
+            crnRoundTx.add (s);
+
+            auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
+
+            if (!initialPosition->addGiveItem (tItem, true, false))
+            {
+                JLOG(j_.warn()) <<
+                    "Ledger already had crn eligibility vote change";
+            }
+        }
+        catch(std::runtime_error const& err)
+        {
+            JLOG(j_.error()) << "caught exception during creation of ttCRN_ROUND tx: " << err.what();
+            return;
         }
     }
     lastVote_ = std::move(crnVote);
