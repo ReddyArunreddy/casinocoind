@@ -1779,7 +1779,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
+    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState.";
 
     if (!crn_)
     {
