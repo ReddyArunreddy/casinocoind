@@ -92,7 +92,7 @@ public:
         if (eligibleList.size() == 0)
             return;
 
-        div_t share = div(feeDistributionVote_.drops(), eligibleList.size());
+        ldiv_t share = div(feeDistributionVote_.drops(), eligibleList.size());
         feeRemainFromShare_ = share.rem;
 
         for ( auto const& eligibleNode : eligibleList)
