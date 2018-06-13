@@ -29,6 +29,7 @@
 #include <casinocoin/overlay/impl/PeerImp.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/app/misc/CRNRound.h>
+#include <casinocoin/app/misc/CRNList.h>
 
 namespace casinocoin {
 
@@ -224,11 +225,12 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
             protocol::TMReportState const& rep = iter->report();
             if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
             {
+                boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
                 JLOG(journal_.info()) << " currStatus " << rep.currstatus()
                                       << " ledgerSeqBegin " << rep.ledgerseqbegin()
                                       << " ledgerSeqEnd " << rep.ledgerseqend()
                                       << " latency " << rep.latency()
-                                      << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
+                                      << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,*pk)
                                       << " domain " << rep.domain()
                                       << " signature " << rep.signature();
                 for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
@@ -237,16 +239,46 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
                                           << "transitions " << iterStatuses->transitions()
                                           << "duration " << iterStatuses->duration();
                 }
-
-
-                eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), true));
+                bool eligible = true;
+                // check if node is on CRNList
+                if(app_.relaynodes().listed(*pk))
+                {
+                    // check if signature is valid
+                    auto unHexedSignature = strUnHex(rep.signature());
+                    if (unHexedSignature.second && pk)
+                    {
+                        eligible = casinocoin::verify(
+                            *pk,
+                            makeSlice(strHex(rep.domain())),
+                            makeSlice(unHexedSignature.first)
+                        );
+                    }
+                    if(eligible)
+                    {
+                        // check if latency is acceptable
+                        if(rep.latency() > app_.config().CRN_MAX_LATENCY)
+                        {
+                            JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                            eligible = false;
+                        }
+                    }
+                    else
+                    {
+                        JLOG(journal_.info()) << "TMDFSReportState - Signature is invalid: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                    }
+                }
+                else
+                {
+                    JLOG(journal_.info()) << "TMDFSReportState - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                    eligible = false;
+                }
+                JLOG(journal_.info()) << "TMDFSReportState - PublicKey: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " Eligible:" << eligible;
+                eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
             }
         }
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 
         app_.getCRNRound().updatePosition(eligibilityMap);
-        // jrojek TODO: apply some formula to determine Yes/No eligibility for fee payout
-        // jrojek TODO: and spread the news with app_
     }
 }
 

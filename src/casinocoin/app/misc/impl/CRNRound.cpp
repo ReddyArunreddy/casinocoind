@@ -123,10 +123,6 @@ public:
 private:
     bool isEligible(PublicKey const& crnNode) const
     {
-        // jrojek TODO: REMOVE THIS
-        return true;
-
-
         uint32_t votesCombined = 0;
 
         auto const& itYes = yesVotes_.find (crnNode);

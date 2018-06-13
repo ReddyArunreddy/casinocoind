@@ -185,6 +185,7 @@ public:
 
     // CRN Defaults
     std::uint64_t               CRN_RESERVE = 100000000000000;    // 1,000,000 CSC
+    std::uint32_t               CRN_MAX_LATENCY = 500;      // maximum allowed latency for a CRN
 
     // These override the command line client settings
     boost::optional<boost::asio::ip::address_v4> rpc_ip;
