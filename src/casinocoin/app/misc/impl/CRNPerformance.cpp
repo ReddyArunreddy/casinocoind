@@ -224,7 +224,7 @@ bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMRepo
     if (m->has_latency())
         latency_ = m->latency();
     else
-        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage latency missing in msg";
+        JLOG(j_.debug()) << "CRNPerformanceImpl::onOverlayMessage latency missing in msg";
 
     for (int i = 0; i < m->status_size(); ++i)
     {
@@ -312,7 +312,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     if (nodeStatus == mode_)
         return;
 
-    JLOG(j_.info()) << "changing operating mode from " << mode_ << " to " << nodeStatus << " trans before: " << counters_[nodeStatus-1].transitions;
+    JLOG(j_.debug()) << "changing operating mode from " << mode_ << " to " << nodeStatus << " trans before: " << counters_[nodeStatus-1].transitions;
     auto now = std::chrono::system_clock::now();
 
     std::lock_guard<std::mutex> lock (mutex_);
@@ -320,7 +320,7 @@ void CRNPerformance::StatusAccounting::mode (protocol::NodeStatus nodeStatus)
     counters_[mode_-1].dur += std::chrono::duration_cast<
         std::chrono::seconds>(now - start_);
 
-    JLOG(j_.info()) << "trans after: " << counters_[nodeStatus-1].transitions;
+    JLOG(j_.debug()) << "trans after: " << counters_[nodeStatus-1].transitions;
     mode_ = nodeStatus;
     start_ = now;
 }

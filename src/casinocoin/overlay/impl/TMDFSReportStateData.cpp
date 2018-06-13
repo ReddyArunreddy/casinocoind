@@ -39,9 +39,11 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
                                         std::string const& currRecipient,
                                         protocol::TMDFSReportState const& currPayload)
 {
+    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer()"
+                          << "initiator: " << initiatorPubKey
+                          << " curr recipient: " << currRecipient;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer() begin";
     if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
         ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
@@ -53,31 +55,28 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
 
     lastReqRecipient_[initiatorPubKey] = currRecipient;
     lastReq_[initiatorPubKey] = currPayload;
-    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer() end";
 }
 
 void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
 {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer() type: " << type << " begin";
     if (type == ACK_TIMER)
     {
         if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
             ackTimers_[initiatorPubKey]->cancel();
         else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find ACK_TIMER for root node: "
-                                  << initiatorPubKey;
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find ACK_TIMER "
+                                  << "for root node: " << initiatorPubKey;
     }
     else if (type == RESPONSE_TIMER)
     {
         if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
             responseTimers_[initiatorPubKey]->cancel();
         else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find RESPONSE_TIMER for root node: "
-                                  << initiatorPubKey;
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find RESPONSE_TIMER "
+                                  <<"for root node: " << initiatorPubKey;
     }
-    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer() type: " << type << " end";
 
 }
 

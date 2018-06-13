@@ -92,11 +92,11 @@ public:
         if (eligibleList.size() == 0)
             return;
 
-        ldiv_t share = div(feeDistributionVote_.drops(), eligibleList.size());
-        feeRemainFromShare_ = share.rem;
+        feeRemainFromShare_ = CSCAmount(feeDistributionVote_.drops() % eligibleList.size());
+        uint64_t sharePerNode = feeDistributionVote_.drops() / eligibleList.size();
 
         for ( auto const& eligibleNode : eligibleList)
-            paymentMap_.insert(std::pair<PublicKey, CSCAmount>(eligibleNode, CSCAmount(share.quot)));
+            paymentMap_.insert(std::pair<PublicKey, CSCAmount>(eligibleNode, CSCAmount(sharePerNode)));
     }
 
     CRN::EligibilityPaymentMap votes () const
@@ -209,7 +209,7 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
-    JLOG(j_.info()) << "CRNRoundImpl::doVoting validations: " << parentValidations.size();
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size();
 
     detail::VotableInteger<std::int64_t> feeToDistribute (0, 10);
     auto crnVote = std::make_unique<NodesEligibilitySet>();
@@ -226,7 +226,6 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
             // get all votes for CRNs of given validator
             STArray const& crnVotesOfNode =
                     singleValidation.second->getFieldArray(sfCRNs);
-            JLOG(j_.info()) << "CRNRoundImpl::doVoting size of passed CRN array: " << crnVotesOfNode.size();
             for ( auto voteOfNodeIter = crnVotesOfNode.begin(); voteOfNodeIter != crnVotesOfNode.end(); ++voteOfNodeIter)
             {
                 STObject const& crnSTObject = *voteOfNodeIter;
@@ -249,14 +248,10 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         {
             feeToDistribute.noVote();
         }
-        JLOG(j_.info()) << "CRNRoundImpl::doVoting evaluation of one validation finished";
         crnVote->tally (singleNodePosition);
     }
-    JLOG(j_.info()) << "CRNRoundImpl::doVoting out of validations loop";
     crnVote->mThreshold = std::max(1, (crnVote->mTrustedValidations * majorityFraction_) / 256);
-    JLOG(j_.info()) << "CRNRoundImpl::doVoting threshold calculated at: " << crnVote->mThreshold;
     crnVote->setFeeDistributionVote(CSCAmount(feeToDistribute.getVotes()));
-    JLOG(j_.info()) << "CRNRoundImpl::doVoting setFeeDistributionVote set";
     crnVote->setVotingFinished();
 
     JLOG (j_.info()) <<
@@ -289,56 +284,30 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
             entry.emplace_back (crnFeeDistributed);
         }
 
-        JLOG(j_.warn()) <<
-            "We are voting for a CRNEligibility";
+        JLOG(j_.warn()) << "We are voting for a CRNEligibility";
 
-        beast::Journal journ (j_);
-        try
-        {
-            STTx crnRoundTx (ttCRN_ROUND,
-                [seq, crnArray, feeToDistributeST, journ](auto& obj)
-                {
-                    JLOG(journ.warn()) << "tx creation checkpoint0";
-                    obj[sfAccount] = AccountID();
-                    JLOG(journ.warn()) << "tx creation checkpoint1";
-                    obj[sfLedgerSequence] = seq;
-                    JLOG(journ.warn()) << "tx creation checkpoint2";
-                    obj[sfCRN_FeeDistributed] = feeToDistributeST;
-                    JLOG(journ.warn()) << "tx creation checkpoint3";
-                    obj.setFieldArray(sfCRNs, crnArray);
-                    JLOG(journ.warn()) << "tx creation checkpoint4";
-                });
-
-            JLOG(j_.warn()) << "Tx created";
-            uint256 txID = crnRoundTx.getTransactionID ();
-
-            JLOG(j_.warn()) <<
-                "CRNRound tx id: " << txID;
-
-            Serializer s;
-            crnRoundTx.add (s);
-
-            JLOG(j_.warn()) << "tx serialized";
-
-            auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
-
-            JLOG(j_.warn()) << "tx hashed";
-
-            if (!initialPosition->addGiveItem (tItem, true, false))
+        STTx crnRoundTx (ttCRN_ROUND,
+            [seq, crnArray, feeToDistributeST](auto& obj)
             {
-                JLOG(j_.warn()) <<
-                    "Ledger already had crn eligibility vote change";
-            }
-        }
-        catch(std::runtime_error const& err)
+                obj[sfAccount] = AccountID();
+                obj[sfLedgerSequence] = seq;
+                obj[sfCRN_FeeDistributed] = feeToDistributeST;
+                obj.setFieldArray(sfCRNs, crnArray);
+            });
+        
+        uint256 txID = crnRoundTx.getTransactionID ();
+        
+        JLOG(j_.warn()) << "CRNRound tx id: " << txID;
+        
+        Serializer s;
+        crnRoundTx.add (s);
+        
+        auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
+        
+        if (!initialPosition->addGiveItem (tItem, true, false))
         {
-            JLOG(j_.error()) << "caught runtime_error during creation of ttCRN_ROUND tx: " << err.what();
-            return;
-        }
-        catch(...)
-        {
-            JLOG(j_.error()) << "caught other exception during creation of ttCRN_ROUND tx";
-            return;
+            JLOG(j_.warn()) <<
+                               "Ledger already had crn eligibility vote change";
         }
     }
     lastVote_ = std::move(crnVote);

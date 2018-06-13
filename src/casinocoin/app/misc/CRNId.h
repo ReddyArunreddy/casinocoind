@@ -133,13 +133,13 @@ public:
 
     bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const
     {
-        JLOG(j_.info()) << "CRNId::onMessage TMReportState.";
+        JLOG(j_.debug()) << "CRNId::onMessage TMReportState.";
 
         PublicKey incomingPubKey;
         if (m->has_crnpubkey())
             incomingPubKey= PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
         else
-            JLOG(j_.info()) << "CRNId::onOverlayMessage TMReportState crnPubKey missing in msg";
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState crnPubKey missing in msg";
 
         if (!(pubKey_ == incomingPubKey))
         {
@@ -151,7 +151,7 @@ public:
 
         if (!m->has_domain())
         {
-            JLOG(j_.info()) << "CRNId::onOverlayMessage TMReportState domain missing in msg";
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState domain missing in msg";
             return false;
         }
         if (domain_ != m->domain())
@@ -164,7 +164,7 @@ public:
 
         if (!m->has_signature())
         {
-            JLOG(j_.info()) << "CRNId::onOverlayMessage TMReportState signature missing in msg";
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState signature missing in msg";
             return false;
         }
         if (signature_ != m->signature())

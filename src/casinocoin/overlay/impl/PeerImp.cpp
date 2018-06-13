@@ -1779,7 +1779,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 
 void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMReportState.";
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
 
     if (!crn_)
     {
@@ -1789,15 +1789,15 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
         if (m->has_crnpubkey())
             crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
         else
-            JLOG(journal_.info()) << "PeerImp::onMessage TMReportState crnPubKey missing in msg";
+            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState crnPubKey missing in msg";
         if (m->has_domain())
             domain = m->domain();
         else
-            JLOG(journal_.info()) << "PeerImp::onMessage TMReportState domain missing in msg";
+            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState domain missing in msg";
         if (m->has_signature())
             domainSignature = m->signature();
         else
-            JLOG(journal_.info()) << "PeerImp::onMessage TMReportState signature missing in msg";
+            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState signature missing in msg";
 
         crn_ = make_CRN(crnIncomingPubKey, domain, domainSignature,
                         app_.getOPs(), app_.getLedgerMaster().getCurrentLedgerIndex(),
@@ -1811,7 +1811,7 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
 void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportState.";
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportState.";
     protocol::TMDFSReportStateAck ack;
     ack.set_dfsroot(m->dfs(0));
     send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
@@ -1824,7 +1824,7 @@ void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
 
 void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    JLOG(journal_.info()) << "PeerImp::onMessage TMDFSReportStateAck.";
+    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportStateAck.";
 
     dfsReportState_.evaluateAck(m);
 }
