@@ -35,29 +35,49 @@ TMDFSReportStateData::TMDFSReportStateData(OverlayImpl& overlay,
 {
 }
 
-void TMDFSReportStateData::restartTimer(std::string const& initiatorPubKey,
-                                                    std::string const& currRecipient,
-                                                    protocol::TMDFSReportState const& currPayload)
+void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
+                                        std::string const& currRecipient,
+                                        protocol::TMDFSReportState const& currPayload)
 {
+    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer()"
+                          << "initiator: " << initiatorPubKey
+                          << " curr recipient: " << currRecipient;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    if (dfsTimers_.find(initiatorPubKey) == dfsTimers_.end())
-        dfsTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
+        ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
-    dfsTimers_[initiatorPubKey]->setExpiration(1s);
+    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
+        responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+
+    ackTimers_[initiatorPubKey]->setExpiration(1s);
+    responseTimers_[initiatorPubKey]->setExpiration(20s);
+
     lastReqRecipient_[initiatorPubKey] = currRecipient;
     lastReq_[initiatorPubKey] = currPayload;
 }
 
-void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey)
+void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
 {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    if (dfsTimers_.find(initiatorPubKey) != dfsTimers_.end())
-        dfsTimers_[initiatorPubKey]->cancel();
-    else
-        JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find timer for root node: "
-                              << initiatorPubKey;
+    if (type == ACK_TIMER)
+    {
+        if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
+            ackTimers_[initiatorPubKey]->cancel();
+        else
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find ACK_TIMER "
+                                  << "for root node: " << initiatorPubKey;
+    }
+    else if (type == RESPONSE_TIMER)
+    {
+        if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
+            responseTimers_[initiatorPubKey]->cancel();
+        else
+            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer couldn't find RESPONSE_TIMER "
+                                  <<"for root node: " << initiatorPubKey;
+    }
+
 }
 
 protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
@@ -79,13 +99,33 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     timer.cancel();
 
     std::string initiator;
-    for (auto iter = dfsTimers_.begin(); iter != dfsTimers_.end(); ++iter)
+    // try to map to initiator using ACK timers
+    for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
     {
         if (*(iter->second) == timer)
         {
             initiator = iter->first;
+            JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
+            cancelTimer(initiator, RESPONSE_TIMER);
             break;
         }
+    }
+    if (initiator.empty())
+    {
+        for (auto iter = responseTimers_.begin(); iter != responseTimers_.end(); ++iter)
+        {
+            if (*(iter->second) == timer)
+            {
+                initiator = iter->first;
+                JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
+                break;
+            }
+        }
+    }
+    if (initiator.empty())
+    {
+        JLOG(journal_.error()) << "TMDFSReportStateData::onDeadlineTimer() couldn't find corresponding timer. honestly don't know what to do";
+        return;
     }
     lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
     lastReq_[initiator].set_type(protocol::TMDFSReportState::rtRESP);

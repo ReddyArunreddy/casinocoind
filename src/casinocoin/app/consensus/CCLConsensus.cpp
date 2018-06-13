@@ -31,6 +31,7 @@
 #include <casinocoin/app/ledger/LocalTxs.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
+#include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -323,46 +324,49 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && (prevLedger->info().seq % (app_.getCRN().performance().getReportingPeriod() - 10)) == 0)
+    if (app_.isCRN() && ((prevLedger->info().seq + 30) % CRNPerformance::getReportingPeriod()) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
         app_.getCRN().performance().broadcast(app_);
     }
-    if (proposing && !wrongLCL && prevLedger->info().seq % CRNPerformance::getReportingPeriod() == 0)
+    if (proposing && !wrongLCL && ((prevLedger->info().seq + 25) % CRNPerformance::getReportingPeriod()) == 0)
     {
         app_.overlay().startDFSReportStateCrawl();
     }
     //        }
 
     // Add pseudo-transactions to the set
-    if ((app_.config().standalone() || (proposing && !wrongLCL)) &&
-        ((prevLedger->info().seq % 256) == 0))
+    if ((app_.config().standalone() || (proposing && !wrongLCL)))
     {
-        // previous ledger was flag ledger, add pseudo-transactions
         auto const validations =
-            app_.getValidations().getValidations(prevLedger->info().parentHash);
+                app_.getValidations().getValidations(prevLedger->info().parentHash);
 
         std::size_t const count = std::count_if(
-            validations.begin(), validations.end(), [](auto const& v) {
-                return v.second->isTrusted();
-            });
+                    validations.begin(), validations.end(), [](auto const& v) {
+            return v.second->isTrusted();
+        });
 
-        if (count >= app_.validators().quorum())
+        if ((prevLedger->info().seq % 256) == 0)
         {
-            feeVote_->doVoting(prevLedger, validations, initialSet);
-            app_.getAmendmentTable().doVoting(
-                prevLedger, validations, initialSet);
-
-
-            // jrojek TODO enable check
-            //        if (prevLedger->rules().enabled(featureCRN))
-            //        {
-            if ((prevLedger->info().seq % (1024)) == 0)
+            // previous ledger was flag ledger, add pseudo-transactions
+            if (count >= app_.validators().quorum())
             {
-                // every 1024 ledgers we distribute fees. add CRNRound pseudo-transaction
-                // jrojek TODO
+                feeVote_->doVoting(prevLedger, validations, initialSet);
+                app_.getAmendmentTable().doVoting(
+                            prevLedger, validations, initialSet);
+
             }
-            //        }
+        }
+        if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod()) == 0)
+        {
+            if (count >= app_.validators().quorum())
+            {
+                // jrojek TODO enable check
+                //        if (prevLedger->rules().enabled(featureCRN))
+                //        {
+                app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
+                //        }
+            }
         }
     }
 
@@ -884,10 +888,9 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
 
-    if (((ledger.seq() + 1) % 1024) == 0)
+    if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
     {
-        // jrojek TODO: every 1024 ledgers re-distribute collected fees
-        // to eligible CRNs
+        app_.getCRNRound().doValidation(ledger.ledger_, *v);
     }
 
     auto const signingHash = v->sign(valSecret_);

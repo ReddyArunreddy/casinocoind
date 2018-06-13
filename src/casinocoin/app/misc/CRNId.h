@@ -135,7 +135,12 @@ public:
     {
         JLOG(j_.debug()) << "CRNId::onMessage TMReportState.";
 
-        PublicKey incomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
+        PublicKey incomingPubKey;
+        if (m->has_crnpubkey())
+            incomingPubKey= PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
+        else
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState crnPubKey missing in msg";
+
         if (!(pubKey_ == incomingPubKey))
         {
             JLOG(j_.warn()) << "CRNId::onMessage TMReportState public key mismatch"
@@ -144,11 +149,22 @@ public:
             return false;
         }
 
+        if (!m->has_domain())
+        {
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState domain missing in msg";
+            return false;
+        }
         if (domain_ != m->domain())
         {
             JLOG(j_.warn()) << "CRNId::onMessage TMReportState domain mismatch"
                                     << " incoming domain: " << m->domain()
                                     << " our domain: " << domain_;
+            return false;
+        }
+
+        if (!m->has_signature())
+        {
+            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState signature missing in msg";
             return false;
         }
         if (signature_ != m->signature())

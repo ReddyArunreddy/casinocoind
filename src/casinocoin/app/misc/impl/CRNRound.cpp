@@ -31,6 +31,7 @@
 #include <casinocoin/core/ConfigSections.h>
 #include <casinocoin/protocol/JsonFields.h>
 #include <casinocoin/protocol/TxFlags.h>
+#include <casinocoin/app/misc/FeeVote.h>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
 #include <algorithm>
@@ -39,13 +40,18 @@
 namespace casinocoin {
 
 /** The status of all nodes requested in a given period. */
-struct NodesEligibilityState
+struct NodesEligibilitySet
 {
 private:
     // How many yes/no votes each node received
+    // kept in two distinct lists in case some sopthisticated logic needs to be applied
     hash_map<PublicKey, uint32> yesVotes_;
     hash_map<PublicKey, uint32> nayVotes_;
+    CSCAmount feeDistributionVote_;
+    CSCAmount feeRemainFromShare_;
+    bool votingFinished_ = false;
 
+    CRN::EligibilityPaymentMap paymentMap_;
 public:
     using YesNayVotes = std::pair<uint32, uint32>;
 
@@ -55,10 +61,13 @@ public:
     // number of votes needed
     int mThreshold = 0;
 
-    NodesEligibilityState () = default;
+    NodesEligibilitySet () = default;
 
     void tally (CRN::EligibilityMap const& nodes)
     {
+        if (votingFinished_)
+            return;
+
         ++mTrustedValidations;
 
         for (auto iter = nodes.begin(); iter != nodes.end() ; ++iter)
@@ -70,19 +79,65 @@ public:
         }
     }
 
-    YesNayVotes votes (PublicKey const& crnNode) const
+    void setVotingFinished()
     {
-        YesNayVotes ret{0,0};
+        votingFinished_ = true;
+
+        std::vector<PublicKey> eligibleList;
+        for ( auto const& yesVote : yesVotes_)
+        {
+            if (isEligible(yesVote.first))
+                eligibleList.push_back(yesVote.first);
+        }
+        if (eligibleList.size() == 0)
+            return;
+
+        feeRemainFromShare_ = CSCAmount(feeDistributionVote_.drops() % eligibleList.size());
+        uint64_t sharePerNode = feeDistributionVote_.drops() / eligibleList.size();
+
+        for ( auto const& eligibleNode : eligibleList)
+            paymentMap_.insert(std::pair<PublicKey, CSCAmount>(eligibleNode, CSCAmount(sharePerNode)));
+    }
+
+    CRN::EligibilityPaymentMap votes () const
+    {
+        if (!votingFinished_)
+            return CRN::EligibilityPaymentMap();
+
+        return paymentMap_;
+    }
+
+    void setFeeDistributionVote(CSCAmount const& feeDistributionVote)
+    {
+        if (votingFinished_)
+            return;
+
+        feeDistributionVote_ = feeDistributionVote;
+    }
+
+    CSCAmount feeDistributionVote() const
+    {
+        return CSCAmount(feeDistributionVote_ - feeRemainFromShare_);
+    }
+
+private:
+    bool isEligible(PublicKey const& crnNode) const
+    {
+        // jrojek TODO: REMOVE THIS
+        return true;
+
+
+        uint32_t votesCombined = 0;
 
         auto const& itYes = yesVotes_.find (crnNode);
         if (itYes != yesVotes_.end())
-            ret.first = itYes->second;
+            votesCombined += itYes->second;
 
         auto const& itNay = nayVotes_.find (crnNode);
         if (itNay != nayVotes_.end())
-            ret.second = itNay->second;
+            votesCombined -= itNay->second;
 
-        return ret;
+        return votesCombined >= mThreshold;
     }
 };
 
@@ -116,7 +171,8 @@ protected:
 
     // The results of the last voting round - may be empty if
     // we haven't participated in one yet.
-    std::unique_ptr <NodesEligibilityState> lastVote_;
+    std::unique_ptr <NodesEligibilitySet> lastVote_;
+    CSCAmount lastFeeDistributionPosition_;
 
     beast::Journal j_;
 
@@ -131,12 +187,130 @@ CRNRoundImpl::CRNRoundImpl(int majorityFraction, beast::Journal journal)
 
 void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClosedLedger, STObject &baseValidation)
 {
-    // update validation object with our position
+    JLOG (j_.info()) <<
+        "CRNRoundImpl::doValidation with " << eligibilityMap_.size() << " candidates";
+
+    std::lock_guard <std::mutex> sl (mutex_);
+
+    STArray crnArray(sfCRNs);
+    for ( auto iter = eligibilityMap_.begin(); iter != eligibilityMap_.end(); ++iter)
+    {
+        crnArray.push_back (STObject (sfCRN));
+        auto& entry = crnArray.back ();
+        entry.emplace_back (STBlob (sfPublicKey, iter->first.data(), iter->first.size()));
+        entry.emplace_back (STUInt8 (sfCRNEligibility, iter->second ? 1 : 0));
+    }
+
+    lastFeeDistributionPosition_ = CSCAmount(SYSTEM_CURRENCY_START) -= lastClosedLedger->info().drops;
+
+    baseValidation.setFieldArray(sfCRNs, crnArray);
+    baseValidation.setFieldAmount(sfCRN_FeeDistributed, STAmount(lastFeeDistributionPosition_));
 }
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
-    // calculate votes of other 'STValidation' propositions, add Tx to ledger.
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size();
+
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, 10);
+    auto crnVote = std::make_unique<NodesEligibilitySet>();
+
+    // based on other votes, conclude what in our POV elibigible nodes should look like
+    for ( auto const& singleValidation : parentValidations)
+    {
+        if (!(singleValidation.second->isTrusted()))
+            continue;
+        CRN::EligibilityMap singleNodePosition;
+        if (singleValidation.second->isFieldPresent(sfCRNs))
+        {
+
+            // get all votes for CRNs of given validator
+            STArray const& crnVotesOfNode =
+                    singleValidation.second->getFieldArray(sfCRNs);
+            for ( auto voteOfNodeIter = crnVotesOfNode.begin(); voteOfNodeIter != crnVotesOfNode.end(); ++voteOfNodeIter)
+            {
+                STObject const& crnSTObject = *voteOfNodeIter;
+                // *voteOfNodeIter is a single STObject containing CRN vote data
+                if (crnSTObject.isFieldPresent(sfPublicKey) && crnSTObject.isFieldPresent(sfCRNEligibility))
+                {
+                    PublicKey crnPubKey(Slice(crnSTObject.getFieldVL(sfPublicKey).data(), crnSTObject.getFieldVL(sfPublicKey).size()));
+                    bool crnEligibility = (crnSTObject.getFieldU8(sfCRNEligibility) > 0) ? true : false;
+
+                    singleNodePosition.insert(
+                                std::pair<PublicKey, bool>(crnPubKey, crnEligibility));
+                }
+            }
+        }
+        if (singleValidation.second->isFieldPresent(sfCRN_FeeDistributed))
+        {
+            feeToDistribute.addVote(singleValidation.second->getFieldAmount(sfCRN_FeeDistributed).csc().drops());
+        }
+        else
+        {
+            feeToDistribute.noVote();
+        }
+        crnVote->tally (singleNodePosition);
+    }
+    crnVote->mThreshold = std::max(1, (crnVote->mTrustedValidations * majorityFraction_) / 256);
+    crnVote->setFeeDistributionVote(CSCAmount(feeToDistribute.getVotes()));
+    crnVote->setVotingFinished();
+
+    JLOG (j_.info()) <<
+        "Received " << crnVote->mTrustedValidations <<
+        " trusted validations, threshold is: " << crnVote->mThreshold;
+    JLOG (j_.info()) <<
+        " feeDistribution. our position: " << lastFeeDistributionPosition_.drops() <<
+        " concluded vote: " << crnVote->feeDistributionVote().drops();
+
+
+    {
+        auto const seq = lastClosedLedger->info().seq + 1;
+        STArray crnArray(sfCRNs);
+        STAmount feeToDistributeST(crnVote->feeDistributionVote());
+
+        CRN::EligibilityPaymentMap txVoteMap = crnVote->votes();
+        if (txVoteMap.size() == 0)
+        {
+            JLOG(j_.warn()) << "No nodes eligible for payout. giving up this time";
+            return;
+        }
+
+        for ( auto iter = txVoteMap.begin(); iter != txVoteMap.end(); ++iter)
+        {
+            crnArray.push_back (STObject (sfCRN));
+            auto& entry = crnArray.back ();
+            entry.emplace_back (STBlob (sfPublicKey, iter->first.data(), iter->first.size()));
+            STAmount crnFeeDistributed(iter->second);
+            crnFeeDistributed.setFName(sfCRN_FeeDistributed);
+            entry.emplace_back (crnFeeDistributed);
+        }
+
+        JLOG(j_.warn()) << "We are voting for a CRNEligibility";
+
+        STTx crnRoundTx (ttCRN_ROUND,
+            [seq, crnArray, feeToDistributeST](auto& obj)
+            {
+                obj[sfAccount] = AccountID();
+                obj[sfLedgerSequence] = seq;
+                obj[sfCRN_FeeDistributed] = feeToDistributeST;
+                obj.setFieldArray(sfCRNs, crnArray);
+            });
+        
+        uint256 txID = crnRoundTx.getTransactionID ();
+        
+        JLOG(j_.warn()) << "CRNRound tx id: " << txID;
+        
+        Serializer s;
+        crnRoundTx.add (s);
+        
+        auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
+        
+        if (!initialPosition->addGiveItem (tItem, true, false))
+        {
+            JLOG(j_.warn()) <<
+                               "Ledger already had crn eligibility vote change";
+        }
+    }
+    lastVote_ = std::move(crnVote);
 }
 
 void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
@@ -144,6 +318,8 @@ void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
     // call from outside to update our position
     std::lock_guard <std::mutex> sl (mutex_);
     eligibilityMap_ = currentPosition;
+    JLOG (j_.info()) <<
+        "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
 }
 
 

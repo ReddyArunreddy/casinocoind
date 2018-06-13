@@ -42,15 +42,20 @@ class OverlayImpl;
 class TMDFSReportStateData : public DeadlineTimer::Listener
 {
 public:
+    enum TimerType {
+        // number corresponds to position in dfsTimers vector
+        ACK_TIMER = 0,
+        RESPONSE_TIMER = 1
+    };
+
     TMDFSReportStateData(OverlayImpl& overlay,
                          beast::Journal journal);
 
-
-    void restartTimer(std::string const& initiatorPubKey,
+    void restartTimers(std::string const& initiatorPubKey,
                       std::string const& currRecipient,
                       protocol::TMDFSReportState const& currPayload);
 
-    void cancelTimer(std::string const& initiatorPubKey);
+    void cancelTimer(std::string const& initiatorPubKey, TimerType type);
 
     protocol::TMDFSReportState& getLastRequest(std::string const& initiatorPubKey);
     std::string& getLastRecipient(std::string const& initiatorPubKey);
@@ -62,7 +67,8 @@ private:
     // (first entry on dfs list of TMDFSReportState) and a corresponding attribute
     std::map<std::string, std::string> lastReqRecipient_;
     std::map<std::string, protocol::TMDFSReportState> lastReq_;
-    std::map<std::string, std::unique_ptr<DeadlineTimer>> dfsTimers_;
+    std::map<std::string, std::unique_ptr<DeadlineTimer>> ackTimers_;
+    std::map<std::string, std::unique_ptr<DeadlineTimer>> responseTimers_;
 
     std::recursive_mutex mutex_;
 
@@ -73,3 +79,4 @@ private:
 } // namespace casinocoin
 
 #endif // CASINOCOIN_OVERLAY_TMDFSREPORTSTATEDATA_H_INCLUDED
+

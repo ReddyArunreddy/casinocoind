@@ -28,6 +28,7 @@
 #include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/impl/PeerImp.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
+#include <casinocoin/app/misc/CRNRound.h>
 
 namespace casinocoin {
 
@@ -60,22 +61,26 @@ void TMDFSReportState::start()
     msg.add_dfs(pubKeyString_);
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
-    overlay_.getDFSReportStateData().restartTimer(pubKeyString_,
+    overlay_.getDFSReportStateData().restartTimers(pubKeyString_,
                                                   toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
                                                   msg);
 
     parentPeer_.send(std::make_shared<Message>(msg, protocol::mtDFS_REPORT_STATE));
+    JLOG(journal_.info()) << "TMDFSReportState::start TMDFSReportState";
 }
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() TMDFSReportState for node " << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
 
-    if (m->type() != protocol::TMDFSReportState::rtREQ)
+    protocol::TMDFSReportState forwardMsg = *m;
+    if (forwardMsg.type() != protocol::TMDFSReportState::rtREQ)
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
                                << "TMDFSReportState evaluating req but it is not a req";
-        return;
+        // jrojek... need to protect this situation not to break whole crawl procedure somehow
+        // jrojek... for now just retrieve 'valid state'
+        forwardMsg.set_type(protocol::TMDFSReportState::rtREQ);
     }
 
     for (std::string const& visitedNode : m->visited())
@@ -84,11 +89,10 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
         {
             JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() "
                                    << "TMDFSReportState received Req in a node which is already on the list! " << pubKeyString_;
-            return;
+            // jrojek... ignore this case for now
         }
     }
 
-    protocol::TMDFSReportState forwardMsg = *m;
     if (app_.isCRN())
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = forwardMsg.add_reports ();
@@ -118,7 +122,7 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
             forwardMsg.set_type(protocol::TMDFSReportState::rtREQ);
             forwardMsg.add_dfs(pubKeyString_);
 
-            overlay_.getDFSReportStateData().restartTimer(forwardMsg.dfs(0),
+            overlay_.getDFSReportStateData().restartTimers(forwardMsg.dfs(0),
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           forwardMsg);
 
@@ -147,7 +151,9 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     if (m->type() != protocol::TMDFSReportState::rtRESP)
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() TMDFSReportState evaluating resp but it is not a resp";
-        return;
+        // jrojek... need to protect this situation not to break whole crawl procedure somehow
+        // jrojek... for now just retrieve 'valid state'
+        m->set_type(protocol::TMDFSReportState::rtRESP);
     }
 
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
@@ -169,7 +175,8 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
                 continue;
 
             m->set_type(protocol::TMDFSReportState::rtREQ);
-            overlay_.getDFSReportStateData().restartTimer(m->dfs(0),
+            overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), TMDFSReportStateData::RESPONSE_TIMER);
+            overlay_.getDFSReportStateData().restartTimers(m->dfs(0),
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           *m);
 
@@ -186,7 +193,10 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
 
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
+    {
+        overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), TMDFSReportStateData::RESPONSE_TIMER);
         dfsList->RemoveLast();
+    }
     else
     {
         JLOG(journal_.error()) << "TMDFSReportState::evaluateResponse() couldn't remove 'me' "
@@ -208,25 +218,33 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     {
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size() << " known peers count: " << knownPeers.size();
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
+        CRN::EligibilityMap eligibilityMap;
         for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
         {
             protocol::TMReportState const& rep = iter->report();
-            JLOG(journal_.info()) << " currStatus " << rep.currstatus()
-                                  << " ledgerSeqBegin " << rep.ledgerseqbegin()
-                                  << " ledgerSeqEnd " << rep.ledgerseqend()
-                                  << " latency " << rep.latency()
-                                  << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
-                                  << " domain " << rep.domain()
-                                  << " signature " << rep.signature();
-            for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
+            if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
             {
-                JLOG(journal_.info()) << "mode " << iterStatuses->mode()
-                                      << "transitions " << iterStatuses->transitions()
-                                      << "duration " << iterStatuses->duration();
+                JLOG(journal_.info()) << " currStatus " << rep.currstatus()
+                                      << " ledgerSeqBegin " << rep.ledgerseqbegin()
+                                      << " ledgerSeqEnd " << rep.ledgerseqend()
+                                      << " latency " << rep.latency()
+                                      << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())))
+                                      << " domain " << rep.domain()
+                                      << " signature " << rep.signature();
+                for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
+                {
+                    JLOG(journal_.info()) << "mode " << iterStatuses->mode()
+                                          << "transitions " << iterStatuses->transitions()
+                                          << "duration " << iterStatuses->duration();
+                }
+
+
+                eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), true));
             }
         }
         JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 
+        app_.getCRNRound().updatePosition(eligibilityMap);
         // jrojek TODO: apply some formula to determine Yes/No eligibility for fee payout
         // jrojek TODO: and spread the news with app_
     }
@@ -234,7 +252,8 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot());
+    JLOG(journal_.info()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
+    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), TMDFSReportStateData::ACK_TIMER);
 }
 
 } // namespace casinocoin
