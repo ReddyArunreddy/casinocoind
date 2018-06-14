@@ -483,11 +483,6 @@ CCLConsensus::doAccept(
         validate(sharedLCL, proposing);
         JLOG(j_.info()) << "CNF Val " << newLCLHash;
     }
-    // jrojek TODO: this, or something similar,
-    // anyhow we need a way to automatically report CRNPerformance statuses
-    // and it should be free, something similar to CCLConsensus::validate but for CRN
-    // could work.
-
     else
         JLOG(j_.info()) << "CNF buildLCL " << newLCLHash;
 
