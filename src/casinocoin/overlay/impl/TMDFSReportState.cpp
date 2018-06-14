@@ -226,7 +226,7 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
             if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
             {
                 boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
-                JLOG(journal_.info()) << " currStatus " << rep.currstatus()
+                JLOG(journal_.info()) << "TMDFSReportState - currStatus " << rep.currstatus()
                                       << " ledgerSeqBegin " << rep.ledgerseqbegin()
                                       << " ledgerSeqEnd " << rep.ledgerseqend()
                                       << " latency " << rep.latency()

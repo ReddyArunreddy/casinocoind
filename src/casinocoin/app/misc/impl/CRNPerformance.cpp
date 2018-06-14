@@ -174,8 +174,7 @@ CRNPerformanceImpl::prepareReport (
     preparedReport_.set_crnpubkey(pk.data(), pk.size());
     preparedReport_.set_domain(id.domain());
     preparedReport_.set_activated(id.activated());
-    // ajochems: hide the signiture from the public
-    // preparedReport_.set_signature(id.signature());
+    preparedReport_.set_signature(id.signature());
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers
     // (since latency reported by Peer is already averaged from last 8 mesaurements
