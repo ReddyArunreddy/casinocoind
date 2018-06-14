@@ -295,7 +295,7 @@ TER Change::applyCRN_Round()
     }
 
     crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
-    crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, ctx_.tx.getFieldAmount(sfCRN_FeeDistributed));
+    crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, (crnRoundObject->getFieldAmount(sfCRN_FeeDistributed) + ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
 
     // here, drops are added back to the pool
     ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());

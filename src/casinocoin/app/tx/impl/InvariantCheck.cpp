@@ -50,7 +50,7 @@ CSCNotCreated::visitEntry(
             break;
             // jrojek: inverted logic, because we store here the amount of drops distributed
         case ltCRN_ROUND:
-            drops_ += (*before[sfCRN_FeeDistributed]).csc().drops();
+            drops_ += (*before)[sfCRN_FeeDistributed].csc().drops();
             break;
         default:
             break;
@@ -74,7 +74,7 @@ CSCNotCreated::visitEntry(
             break;
             // jrojek: inverted logic, because we store here the amount of drops distributed
         case ltCRN_ROUND:
-            drops_ -= (*before[sfCRN_FeeDistributed]).csc().drops();
+            drops_ -= (*after)[sfCRN_FeeDistributed].csc().drops();
             break;
         default:
             break;
