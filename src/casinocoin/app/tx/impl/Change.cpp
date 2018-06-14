@@ -75,7 +75,7 @@ Change::preflight (PreflightContext const& ctx)
         STArray crnArray = ctx.tx.getFieldArray(sfCRNs);
         for ( auto const& crnObject : crnArray)
         {
-            if (!crnObject.isFieldPresent(sfPublicKey))
+            if (!crnObject.isFieldPresent(sfCRN_PublicKey))
             {
                 JLOG(ctx.j.warn()) << "CRNRound malformed transaction";
                 return temMALFORMED;
@@ -268,12 +268,12 @@ TER Change::applyCRN_Round()
     STArray crnArray = ctx_.tx.getFieldArray(sfCRNs);
     for ( STObject const& crnObject : crnArray)
     {
-        if (!crnObject.isFieldPresent(sfPublicKey))
+        if (!crnObject.isFieldPresent(sfCRN_PublicKey))
         {
             JLOG(j_.error()) << "CRNRound malformed transaction. Should be caught in preflight";
             return temMALFORMED;
         }
-        Blob pkBlob = crnObject.getFieldVL(sfPublicKey);
+        Blob pkBlob = crnObject.getFieldVL(sfCRN_PublicKey);
         PublicKey crnPubKey(Slice(pkBlob.data(), pkBlob.size()));
         AccountID dstAccountID = calcAccountID(crnPubKey);
 

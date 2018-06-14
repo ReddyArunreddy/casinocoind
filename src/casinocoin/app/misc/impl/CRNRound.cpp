@@ -193,11 +193,11 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
     {
         crnArray.push_back (STObject (sfCRN));
         auto& entry = crnArray.back ();
-        entry.emplace_back (STBlob (sfPublicKey, iter->first.data(), iter->first.size()));
+        entry.emplace_back (STBlob (sfCRN_PublicKey, iter->first.data(), iter->first.size()));
         entry.emplace_back (STUInt8 (sfCRNEligibility, iter->second ? 1 : 0));
     }
 
-    lastFeeDistributionPosition_ = CSCAmount(SYSTEM_CURRENCY_START) -= lastClosedLedger->info().drops;
+    lastFeeDistributionPosition_ = CSCAmount(SYSTEM_CURRENCY_START) - lastClosedLedger->info().drops;
 
     baseValidation.setFieldArray(sfCRNs, crnArray);
     baseValidation.setFieldAmount(sfCRN_FeeDistributed, STAmount(lastFeeDistributionPosition_));
@@ -207,7 +207,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 {
     JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size();
 
-    detail::VotableInteger<std::int64_t> feeToDistribute (0, 10);
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, CSCAmount(SYSTEM_CURRENCY_START - lastClosedLedger->info().drops.drops()).drops());
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like
@@ -226,9 +226,9 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
             {
                 STObject const& crnSTObject = *voteOfNodeIter;
                 // *voteOfNodeIter is a single STObject containing CRN vote data
-                if (crnSTObject.isFieldPresent(sfPublicKey) && crnSTObject.isFieldPresent(sfCRNEligibility))
+                if (crnSTObject.isFieldPresent(sfCRN_PublicKey) && crnSTObject.isFieldPresent(sfCRNEligibility))
                 {
-                    PublicKey crnPubKey(Slice(crnSTObject.getFieldVL(sfPublicKey).data(), crnSTObject.getFieldVL(sfPublicKey).size()));
+                    PublicKey crnPubKey(Slice(crnSTObject.getFieldVL(sfCRN_PublicKey).data(), crnSTObject.getFieldVL(sfCRN_PublicKey).size()));
                     bool crnEligibility = (crnSTObject.getFieldU8(sfCRNEligibility) > 0) ? true : false;
 
                     singleNodePosition.insert(
@@ -274,7 +274,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         {
             crnArray.push_back (STObject (sfCRN));
             auto& entry = crnArray.back ();
-            entry.emplace_back (STBlob (sfPublicKey, iter->first.data(), iter->first.size()));
+            entry.emplace_back (STBlob (sfCRN_PublicKey, iter->first.data(), iter->first.size()));
             STAmount crnFeeDistributed(iter->second);
             crnFeeDistributed.setFName(sfCRN_FeeDistributed);
             entry.emplace_back (crnFeeDistributed);
