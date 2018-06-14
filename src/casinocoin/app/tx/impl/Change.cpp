@@ -294,6 +294,7 @@ TER Change::applyCRN_Round()
             sleDst->clearFlag (lsfPasswordSpent);
     }
 
+    view().update (crnRoundObject);
     crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
     crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, (crnRoundObject->getFieldAmount(sfCRN_FeeDistributed) + ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
 
