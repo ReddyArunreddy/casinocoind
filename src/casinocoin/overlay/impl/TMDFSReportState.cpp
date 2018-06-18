@@ -158,10 +158,17 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
     }
 
     // check if the response we recently received does not come from a node which already timed-out in our scope
+    std::string parentPeerPubKey = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
     for (std::string const& visitedNode : overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited())
     {
-        if (m->)
+        if (visitedNode == parentPeerPubKey)
+        {
+            JLOG(journal_.warn()) << "TMDFSReportState::evaluateResponse() received response from peer which is already visited."
+                                  << "Probably obsolete response";
+            return;
+        }
     }
+
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
     {
