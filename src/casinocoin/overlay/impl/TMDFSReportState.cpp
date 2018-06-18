@@ -157,6 +157,11 @@ void TMDFSReportState::evaluateResponse(const std::shared_ptr<protocol::TMDFSRep
         m->set_type(protocol::TMDFSReportState::rtRESP);
     }
 
+    // check if the response we recently received does not come from a node which already timed-out in our scope
+    for (std::string const& visitedNode : overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited())
+    {
+        if (m->)
+    }
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
     {
