@@ -120,13 +120,18 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
     JLOG(journal_.info()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
                           << " dfsSize " << m->dfs_size();
     m->add_visited(timedOutNode);
+    m->set_type(protocol::TMDFSReportState::rtREQ);
 
     if (forwardRequest(m))
         return;
 
-    // if we reach this point this means that we already visited all our peers and we know of their state
     m->set_type(protocol::TMDFSReportState::rtRESP);
-    parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+
+    if (forwardResponse(m))
+        return;
+
+    // jrojek: reaching this point means we are the initiator of crawl and should now conclude
+    conclude(m);
 }
 
 void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)

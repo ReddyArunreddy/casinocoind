@@ -130,7 +130,6 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
         return;
     }
     lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
-    lastReq_[initiator].set_type(protocol::TMDFSReportState::rtRESP);
 
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
@@ -138,7 +137,6 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     {
         knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(lastReq_[initiator]), lastReqRecipient_[initiator]);
     }
-    lastReq_[initiator].set_type(protocol::TMDFSReportState::rtREQ);
 }
 
 }
