@@ -319,6 +319,7 @@ TER Change::applyCRN_Round()
     }
 
     view().update (ledgerCrnRoundObject);
+    ledgerCrnRoundObject->setFieldArray(sfCRNs, ledgerCrnArray);
     ledgerCrnRoundObject->setFieldAmount(sfCRN_FeeDistributed,
                                          (ledgerCrnRoundObject->getFieldAmount(sfCRN_FeeDistributed) +
                                          ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
