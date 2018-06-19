@@ -50,7 +50,9 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
     if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
         responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
+    ackTimers_[initiatorPubKey]->cancel();
     ackTimers_[initiatorPubKey]->setExpiration(1s);
+    responseTimers_[initiatorPubKey]->cancel();
     responseTimers_[initiatorPubKey]->setExpiration(20s);
 
     lastReqRecipient_[initiatorPubKey] = currRecipient;
@@ -134,7 +136,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     if (knownPeers.size() > 0)
     // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
     {
-        knownPeers[0]->dfsReportState().evaluateResponse(std::make_shared<protocol::TMDFSReportState>(lastReq_[initiator]));
+        knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(lastReq_[initiator]), lastReqRecipient_[initiator]);
     }
     lastReq_[initiator].set_type(protocol::TMDFSReportState::rtREQ);
 }
