@@ -196,7 +196,9 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
         entry.emplace_back (STUInt8 (sfCRNEligibility, iter->second ? 1 : 0));
     }
 
-    lastFeeDistributionPosition_ = CSCAmount(SYSTEM_CURRENCY_START) - lastClosedLedger->info().drops;
+    JLOG(j_.info()) << "CRNRoundImpl::doValidation we propose lastLedger: "
+                    << lastClosedLedger->info().seq << " drops: " << lastClosedLedger->info().drops.drops();
+    lastFeeDistributionPosition_ = CSCAmount(SYSTEM_CURRENCY_START - static_cast<uint64_t>(lastClosedLedger->info().drops.drops()));
 
     baseValidation.setFieldArray(sfCRNs, crnArray);
     baseValidation.setFieldAmount(sfCRN_FeeDistributed, STAmount(lastFeeDistributionPosition_));
@@ -204,9 +206,10 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
-    JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size();
+    JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size()
+                    << " voting range: 0 - " << CSCAmount(SYSTEM_CURRENCY_START - static_cast<uint64_t>(lastClosedLedger->info().drops.drops())).drops();
 
-    detail::VotableInteger<std::int64_t> feeToDistribute (0, CSCAmount(SYSTEM_CURRENCY_START - lastClosedLedger->info().drops.drops()).drops());
+    detail::VotableInteger<std::int64_t> feeToDistribute (0, CSCAmount(SYSTEM_CURRENCY_START - static_cast<uint64_t>(lastClosedLedger->info().drops.drops())).drops());
     auto crnVote = std::make_unique<NodesEligibilitySet>();
 
     // based on other votes, conclude what in our POV elibigible nodes should look like
@@ -237,6 +240,9 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         }
         if (singleValidation.second->isFieldPresent(sfCRN_FeeDistributed))
         {
+
+            JLOG(j_.info()) << "CRNRoundImpl::doVoting got validation with fee vote: "
+                            << singleValidation.second->getFieldAmount(sfCRN_FeeDistributed).csc().drops();
             feeToDistribute.addVote(singleValidation.second->getFieldAmount(sfCRN_FeeDistributed).csc().drops());
         }
         else

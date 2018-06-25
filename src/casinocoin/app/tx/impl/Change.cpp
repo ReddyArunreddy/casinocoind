@@ -257,25 +257,47 @@ TER Change::applyCRN_Round()
     JLOG(j_.warn()) << "applyCRN_Round";
     auto const keyletCrnRound = keylet::crnRound();
 
-    SLE::pointer crnRoundObject = view().peek(keyletCrnRound);
+    SLE::pointer ledgerCrnRoundObject = view().peek(keyletCrnRound);
 
-    if (!crnRoundObject)
+    if (!ledgerCrnRoundObject)
     {
-        crnRoundObject = std::make_shared<SLE>(keyletCrnRound);
-        view().insert(crnRoundObject);
+        ledgerCrnRoundObject = std::make_shared<SLE>(keyletCrnRound);
+        view().insert(ledgerCrnRoundObject);
     }
 
-    STArray crnArray = ctx_.tx.getFieldArray(sfCRNs);
-    for ( STObject const& crnObject : crnArray)
+    STArray ledgerCrnArray(sfCRNs);
+    if (ledgerCrnRoundObject->isFieldPresent(sfCRNs))
+        ledgerCrnArray = ledgerCrnRoundObject->getFieldArray(sfCRNs);
+
+    STArray txCrnArray = ctx_.tx.getFieldArray(sfCRNs);
+    for ( STObject const& txCrnObject : txCrnArray)
     {
-        if (!crnObject.isFieldPresent(sfCRN_PublicKey))
+        if (!txCrnObject.isFieldPresent(sfCRN_PublicKey))
         {
             JLOG(j_.error()) << "CRNRound malformed transaction. Should be caught in preflight";
             return temMALFORMED;
         }
-        Blob pkBlob = crnObject.getFieldVL(sfCRN_PublicKey);
+        Blob pkBlob = txCrnObject.getFieldVL(sfCRN_PublicKey);
         PublicKey crnPubKey(Slice(pkBlob.data(), pkBlob.size()));
         AccountID dstAccountID = calcAccountID(crnPubKey);
+
+        auto ledgerCrnArrayIter = std::find_if(ledgerCrnArray.begin(), ledgerCrnArray.end(), [&pkBlob](STObject const& ledgerCRNObject)
+        {
+            return ledgerCRNObject.getFieldVL(sfCRN_PublicKey) == pkBlob;
+        });
+        if (ledgerCrnArrayIter != ledgerCrnArray.end())
+        {
+            (*ledgerCrnArrayIter).setFieldAmount(sfCRN_FeeDistributed,
+                                                 (*ledgerCrnArrayIter).getFieldAmount(sfCRN_FeeDistributed) +
+                                                 txCrnObject.getFieldAmount(sfCRN_FeeDistributed));
+        }
+        else
+        {
+            ledgerCrnArray.push_back (STObject (sfCRN));
+            auto& entry = ledgerCrnArray.back ();
+            entry.emplace_back (STBlob (sfCRN_PublicKey, pkBlob.data(), pkBlob.size()));
+            entry.emplace_back (txCrnObject.getFieldAmount(sfCRN_FeeDistributed));
+        }
 
         auto const keyletDstAccount = keylet::account(dstAccountID);
         SLE::pointer sleDst = view().peek (keyletDstAccount);
@@ -287,7 +309,9 @@ TER Change::applyCRN_Round()
         }
         view().update (sleDst);
 
-        sleDst->setFieldAmount(sfBalance, sleDst->getFieldAmount(sfBalance) + crnObject.getFieldAmount(sfCRN_FeeDistributed));
+        sleDst->setFieldAmount(sfBalance,
+                               sleDst->getFieldAmount(sfBalance) +
+                               txCrnObject.getFieldAmount(sfCRN_FeeDistributed));
 
         // Re-arm the password change fee if we can and need to.
         if ((sleDst->getFlags () & lsfPasswordSpent))
@@ -299,11 +323,13 @@ TER Change::applyCRN_Round()
     crnTxHistory.push_back (ctx_.tx.getTransactionID());
 
     // update the ledger with the new values
-    view().update (crnRoundObject);
-    crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
-    crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, (crnRoundObject->getFieldAmount(sfCRN_FeeDistributed) + ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
-    crnRoundObject->setFieldU32(sfLastLedgerSequence, crnRoundObject->getFieldU32(sfLedgerSequence));
-    crnRoundObject->setFieldV256(sfCRNTxHistory, crnTxHistory);
+    view().update (ledgerCrnRoundObject);
+    ledgerCrnRoundObject->setFieldArray(sfCRNs, ledgerCrnArray);
+    ledgerCrnRoundObject->setFieldAmount(sfCRN_FeeDistributed,
+                                         (ledgerCrnRoundObject->getFieldAmount(sfCRN_FeeDistributed) +
+                                         ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
+    ledgerCrnRoundObject->setFieldU32(sfLastLedgerSequence, crnRoundObject->getFieldU32(sfLedgerSequence));
+    ledgerCrnRoundObject->setFieldV256(sfCRNTxHistory, crnTxHistory);
 
     // here, drops are added back to the pool
     ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());
