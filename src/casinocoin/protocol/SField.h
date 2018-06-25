@@ -492,6 +492,7 @@ extern SField const sfPaths;
 extern SF_Vec256 const sfIndexes;
 extern SF_Vec256 const sfHashes;
 extern SF_Vec256 const sfAmendments;
+extern SF_Vec256 const sfCRNTxHistory;
 
 // vector of 128-bit
 extern SF_Vec128 const sfKYCVerifications;
@@ -528,7 +529,7 @@ extern SField const sfAffectedNodes;
 extern SField const sfMemos;
 extern SField const sfMajorities;
 extern SField const sfCRNs;
-extern SField const sfCRN_ConnectionStats;
+
 //------------------------------------------------------------------------------
 
 } // casinocoin

@@ -68,6 +68,9 @@ public:
     void
     updatePosition(CRN::EligibilityMap const& currentPosition) = 0;
 
+    // The highest-sequence ledger we have done a CRNRound
+    std::atomic <std::uint32_t> mCRNRoundLedgerSeq;
+
 };
 
 std::unique_ptr<CRNRound> make_CRNRound (int majorityFraction, beast::Journal journal);

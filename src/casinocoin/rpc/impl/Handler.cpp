@@ -123,6 +123,7 @@ Handler handlerArray[] {
     {   "consensus_info",       byRef (&doConsensusInfo),       Role::ADMIN, NO_CONDITION               },
     {   "crn_create",           byRef (&doCRNCreate),           Role::ADMIN, NO_CONDITION               },
     {   "crn_verify",           byRef (&doCRNVerify),           Role::ADMIN, NO_CONDITION               },
+    {   "crn_info",             byRef (&doCRNInfo),             Role::ADMIN, NO_CONDITION               },
     {   "gateway_balances",     byRef (&doGatewayBalances),     Role::USER,  NO_CONDITION               },
     {   "get_counts",           byRef (&doGetCounts),           Role::ADMIN, NO_CONDITION               },
     {   "feature",              byRef (&doFeature),             Role::ADMIN, NO_CONDITION               },

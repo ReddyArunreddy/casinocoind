@@ -44,15 +44,16 @@ class CRNId
 public:
     CRNId(const CRNId&) = delete;
 
-    CRNId(Section const& relaynodeConfig,
+    CRNId(Config& conf,
           beast::Journal j,
           LedgerMaster& ledgerMaster)
         : j_(j)
+        , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
     {
-        std::pair <std::string, bool> domainName = relaynodeConfig.find("domain");
-        std::pair <std::string, bool> publicKey = relaynodeConfig.find("publickey");
-        std::pair <std::string, bool> signature = relaynodeConfig.find("signature");
+        std::pair <std::string, bool> domainName = conf_.section (SECTION_CRN_CONFIG).find("domain");
+        std::pair <std::string, bool> publicKey = conf_.section (SECTION_CRN_CONFIG).find("publickey");
+        std::pair <std::string, bool> signature = conf_.section (SECTION_CRN_CONFIG).find("signature");
         if(domainName.second && publicKey.second && signature.second)
         {
             boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
@@ -70,11 +71,13 @@ public:
            std::string const& domain,
            std::string const& domainSignature,
            beast::Journal j,
+           Config& conf,
            LedgerMaster& ledgerMaster)
         : pubKey_(pubKey)
         , domain_(domain)
         , signature_(domainSignature)
         , j_(j)
+        , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
     {
     }
@@ -118,7 +121,7 @@ public:
                 STAmount amount = sleAccepted->getFieldAmount (sfBalance);
                 JLOG(j_.info()) << "CRN Account Balance: " << amount.getFullText ();
                 // check if the account balance is >= defined reserve
-                if(amount >= 100000000000000)
+                if(amount >= conf_.CRN_RESERVE)
                 {
                     activated_ = true;
                 }
@@ -183,6 +186,7 @@ private:
     std::string domain_;
     std::string signature_;
     beast::Journal j_;
+    Config& conf_;
     LedgerMaster& m_ledgerMaster;
 };
 

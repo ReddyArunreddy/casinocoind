@@ -294,9 +294,16 @@ TER Change::applyCRN_Round()
             sleDst->clearFlag (lsfPasswordSpent);
     }
 
+    // add new tx id to tx array
+    STVector256 crnTxHistory = crnRoundObject->getFieldV256(sfCRNTxHistory);
+    crnTxHistory.push_back (ctx_.tx.getTransactionID());
+
+    // update the ledger with the new values
     view().update (crnRoundObject);
     crnRoundObject->setFieldArray(sfCRNs, ctx_.tx.getFieldArray(sfCRNs));
     crnRoundObject->setFieldAmount(sfCRN_FeeDistributed, (crnRoundObject->getFieldAmount(sfCRN_FeeDistributed) + ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
+    crnRoundObject->setFieldU32(sfLastLedgerSequence, crnRoundObject->getFieldU32(sfLedgerSequence));
+    crnRoundObject->setFieldV256(sfCRNTxHistory, crnTxHistory);
 
     // here, drops are added back to the pool
     ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());

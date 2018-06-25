@@ -46,9 +46,10 @@ public:
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
         beast::Journal j,
+        Config &conf,
         LedgerMaster& ledgerMaster);
 
-    CRN(Section const& relaynodeConfig,
+    CRN(Config &conf,
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
         beast::Journal j,
@@ -70,7 +71,7 @@ private:
     beast::Journal j_;
 };
 
-std::unique_ptr<CRN> make_CRN(Section const& relaynodeConfig,
+std::unique_ptr<CRN> make_CRN(Config &conf,
                               NetworkOPs& networkOps,
                               LedgerIndex const& startupSeq,
                               beast::Journal j,
@@ -82,6 +83,7 @@ std::unique_ptr<CRN> make_CRN(PublicKey const& pubKey,
                               NetworkOPs& networkOps,
                               LedgerIndex const& startupSeq,
                               beast::Journal j,
+                              Config &conf,
                               LedgerMaster& ledgerMaster);
 
 }

@@ -94,7 +94,6 @@ public:
 
         feeRemainFromShare_ = CSCAmount(feeDistributionVote_.drops() % eligibleList.size());
         uint64_t sharePerNode = feeDistributionVote_.drops() / eligibleList.size();
-
         for ( auto const& eligibleNode : eligibleList)
             paymentMap_.insert(std::pair<PublicKey, CSCAmount>(eligibleNode, CSCAmount(sharePerNode)));
     }
@@ -260,6 +259,8 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 
     {
         auto const seq = lastClosedLedger->info().seq + 1;
+        mCRNRoundLedgerSeq = seq;
+
         STArray crnArray(sfCRNs);
         STAmount feeToDistributeST(crnVote->feeDistributionVote());
 
@@ -293,7 +294,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         
         uint256 txID = crnRoundTx.getTransactionID ();
         
-        JLOG(j_.warn()) << "CRNRound tx id: " << txID;
+        JLOG(j_.warn()) << "CRNRound tx id: " << to_string (txID);
         
         Serializer s;
         crnRoundTx.add (s);
@@ -302,8 +303,7 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
         
         if (!initialPosition->addGiveItem (tItem, true, false))
         {
-            JLOG(j_.warn()) <<
-                               "Ledger already had crn eligibility vote change";
+            JLOG(j_.warn()) << "Ledger already had crn eligibility vote change";
         }
     }
     lastVote_ = std::move(crnVote);
@@ -317,8 +317,6 @@ void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
 }
-
-
 
 std::unique_ptr<CRNRound> make_CRNRound(int majorityFraction, beast::Journal journal)
 {

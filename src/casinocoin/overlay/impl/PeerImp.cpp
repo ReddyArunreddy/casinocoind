@@ -1802,6 +1802,7 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
         crn_ = make_CRN(crnIncomingPubKey, domain, domainSignature,
                         app_.getOPs(), app_.getLedgerMaster().getCurrentLedgerIndex(),
                         journal_,
+                        app_.config(),
                         app_.getLedgerMaster());
     }
 

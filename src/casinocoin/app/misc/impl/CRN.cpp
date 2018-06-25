@@ -45,20 +45,21 @@ CRN::CRN(const PublicKey &pubKey,
          NetworkOPs &networkOps,
          const LedgerIndex &startupSeq,
          beast::Journal j,
+         Config &conf,
          LedgerMaster& ledgerMaster)
-    : id_(pubKey, domain, domainSignature, j, ledgerMaster)
+    : id_(pubKey, domain, domainSignature, j, conf, ledgerMaster)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
     , j_(j)
 {
 
 }
 
-CRN::CRN(Section const& relaynodeConfig,
+CRN::CRN(Config &conf,
          NetworkOPs& networkOps,
          LedgerIndex const& startupSeq,
          beast::Journal j,
          LedgerMaster& ledgerMaster)
-    : id_(relaynodeConfig, j, ledgerMaster)
+    : id_(conf, j, ledgerMaster)
     , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
     , j_(j)
 {
@@ -100,13 +101,13 @@ bool CRN::activated() const
     return crnActivated;
 }
 
-std::unique_ptr<CRN> make_CRN(const Section &relaynodeConfig,
+std::unique_ptr<CRN> make_CRN(Config &conf,
                               NetworkOPs &networkOps,
                               const LedgerIndex &startupSeq,
                               beast::Journal j,
                               LedgerMaster& ledgerMaster)
 {
-    return std::make_unique<CRN>(relaynodeConfig,
+    return std::make_unique<CRN>(conf,
                                  networkOps,
                                  startupSeq,
                                  j,
@@ -119,6 +120,7 @@ std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
                               NetworkOPs &networkOps,
                               const LedgerIndex &startupSeq,
                               beast::Journal j,
+                              Config &conf,
                               LedgerMaster& ledgerMaster)
 {
     return std::make_unique<CRN>(pubKey,
@@ -127,6 +129,7 @@ std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
                                  networkOps,
                                  startupSeq,
                                  j,
+                                 conf,
                                  ledgerMaster);
 }
 

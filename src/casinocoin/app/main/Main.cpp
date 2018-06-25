@@ -143,6 +143,7 @@ void printHelp (const po::options_description& desc)
            "     consensus_info\n"
            "     crn_create <domain_name>\n"
            "     crn_verify <domain_name> <signature> <public_key>\n"
+           "     crn_info\n"
            "     feature [<feature> [accept|reject]]\n"
            "     fetch_info [clear]\n"
            "     gateway_balances [<ledger>] <issuer_account> [ <hotwallet> [ <hotwallet> ]]\n"

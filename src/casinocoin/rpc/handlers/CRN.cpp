@@ -32,6 +32,7 @@
 #include <casinocoin/protocol/Seed.h>
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/rpc/Context.h>
+#include <casinocoin/app/misc/CRN.h>
 
 namespace casinocoin {
 
@@ -110,6 +111,89 @@ Json::Value doCRNVerify (RPC::Context& context)
     // obj[jss::crn_public_key] = toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
     // obj[jss::crn_valid] = verifyResult;
     // return obj;
+}
+
+Json::Value doCRNInfo (RPC::Context& context)
+{
+    // get the CRNRound object from the last validated ledger
+    auto const valLedger = context.ledgerMaster.getValidatedLedger();
+    if (valLedger)
+    {
+        auto const crnRound = valLedger->read(keylet::crnRound());
+        if (crnRound)
+        {
+            // create json output
+            Json::Value jvReply = Json::objectValue;
+            jvReply[jss::seq] = Json::UInt (valLedger->info().seq);
+            jvReply[jss::hash] = to_string (valLedger->info().hash);
+            jvReply[jss::crn_fee_distributed] = crnRound->getFieldAmount(sfCRN_FeeDistributed).getText();
+            jvReply[jss::total_coins] = to_string (valLedger->info().drops);
+            auto&& array = Json::setArray (jvReply, jss::crns);
+            // loop over CRN array
+            STArray crnArray = crnRound->getFieldArray(sfCRNs);
+            for ( auto const& crnObject : crnArray)
+            {
+                JLOG(context.j.info()) << "CRN: " << crnObject.getJson(0);
+                // Format Public Key
+                Blob pkBlob = crnObject.getFieldVL(sfCRN_PublicKey);
+                PublicKey crnPubKey(Slice(pkBlob.data(), pkBlob.size()));
+                AccountID dstAccountID = calcAccountID(crnPubKey);
+                JLOG(context.j.info()) << "CRN PublicKey: " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey);
+
+                auto&& obj = appendObject(array);
+                obj[jss::crn_public_key] = toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey);
+                obj[jss::crn_account_id] = toBase58(dstAccountID);
+                obj[jss::crn_fee_distributed] = crnObject.getFieldAmount(sfCRN_FeeDistributed).getText();
+
+            }
+            // check if we are a CRN
+            if(context.app.isCRN()){
+                jvReply[jss::crn_public_key] = toBase58 (TokenType::TOKEN_NODE_PUBLIC, context.app.getCRN().id().publicKey());
+                auto const account = calcAccountID(context.app.getCRN().id().publicKey());
+                jvReply[jss::crn_account_id] = toBase58(account);
+                jvReply[jss::crn_domain_name] = context.app.getCRN().id().domain();
+                jvReply[jss::crn_activated] = context.app.getCRN().id().activated();
+                // get all node fee transactions
+                auto&& feeTxArray = Json::setArray (jvReply, jss::crn_fee_txs);
+                // get min/max values
+                std::uint32_t   uValidatedMin;
+                std::uint32_t   uValidatedMax;
+                bool bValidated = context.ledgerMaster.getValidatedRange (uValidatedMin, uValidatedMax);
+                bool bForward = false;
+                Json::Value resumeToken;
+                int limit = -1;
+                auto txns = context.netOps.getTxsAccount (
+                    account, uValidatedMin, uValidatedMax, bForward, resumeToken, limit, isUnlimited (context.role)
+                );
+                // loop over transactions and add to output
+                for (auto& it: txns)
+                {
+                    // Json::Value& jvObj = jvTxns.append (Json::objectValue);
+
+                    // if (it.first)
+                    //     jvObj[jss::tx] = it.first->getJson (1);
+
+                    // if (it.second)
+                    // {
+                    //     auto meta = it.second->getJson (1);
+                    //     addPaymentDeliveredAmount (meta, context, it.first, it.second);
+                    //     jvObj[jss::meta] = std::move(meta);
+
+                    //     std::uint32_t uLedgerIndex = it.second->getLgrSeq ();
+
+                    //     jvObj[jss::validated] = bValidated &&
+                    //         uValidatedMin <= uLedgerIndex &&
+                    //         uValidatedMax >= uLedgerIndex;
+                    // }
+                }
+            }
+            return jvReply;
+        }
+        else
+            return RPC::make_error(casinocoin::error_code_i::rpcNO_CRNROUND);
+    }
+    else
+        return RPC::make_error(casinocoin::error_code_i::rpcLGR_NOT_VALIDATED);
 }
 
 } // casinocoin

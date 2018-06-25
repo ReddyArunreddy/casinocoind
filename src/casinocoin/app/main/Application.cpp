@@ -895,7 +895,7 @@ bool ApplicationImp::setup()
                 config().section (SECTION_CRN_CONFIG).find("publickey").second &&
                 config().section (SECTION_CRN_CONFIG).find("signature").second)
             {
-                m_crn = make_CRN(config().section (SECTION_CRN_CONFIG),
+                m_crn = make_CRN(config(),
                                  getOPs(),
                                  m_ledgerMaster->getCurrentLedgerIndex(),
                                  logs_->journal("App_CRN"),

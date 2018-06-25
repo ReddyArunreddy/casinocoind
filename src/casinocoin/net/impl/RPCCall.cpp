@@ -1128,6 +1128,7 @@ public:
             {   "internal",             &RPCParser::parseInternal,              1,  -1  },
             {   "crn_create",           &RPCParser::parseCRNCreate,             1,  1   },
             {   "crn_verify",           &RPCParser::parseCRNVerify,             3,  3   },
+            {   "crn_info",             &RPCParser::parseAsIs,                  0,  0   },
 
             // Evented methods
             {   "path_find",            &RPCParser::parseEvented,               -1, -1  },
