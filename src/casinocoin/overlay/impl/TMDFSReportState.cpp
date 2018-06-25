@@ -185,7 +185,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                 if(eligible)
                 {
                     // check if account is funded
-                    if (!app_.getCRN().id().activated(*pk))
+                    if (!CRNId::activated(*pk, app_.getLedgerMaster(), journal_, app_.config()))
                     {
                         JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
                         eligible &= false;
