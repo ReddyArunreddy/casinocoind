@@ -109,45 +109,51 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     // jrojek this might be because node just recently gone offline
     // or because node does not support CRN feature. Either way, we decide that this node is already
     // visited and do not account its state
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-    timer.cancel();
+    protocol::TMDFSReportState msgToSend;
+    std::string recipient;
+    {
+        std::lock_guard<decltype(mutex_)> lock(mutex_);
+        timer.cancel();
 
-    std::string initiator;
-    // try to map to initiator using ACK timers
-    for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
-    {
-        if (*(iter->second) == timer)
-        {
-            initiator = iter->first;
-            JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
-            cancelTimer(initiator, RESPONSE_TIMER);
-            break;
-        }
-    }
-    if (initiator.empty())
-    {
-        for (auto iter = responseTimers_.begin(); iter != responseTimers_.end(); ++iter)
+        std::string initiator;
+        // try to map to initiator using ACK timers
+        for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
         {
             if (*(iter->second) == timer)
             {
                 initiator = iter->first;
-                JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
+                JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
+                cancelTimer(initiator, RESPONSE_TIMER);
                 break;
             }
         }
+        if (initiator.empty())
+        {
+            for (auto iter = responseTimers_.begin(); iter != responseTimers_.end(); ++iter)
+            {
+                if (*(iter->second) == timer)
+                {
+                    initiator = iter->first;
+                    JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
+                    break;
+                }
+            }
+        }
+        if (initiator.empty())
+        {
+            JLOG(journal_.error()) << "TMDFSReportStateData::onDeadlineTimer() couldn't find corresponding timer. honestly don't know what to do";
+            return;
+        }
+        lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
+        msgToSend = lastReq_[initiator];
+        recipient = lastReqRecipient_[initiator];
     }
-    if (initiator.empty())
-    {
-        JLOG(journal_.error()) << "TMDFSReportStateData::onDeadlineTimer() couldn't find corresponding timer. honestly don't know what to do";
-        return;
-    }
-    lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
 
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
     // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
     {
-        knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(lastReq_[initiator]), lastReqRecipient_[initiator]);
+        knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(msgToSend), recipient);
     }
 }
 
