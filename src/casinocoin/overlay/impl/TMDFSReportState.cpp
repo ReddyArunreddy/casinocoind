@@ -136,6 +136,11 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
 
 void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
+    if (m->dfs_size() != 0)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() but dfs list is not empty...";
+        return;
+    }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
     CRN::EligibilityMap eligibilityMap;
@@ -198,6 +203,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
+    overlay_.getDFSReportStateData().conclude(pubKeyString_);
 }
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)

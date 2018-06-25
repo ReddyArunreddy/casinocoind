@@ -84,12 +84,24 @@ void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, Timer
 
 protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
 {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     return lastReq_[initiatorPubKey];
 }
 
 std::string& TMDFSReportStateData::getLastRecipient(std::string const& initiatorPubKey)
 {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     return lastReqRecipient_[initiatorPubKey];
+}
+
+void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
+{
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    ackTimers_[initiatorPubKey]->cancel();
+    responseTimers_[initiatorPubKey]->cancel();
+
+    lastReqRecipient_[initiatorPubKey] = std::string();
+    lastReq_[initiatorPubKey] = protocol::TMDFSReportState();
 }
 
 void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
