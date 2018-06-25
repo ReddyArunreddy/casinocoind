@@ -146,6 +146,14 @@ Json::Value doCRNInfo (RPC::Context& context)
                 obj[jss::crn_fee_distributed] = crnObject.getFieldAmount(sfCRN_FeeDistributed).getText();
 
             }
+            // get all node fee transactions and add them
+            STVector256 crnTxHistory = crnRound->getFieldV256(sfCRNTxHistory);
+            auto&& feeTxArray = Json::setArray (jvReply, jss::crn_fee_txs);
+            for ( auto const& historyTx : crnTxHistory)
+            {
+                feeTxArray.append(to_string(historyTx));
+            }
+
             // check if we are a CRN
             if(context.app.isCRN()){
                 jvReply[jss::crn_public_key] = toBase58 (TokenType::TOKEN_NODE_PUBLIC, context.app.getCRN().id().publicKey());
@@ -153,39 +161,6 @@ Json::Value doCRNInfo (RPC::Context& context)
                 jvReply[jss::crn_account_id] = toBase58(account);
                 jvReply[jss::crn_domain_name] = context.app.getCRN().id().domain();
                 jvReply[jss::crn_activated] = context.app.getCRN().id().activated();
-                // get all node fee transactions
-                auto&& feeTxArray = Json::setArray (jvReply, jss::crn_fee_txs);
-                // get min/max values
-                std::uint32_t   uValidatedMin;
-                std::uint32_t   uValidatedMax;
-                bool bValidated = context.ledgerMaster.getValidatedRange (uValidatedMin, uValidatedMax);
-                bool bForward = false;
-                Json::Value resumeToken;
-                int limit = -1;
-                auto txns = context.netOps.getTxsAccount (
-                    account, uValidatedMin, uValidatedMax, bForward, resumeToken, limit, isUnlimited (context.role)
-                );
-                // loop over transactions and add to output
-                for (auto& it: txns)
-                {
-                    // Json::Value& jvObj = jvTxns.append (Json::objectValue);
-
-                    // if (it.first)
-                    //     jvObj[jss::tx] = it.first->getJson (1);
-
-                    // if (it.second)
-                    // {
-                    //     auto meta = it.second->getJson (1);
-                    //     addPaymentDeliveredAmount (meta, context, it.first, it.second);
-                    //     jvObj[jss::meta] = std::move(meta);
-
-                    //     std::uint32_t uLedgerIndex = it.second->getLgrSeq ();
-
-                    //     jvObj[jss::validated] = bValidated &&
-                    //         uValidatedMin <= uLedgerIndex &&
-                    //         uValidatedMax >= uLedgerIndex;
-                    // }
-                }
             }
             return jvReply;
         }
