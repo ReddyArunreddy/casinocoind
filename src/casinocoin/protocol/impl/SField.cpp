@@ -241,8 +241,9 @@ SField const sfPaths = make::one(&sfPaths, STI_PATHSET, 1, "Paths");
 SF_Vec256 const sfIndexes          = make::one<SF_Vec256::type>(&sfIndexes,          STI_VECTOR256, 1, "Indexes", SField::sMD_Never);
 SF_Vec256 const sfHashes           = make::one<SF_Vec256::type>(&sfHashes,           STI_VECTOR256, 2, "Hashes");
 SF_Vec256 const sfAmendments       = make::one<SF_Vec256::type>(&sfAmendments,       STI_VECTOR256, 3, "Amendments");
+SF_Vec256 const sfCRNTxHistory     = make::one<SF_Vec256::type>(&sfCRNTxHistory,     STI_VECTOR256, 4, "CRNTxHistory");
+
 SF_Vec128 const sfKYCVerifications = make::one<SF_Vec128::type>(&sfKYCVerifications, STI_VECTOR128, 1, "Verifications");
-SF_Vec256 const sfCRNTxHistory     = make::one<SF_Vec256::type>(&sfCRNTxHistory,     STI_VECTOR256, 1, "CRNTxHistory");
 
 // inner object
 // OBJECT/1 is reserved for end of object
