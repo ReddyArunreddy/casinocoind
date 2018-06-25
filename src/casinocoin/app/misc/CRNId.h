@@ -106,11 +106,11 @@ public:
         return signature_;
     }
 
-    bool activated() const
+    bool activated(PublicKey const& pubKey) const
     {
-        bool activated_ = false;
+        bool activated = false;
         // get the account id for the CRN
-        boost::optional <AccountID> accountID = calcAccountID(pubKey_);
+        boost::optional <AccountID> accountID = calcAccountID(pubKey);
         // get the last validated ledger
         auto const ledger = m_ledgerMaster.getValidatedLedger();
         if(ledger)
@@ -123,7 +123,7 @@ public:
                 // check if the account balance is >= defined reserve
                 if(amount >= conf_.CRN_RESERVE)
                 {
-                    activated_ = true;
+                    activated = true;
                 }
             }
         }
@@ -131,7 +131,12 @@ public:
         {
             JLOG(j_.info()) << "CRN No Validated Ledger for Activated.";
         }
-        return activated_;
+        return activated;
+    }
+
+    bool activated() const
+    {
+        return activated(pubKey_);
     }
 
     bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const

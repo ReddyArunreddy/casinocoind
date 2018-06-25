@@ -171,19 +171,30 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                 auto unHexedSignature = strUnHex(rep.signature());
                 if (unHexedSignature.second && pk)
                 {
-                    eligible = casinocoin::verify(
+                    eligible &= casinocoin::verify(
                         *pk,
                         makeSlice(strHex(rep.domain())),
                         makeSlice(unHexedSignature.first)
                     );
                 }
+                else
+                {
+                    eligible &= false;
+                    JLOG(journal_.info()) << "TMDFSReportState - failed to read PubKey or signature of CRN candidate";
+                }
                 if(eligible)
                 {
+                    // check if account is funded
+                    if (!app_.getCRN().id().activated(*pk))
+                    {
+                        JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                        eligible &= false;
+                    }
                     // check if latency is acceptable
                     if(rep.latency() > app_.config().CRN_MAX_LATENCY)
                     {
                         JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
-                        eligible = false;
+                        eligible &= false;
                     }
                 }
                 else
@@ -194,7 +205,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             else
             {
                 JLOG(journal_.info()) << "TMDFSReportState - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
-                eligible = false;
+                eligible &= false;
             }
             JLOG(journal_.info()) << "TMDFSReportState - PublicKey: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " Eligible:" << eligible;
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
