@@ -143,12 +143,9 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
-    for (auto iter = m->visited().begin() ; iter != m->visited().end() ; ++iter)
-    {
-        boost::optional<PublicKey> pk = PublicKey(Slice(iter->data(), iter->size()));
-        JLOG(journal_.info()) << "TMDFSReportState::conclude() visited: " << toBase58(TOKEN_NODE_PUBLIC, *pk)
-                              << "accID: " << toBase58(calcAccountID(*pk));
-    }
+    for (int i = 0; i < m->visited_size(); ++i)
+            JLOG(journal_.info()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
+
     CRN::EligibilityMap eligibilityMap;
     for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
     {
