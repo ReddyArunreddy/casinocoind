@@ -64,6 +64,7 @@ public:
 
 private:
     void onDeadlineTimer (DeadlineTimer& timer) override;
+    void cancelTimer_private(std::string const& initiatorPubKey, TimerType type);
 
     // jrojek: all maps contain base58 public key of initiator
     // (first entry on dfs list of TMDFSReportState) and a corresponding attribute
@@ -72,7 +73,7 @@ private:
     std::map<std::string, std::unique_ptr<DeadlineTimer>> ackTimers_;
     std::map<std::string, std::unique_ptr<DeadlineTimer>> responseTimers_;
 
-    std::recursive_mutex mutex_;
+    std::mutex mutex_;
 
     OverlayImpl& overlay_;
     beast::Journal journal_;

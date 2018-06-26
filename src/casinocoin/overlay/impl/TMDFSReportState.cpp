@@ -142,7 +142,13 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         return;
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
+    for (auto iter = m->visited().begin() ; iter != m->visited().end() ; ++iter)
+    {
+        boost::optional<PublicKey> pk = PublicKey(Slice(iter->data(), iter->size()));
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() visited: " << toBase58(TOKEN_NODE_PUBLIC, *pk)
+                              << "accID: " << toBase58(calcAccountID(*pk));
+    }
     CRN::EligibilityMap eligibilityMap;
     for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
     {
@@ -211,7 +217,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
         }
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
     overlay_.getDFSReportStateData().conclude(pubKeyString_);
