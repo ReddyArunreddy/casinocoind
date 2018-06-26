@@ -153,7 +153,7 @@ void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKe
     if (type == ACK_TIMER)
     {
         if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
-            ackTimers_[initiatorPubKey]->cancel();
+            ackTimers_[initiatorPubKey].reset();
         else
             JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find ACK_TIMER "
                                   << "for root node: " << initiatorPubKey;
@@ -161,7 +161,7 @@ void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKe
     else if (type == RESPONSE_TIMER)
     {
         if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
-            responseTimers_[initiatorPubKey]->cancel();
+            responseTimers_[initiatorPubKey].reset();
         else
             JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find RESPONSE_TIMER "
                                   <<"for root node: " << initiatorPubKey;
