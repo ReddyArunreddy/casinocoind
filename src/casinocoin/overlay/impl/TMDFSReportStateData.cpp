@@ -44,15 +44,13 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
                           << " curr recipient: " << currRecipient;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
-        ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+//    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
+    ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
-    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
-        responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+//    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
+    responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
 
-    ackTimers_[initiatorPubKey]->cancel();
     ackTimers_[initiatorPubKey]->setExpiration(1s);
-    responseTimers_[initiatorPubKey]->cancel();
     responseTimers_[initiatorPubKey]->setExpiration(20s);
 
     lastReqRecipient_[initiatorPubKey] = currRecipient;
@@ -105,7 +103,6 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer()";
     {
         std::lock_guard<decltype(mutex_)> lock(mutex_);
-        timer.cancel();
 
         std::string initiator;
         // try to map to initiator using ACK timers

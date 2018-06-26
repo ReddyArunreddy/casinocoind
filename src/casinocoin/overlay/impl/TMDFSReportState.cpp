@@ -119,7 +119,6 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
 {
     JLOG(journal_.info()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
                           << " dfsSize " << m->dfs_size();
-    m->add_visited(timedOutNode);
     m->set_type(protocol::TMDFSReportState::rtREQ);
 
     if (forwardRequest(m))
@@ -350,8 +349,8 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
     {
         if (visitedNode == parentPeerPubKey)
         {
-            JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from peer which is already visited."
-                                  << "Probably obsolete response";
+            JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from already visited peer: " << parentPeerPubKey
+                                  << " Probably obsolete response";
             return false;
         }
     }
