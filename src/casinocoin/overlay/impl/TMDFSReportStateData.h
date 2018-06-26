@@ -60,6 +60,8 @@ public:
     protocol::TMDFSReportState& getLastRequest(std::string const& initiatorPubKey);
     std::string& getLastRecipient(std::string const& initiatorPubKey);
 
+    void conclude(std::string const& initiatorPubKey);
+
 private:
     void onDeadlineTimer (DeadlineTimer& timer) override;
 

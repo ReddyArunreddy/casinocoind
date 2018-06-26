@@ -319,7 +319,11 @@ TER Change::applyCRN_Round()
     }
 
     // add new tx id to tx array
-    STVector256 crnTxHistory = ledgerCrnRoundObject->getFieldV256(sfCRNTxHistory);
+    STVector256 crnTxHistory;
+    if (ledgerCrnRoundObject->isFieldPresent(sfCRNTxHistory))
+    {
+        crnTxHistory = ledgerCrnRoundObject->getFieldV256(sfCRNTxHistory);
+    }
     crnTxHistory.push_back (ctx_.tx.getTransactionID());
 
     // update the ledger with the new values
@@ -328,7 +332,10 @@ TER Change::applyCRN_Round()
     ledgerCrnRoundObject->setFieldAmount(sfCRN_FeeDistributed,
                                          (ledgerCrnRoundObject->getFieldAmount(sfCRN_FeeDistributed) +
                                          ctx_.tx.getFieldAmount(sfCRN_FeeDistributed)));
-    ledgerCrnRoundObject->setFieldU32(sfLastLedgerSequence, ledgerCrnRoundObject->getFieldU32(sfLedgerSequence));
+    if (ctx_.tx.isFieldPresent(sfLedgerSequence))
+    {
+        ledgerCrnRoundObject->setFieldU32(sfLedgerSequence, ctx_.tx.getFieldU32(sfLedgerSequence));
+    }
     ledgerCrnRoundObject->setFieldV256(sfCRNTxHistory, crnTxHistory);
 
     // here, drops are added back to the pool

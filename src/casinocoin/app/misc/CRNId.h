@@ -106,32 +106,40 @@ public:
         return signature_;
     }
 
-    bool activated() const
+    static bool activated(PublicKey const& pubKey,
+                          LedgerMaster& ledgerMaster,
+                          const beast::Journal& journal,
+                          const Config& config)
     {
-        bool activated_ = false;
+        bool activated = false;
         // get the account id for the CRN
-        boost::optional <AccountID> accountID = calcAccountID(pubKey_);
+        boost::optional <AccountID> accountID = calcAccountID(pubKey);
         // get the last validated ledger
-        auto const ledger = m_ledgerMaster.getValidatedLedger();
+        auto const ledger = ledgerMaster.getValidatedLedger();
         if(ledger)
         {
             auto const sleAccepted = ledger->read(keylet::account(*accountID));
             if (sleAccepted)
             {
                 STAmount amount = sleAccepted->getFieldAmount (sfBalance);
-                JLOG(j_.info()) << "CRN Account Balance: " << amount.getFullText ();
+                JLOG(journal.info()) << "CRN Account Balance: " << amount.getFullText ();
                 // check if the account balance is >= defined reserve
-                if(amount >= conf_.CRN_RESERVE)
+                if(amount >= config.CRN_RESERVE)
                 {
-                    activated_ = true;
+                    activated = true;
                 }
             }
         }
         else
         {
-            JLOG(j_.info()) << "CRN No Validated Ledger for Activated.";
+            JLOG(journal.info()) << "CRN No Validated Ledger for Activated.";
         }
-        return activated_;
+        return activated;
+    }
+
+    bool activated() const
+    {
+        return activated(pubKey_, m_ledgerMaster, j_, conf_);
     }
 
     bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const

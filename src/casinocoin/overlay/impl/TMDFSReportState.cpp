@@ -136,6 +136,11 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
 
 void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
+    if (m->dfs_size() != 0)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() but dfs list is not empty...";
+        return;
+    }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
     CRN::EligibilityMap eligibilityMap;
@@ -166,19 +171,30 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                 auto unHexedSignature = strUnHex(rep.signature());
                 if (unHexedSignature.second && pk)
                 {
-                    eligible = casinocoin::verify(
+                    eligible &= casinocoin::verify(
                         *pk,
                         makeSlice(strHex(rep.domain())),
                         makeSlice(unHexedSignature.first)
                     );
                 }
+                else
+                {
+                    eligible &= false;
+                    JLOG(journal_.info()) << "TMDFSReportState - failed to read PubKey or signature of CRN candidate";
+                }
                 if(eligible)
                 {
+                    // check if account is funded
+                    if (!CRNId::activated(*pk, app_.getLedgerMaster(), journal_, app_.config()))
+                    {
+                        JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                        eligible &= false;
+                    }
                     // check if latency is acceptable
                     if(rep.latency() > app_.config().CRN_MAX_LATENCY)
                     {
                         JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
-                        eligible = false;
+                        eligible &= false;
                     }
                 }
                 else
@@ -189,7 +205,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             else
             {
                 JLOG(journal_.info()) << "TMDFSReportState - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
-                eligible = false;
+                eligible &= false;
             }
             JLOG(journal_.info()) << "TMDFSReportState - PublicKey: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " Eligible:" << eligible;
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
@@ -198,6 +214,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
+    overlay_.getDFSReportStateData().conclude(pubKeyString_);
 }
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)
