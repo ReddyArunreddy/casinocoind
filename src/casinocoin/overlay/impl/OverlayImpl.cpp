@@ -973,7 +973,6 @@ TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
 void OverlayImpl::startDFSReportStateCrawl()
 {
     JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl";
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
     Overlay::PeerSequence activePeers = getActivePeers();
     if (activePeers.size() > 0)
     {
