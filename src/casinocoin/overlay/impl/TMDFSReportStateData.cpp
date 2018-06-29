@@ -86,8 +86,8 @@ void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
     JLOG(journal_.info()) << "TMDFSReportStateData::conclude() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
-    ackTimers_[initiatorPubKey]->cancel();
-    responseTimers_[initiatorPubKey]->cancel();
+    ackTimers_[initiatorPubKey].reset();
+    responseTimers_[initiatorPubKey].reset();
 
     lastReqRecipient_[initiatorPubKey] = std::string();
     lastReq_[initiatorPubKey] = protocol::TMDFSReportState();

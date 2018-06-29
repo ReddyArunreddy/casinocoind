@@ -232,7 +232,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::fillMessage()"
-                          << " dfsSize " << m.dfs_size();                             ;
+                          << " dfsSize " << m.dfs_size();
     if (app_.isCRN())
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = m.add_reports ();
@@ -369,7 +369,8 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
 
     // check if the response we recently received does not come from a node which already timed-out in our scope
     std::string parentPeerPubKey = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    for (std::string const& visitedNode : overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited())
+    auto const& visitedNodes = overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited();
+    for (std::string const& visitedNode : visitedNodes)
     {
         if (visitedNode == parentPeerPubKey)
         {
