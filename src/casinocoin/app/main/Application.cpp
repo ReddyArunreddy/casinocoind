@@ -50,6 +50,7 @@
 #include <casinocoin/app/misc/SHAMapStore.h>
 #include <casinocoin/app/misc/TxQ.h>
 #include <casinocoin/app/misc/ValidatorSite.h>
+#include <casinocoin/app/misc/CRNListUpdater.h>
 #include <casinocoin/app/paths/PathRequests.h>
 #include <casinocoin/app/tx/apply.h>
 #include <casinocoin/basics/ResolverAsio.h>
@@ -304,6 +305,7 @@ public:
     std::unique_ptr <ValidatorList> validators_;
     std::unique_ptr <ValidatorSite> validatorSites_;
     std::unique_ptr <CRNList> relaynodes_;
+    std::unique_ptr <CRNListUpdater> crnListUpdater_;
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <CRN> m_crn;
@@ -464,6 +466,9 @@ public:
 
     CRNList&
     relaynodes () override { return *relaynodes_; }
+
+    CRNListUpdater&
+    crnListUpdater () override { return *crnListUpdater_; }
 
     Cluster&
     cluster () override { return *cluster_; }
@@ -649,6 +654,9 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
 
     , relaynodes_ (std::make_unique<CRNList> (
         *timeKeeper_, logs_->journal("CRNList")))
+
+    , crnListUpdater_ (std::make_unique<CRNListUpdater> (
+        get_io_service (), *relaynodes_, logs_->journal("CRNListUpdater")))
 
     , serverHandler_ (make_ServerHandler (*this, *m_networkOPs, get_io_service (),
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
@@ -925,6 +933,14 @@ bool ApplicationImp::setup()
             "Invalid entry in [" << SECTION_VALIDATOR_LIST_SITES << "]";
         return false;
     }
+    
+    if (!crnListUpdater_->load (        
+        config().section (SECTION_CRN_LIST_SITES).values ()))
+    {
+        JLOG(m_journal.fatal()) <<
+            "Invalid entry in [" << SECTION_CRN_LIST_SITES << "]";
+        return false;
+    }
 
     m_nodeStore->tune (config_->getSize (siNodeCacheSize), config_->getSize (siNodeCacheAge));
     m_ledgerMaster->tune (config_->getSize (siLedgerSize), config_->getSize (siLedgerAge));
@@ -948,6 +964,9 @@ bool ApplicationImp::setup()
     add (*m_overlay); // add to PropertyStream
 
     validatorSites_->start ();
+
+    // start the relaynode refresh cycle
+    crnListUpdater_->start ();
 
     // start first consensus round
     JLOG(m_journal.info()) << "Start first Consensus round";
@@ -1656,6 +1675,9 @@ void ApplicationImp::onStop()
     mValidations->flush ();
 
     validatorSites_->stop ();
+
+    // stop the relaynode refresh cycle
+    crnListUpdater_->stop ();
 
     // TODO Store manifests in manifests.sqlite instead of wallet.db
     validatorManifests_->save (getWalletDB (), "ValidatorManifests",

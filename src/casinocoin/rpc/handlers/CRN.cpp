@@ -128,6 +128,7 @@ Json::Value doCRNInfo (RPC::Context& context)
             jvReply[jss::hash] = to_string (valLedger->info().hash);
             jvReply[jss::crn_fee_distributed] = crnRound->getFieldAmount(sfCRN_FeeDistributed).getText();
             jvReply[jss::total_coins] = to_string (valLedger->info().drops);
+            jvReply[jss::crn_last_ledger] = Json::UInt (crnRound->getFieldU32(sfLedgerSequence) );
             auto&& array = Json::setArray (jvReply, jss::crns);
             // loop over CRN array
             STArray crnArray = crnRound->getFieldArray(sfCRNs);

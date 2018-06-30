@@ -82,6 +82,7 @@ class SHAMapStore;
 
 class CRN;
 class CRNList;
+class CRNListUpdater;
 class CRNRound;
 
 using NodeCache     = TaggedCache <SHAMapHash, Blob>;
@@ -139,6 +140,7 @@ public:
     virtual ValidatorList&          validators () = 0;
     virtual ValidatorSite&          validatorSites () = 0;
     virtual CRNList&                relaynodes () = 0;
+    virtual CRNListUpdater&         crnListUpdater () = 0;
     virtual ManifestCache&          validatorManifests () = 0;
     virtual ManifestCache&          publisherManifests () = 0;
     virtual Cluster&                cluster () = 0;

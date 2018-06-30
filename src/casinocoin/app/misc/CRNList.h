@@ -46,6 +46,13 @@ namespace casinocoin {
     [Description]
 
 */
+
+struct CRNListItem 
+{
+    std::string publicKey;
+    std::string domainName;
+};
+
 class CRNList
 {
     TimeKeeper& timeKeeper_;
@@ -53,8 +60,10 @@ class CRNList
     boost::shared_mutex mutable mutex_;
 
     // Listed CRN public keys with their registered domain names
-    hash_map<PublicKey, std::string> keyListings_;
-
+    // std::unordered_map<PublicKey, std::string> keyListings_;
+    // hash_map<PublicKey, std::string> keyListings_;
+    
+    std::vector<CRNListItem> crnList_;
 
 public:
     CRNList (
@@ -100,23 +109,11 @@ public:
     bool
     listed (PublicKey const& identity) const;
 
-    /** Invokes the callback once for every listed CRN public key.
-
-        @note Undefined behavior results when calling CRNList members from within the callback
-
-        The arguments passed into the lambda are:
-
-        @li The CRN public key
-
-        @li A boolean indicating whether this is a trusted key
-
-        @par Thread Safety
-
-        May be called concurrently
-    */
     void
-    for_each_listed (std::function<void(PublicKey const&, bool)> func) const;
-
+    refreshNodeOnList (
+        std::string const& publicKeyString,
+        std::string const& domainName,
+        bool const& enabled);
 };
 
 //------------------------------------------------------------------------------

@@ -66,7 +66,6 @@ CRNList::load (
 
     std::size_t count = 0;
 
-    PublicKey local;
     for (auto const& n : configKeys)
     {
         JLOG (j_.trace()) << "Processing '" << n << "'";
@@ -80,25 +79,19 @@ CRNList::load (
         }
 
         boost::optional<PublicKey> publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
-        // auto const publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, match[1]);
 
-        JLOG (j_.info()) << "Loading CRN " << match[1] << " / " << match[2];
+        JLOG (j_.info()) << "Loading CRN " << match[1].str() << " / " << match[2].str();
         if (!(toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey).length() > 0))
         {
             JLOG (j_.error()) << "Invalid node identity: " << toBase58(TokenType::TOKEN_NODE_PUBLIC, *publicKey);
             return false;
         }
 
-        auto ret = keyListings_.insert ({*publicKey, match[2]});
-        if (! ret.second)
-        {
-            JLOG (j_.warn()) << "Duplicate node identity: " << match[1];
-            continue;
-        }
+        crnList_.push_back({match[1], match[2]});
         ++count;
     }
 
-    JLOG (j_.debug()) << "Loaded " << count << " CRN Public Keys";
+    JLOG (j_.info()) << "Loaded " << count << " CRN Public Keys from local file.";
     return true;
 }
 
@@ -106,20 +99,54 @@ bool
 CRNList::listed (
     PublicKey const& identity) const
 {
-    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
-
-    return keyListings_.find (identity) != keyListings_.end ();
+    bool found = false;
+    std::string searchNode = toBase58(TokenType::TOKEN_NODE_PUBLIC, identity);
+    for(size_t i=0; i<crnList_.size(); i++)
+    {
+        if(crnList_[i].publicKey == searchNode)
+        {
+            found = true;
+            break;
+        }
+    }
+    return found;
 }
 
 void
-CRNList::for_each_listed (
-    std::function<void(PublicKey const&, bool)> func) const
+CRNList::refreshNodeOnList (
+    std::string const& publicKeyString,
+    std::string const& domainName,
+    bool const& enabled)
 {
-    boost::shared_lock<boost::shared_mutex> read_lock{mutex_};
+    auto const publicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKeyString);
+    JLOG (j_.debug()) << "refreshNodeOnList: " << publicKeyString;
 
-    // for (auto const& v : keyListings_)
-    //     func (v.first, trusted(v.first));
+    bool nodeListed = CRNList::listed(*publicKey);
+    JLOG (j_.debug()) << "Node: " << publicKeyString << " Listed: " << nodeListed;  
+
+    if(!nodeListed && enabled)
+    {
+        // add node to list
+        crnList_.push_back({publicKeyString, domainName});
+        JLOG (j_.debug()) << "Add Node: " << publicKeyString;
+    }
+    else if(nodeListed && !enabled)
+    {
+        // remove node from list
+        auto it = std::find_if(crnList_.begin(), crnList_.end(), boost::bind(&CRNListItem::publicKey, _1) == publicKeyString);
+        if (it != crnList_.end())
+            crnList_.erase(it);
+        JLOG (j_.debug()) << "Remove Node: " << publicKeyString;
+    }
+    else if(nodeListed && enabled)
+    {
+        // update listed node
+        auto it = std::find_if(crnList_.begin(), crnList_.end(), boost::bind(&CRNListItem::publicKey, _1) == publicKeyString);
+        if (it != crnList_.end())
+            *it = {publicKeyString, domainName};
+        JLOG (j_.debug()) << "Update Node: " << publicKeyString;
+    }
+    JLOG (j_.info()) << "CRN Public Keys List size: " << crnList_.size();
 }
-
 
 } // casinocoin

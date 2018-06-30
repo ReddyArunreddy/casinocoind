@@ -149,6 +149,8 @@ JSS ( crn_activated );              // out: CRN
 JSS ( crn_fee_distributed );        // out: CRNInfo
 JSS ( crns );                       // out: CRNInfo
 JSS ( crn_fee_txs );                // out: CRNInfo
+JSS ( crn_last_ledger );            // out: CRNInfo
+JSS ( crn_update_sites );           // out: CRN
 JSS ( currency );                   // in: paths/PathRequest, STAmount
                                     // out: paths/Node, STPathSet, STAmount
 JSS ( current );                    // out: OwnerInfo
@@ -243,6 +245,8 @@ JSS ( key_type );                   // in/out: WalletPropose, TransactionSign
 JSS ( latency );                    // out: PeerImp
 JSS ( last );                       // out: RPCVersion
 JSS ( last_close );                 // out: NetworkOPs
+JSS ( last_refresh_time );          // out: CRN Update Sites
+JSS ( last_refresh_status );        // out: CRN Update Sites
 JSS ( ledger );                     // in: NetworkOPs, LedgerCleaner,
                                     //     RPCHelpers
                                     // out: NetworkOPs, PeerImp
@@ -365,6 +369,7 @@ JSS ( random );                     // out: Random
 JSS ( raw_meta );                   // out: AcceptedLedgerTx
 JSS ( receive_currencies );         // out: AccountCurrencies
 JSS ( reference_level );            // out: TxQ
+JSS ( refresh_interval_min );       // CRN Update Sites
 JSS ( regular_seed );               // in/out: LedgerEntry
 JSS ( remote );                     // out: Logic.h
 JSS ( request );                    // RPC
@@ -461,6 +466,7 @@ JSS ( type_hex );                   // out: STPathSet
 JSS ( unl );                        // out: UnlList
 JSS ( unlimited);                   // out: Connection.h
 JSS ( uptime );                     // out: GetCounts
+JSS ( uri );
 JSS ( url );                        // in/out: Subscribe, Unsubscribe
 JSS ( url_password );               // in: Subscribe
 JSS ( url_username );               // in: Subscribe

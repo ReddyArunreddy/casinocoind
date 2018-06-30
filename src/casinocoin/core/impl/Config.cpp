@@ -606,13 +606,19 @@ void Config::loadFromString (std::string const& fileContents)
     if (loadSectionFromExternalPath (SECTION_CRN_FILE, crnFile, crnData, crnFileName))
     {
         auto crnIniFile = parseIniFile (crnData, true);
-
+        // load defined crn nodes
         auto crnEntries = getIniFileSection (
             crnIniFile,
             SECTION_CRNS);
-
         if (crnEntries)
             section (SECTION_CRNS).append (*crnEntries);
+
+        // load defined crn list sites
+        auto crnSiteEntries = getIniFileSection(
+            crnIniFile,
+            SECTION_CRN_LIST_SITES);
+        if (crnSiteEntries)
+            section (SECTION_CRN_LIST_SITES).append (*crnSiteEntries);
     }
 }
 
