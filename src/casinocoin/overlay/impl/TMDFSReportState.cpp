@@ -70,6 +70,8 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (!checkReq(m))
         return;
@@ -91,6 +93,8 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
     JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (!checkResp(m))
         return;
@@ -119,7 +123,9 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
 {
     JLOG(journal_.info()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
                           << " dfsSize " << m->dfs_size();
-    m->add_visited(timedOutNode);
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
     m->set_type(protocol::TMDFSReportState::rtREQ);
 
     if (forwardRequest(m))
@@ -138,11 +144,17 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
 {
     if (m->dfs_size() != 0)
     {
-        JLOG(journal_.info()) << "TMDFSReportState::conclude() but dfs list is not empty...";
+        JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
+        overlay_.getDFSReportStateData().conclude(pubKeyString_);
+        for (std::string const& dfsEntry : m->dfs())
+            JLOG(journal_.debug()) << "dfs: " << dfsEntry;
         return;
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTOUT ::::::::::::::::::::::::::::::::::::::::";
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
+    for (int i = 0; i < m->visited_size(); ++i)
+            JLOG(journal_.info()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
+
     CRN::EligibilityMap eligibilityMap;
     for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
     {
@@ -211,7 +223,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
         }
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::::::::::::::::::: VERBOSE PRINTEND ::::::::::::::::::::::::::::::::::::::::";
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
     overlay_.getDFSReportStateData().conclude(pubKeyString_);
@@ -220,7 +232,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)
 {
     JLOG(journal_.info()) << "TMDFSReportState::fillMessage()"
-                          << " dfsSize " << m.dfs_size();                             ;
+                          << " dfsSize " << m.dfs_size();
     if (app_.isCRN())
     {
         protocol::TMDFSReportState::PubKeyReportMap* newEntry = m.add_reports ();
@@ -235,6 +247,9 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
 {
     JLOG(journal_.info()) << "TMDFSReportState::forwardRequest()"
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
     Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
     if (knownPeers.size() > 0)
     {
@@ -275,6 +290,9 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
 {
     JLOG(journal_.info()) << "TMDFSReportState::forwardResponse()"
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
     {
@@ -285,6 +303,8 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
     {
         JLOG(journal_.error()) << "TMDFSReportState::forwardResponse() couldn't remove 'me' "
                                << pubKeyString_ << " from DFS list";
+        for (std::string const& dfsEntry : m->dfs())
+            JLOG(journal_.debug()) << "dfs: " << dfsEntry;
         return false;
     }
 
@@ -308,6 +328,9 @@ bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> cons
 {
     JLOG(journal_.info()) << "TMDFSReportState::checkReq()"
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
     if (m->type() != protocol::TMDFSReportState::rtREQ)
     {
         JLOG(journal_.error()) << "TMDFSReportState::checkReq() "
@@ -333,6 +356,9 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
 {
     JLOG(journal_.info()) << "TMDFSReportState::checkResp()"
                           << " dfsSize " << m->dfs_size();
+    for (std::string const& dfsEntry : m->dfs())
+        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
     if (m->type() != protocol::TMDFSReportState::rtRESP)
     {
         JLOG(journal_.error()) << "TMDFSReportState::checkResp() TMDFSReportState evaluating resp but it is not a resp";
@@ -343,12 +369,13 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
 
     // check if the response we recently received does not come from a node which already timed-out in our scope
     std::string parentPeerPubKey = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    for (std::string const& visitedNode : overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited())
+    auto const& visitedNodes = overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited();
+    for (std::string const& visitedNode : visitedNodes)
     {
         if (visitedNode == parentPeerPubKey)
         {
-            JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from peer which is already visited."
-                                  << "Probably obsolete response";
+            JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from already visited peer: " << parentPeerPubKey
+                                  << " Probably obsolete response";
             return false;
         }
     }
