@@ -34,8 +34,8 @@
 
 namespace casinocoin {
 
-// default site query frequency - 15 minutes
-auto constexpr DEFAULT_CRN_REFRESH_INTERVAL = std::chrono::minutes{5};
+// default site query frequency - 30 minutes
+auto constexpr DEFAULT_CRN_REFRESH_INTERVAL = std::chrono::minutes{30};
 
 CRNListUpdater::CRNListUpdater (
     boost::asio::io_service& ios,
