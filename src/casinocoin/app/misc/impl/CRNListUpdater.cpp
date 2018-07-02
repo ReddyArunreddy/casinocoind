@@ -244,6 +244,8 @@ CRNListUpdater::onSiteFetch(
             JLOG (j_.warn()) <<
                 "Unable to parse JSON response from  " <<
                 sites_[siteIdx].uri;
+            // set last refresh status
+            sites_[siteIdx].lastRefreshStatus.emplace(Site::Status{clock_type::now(), false});
         }
     }
 
@@ -260,13 +262,12 @@ CRNListUpdater::getJson() const
     using namespace std::chrono;
     using Int = Json::Value::Int;
 
-    Json::Value jrr(Json::objectValue);
-    Json::Value& jSites = (jrr[jss::crn_update_sites] = Json::arrayValue);
+    Json::Value jrr(Json::arrayValue);
     {
         std::lock_guard<std::mutex> lock{sites_mutex_};
         for (Site const& site : sites_)
         {
-            Json::Value& v = jSites.append(Json::objectValue);
+            Json::Value& v = jrr.append(Json::objectValue);
             v[jss::uri] = site.uri;
             if (site.lastRefreshStatus)
             {

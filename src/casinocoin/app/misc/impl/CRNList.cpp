@@ -60,8 +60,6 @@ CRNList::load (
         ")?"                      // end optional comment block
     );
 
-    boost::unique_lock<boost::shared_mutex> read_lock{mutex_};
-
     JLOG (j_.debug()) << "Loading configured trusted CRN public keys";
 
     std::size_t count = 0;
@@ -147,6 +145,22 @@ CRNList::refreshNodeOnList (
         JLOG (j_.debug()) << "Update Node: " << publicKeyString;
     }
     JLOG (j_.info()) << "CRN Public Keys List size: " << crnList_.size();
+}
+
+Json::Value
+CRNList::getJson() const
+{
+    Json::Value jrr(Json::arrayValue);
+    {
+        for (CRNListItem const& node : crnList_)
+        {
+            Json::Value& v = jrr.append(Json::objectValue);
+            v[jss::crn_public_key] = node.publicKey;
+            v[jss::crn_domain_name] = node.domainName;
+            
+        }
+    }
+    return jrr;
 }
 
 } // casinocoin
