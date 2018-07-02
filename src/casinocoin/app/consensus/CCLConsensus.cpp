@@ -331,7 +331,7 @@ CCLConsensus::onClose(
     }
     if (proposing && !wrongLCL && ((prevLedger->info().seq + 25) % CRNPerformance::getReportingPeriod()) == 0)
     {
-//        app_.overlay().startDFSReportStateCrawl();
+       app_.overlay().startDFSReportStateCrawl();
     }
     //        }
 
