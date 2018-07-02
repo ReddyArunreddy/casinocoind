@@ -250,10 +250,10 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
-    Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
-    if (knownPeers.size() > 0)
+    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
+    if (sanePeers.size() > 0)
     {
-        for (auto const& singlePeer : knownPeers)
+        for (auto const& singlePeer : sanePeers)
         {
             bool alreadyVisited = false;
             std::string singlePeerPubKeyString = toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
@@ -308,10 +308,10 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         return false;
     }
 
-    Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
+    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
     if (dfsList->size() > 0)
     {
-        for (auto const& singlePeer : knownPeers)
+        for (auto const& singlePeer : sanePeers)
         {
             // jrojek: respond to sender
             if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))

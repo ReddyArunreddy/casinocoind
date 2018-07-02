@@ -130,6 +130,13 @@ public:
     PeerSequence
     getActivePeers () = 0;
 
+    /** Returns a sequence representing the current list of Sane peers.
+        The snapshot is made at the time of the call.
+    */
+    virtual
+    PeerSequence
+    getSanePeers () = 0;
+
     /** Calls the checkSanity function on each peer
         @param index the value to pass to the peer's checkSanity function
     */

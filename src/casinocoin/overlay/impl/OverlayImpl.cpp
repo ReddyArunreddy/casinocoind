@@ -865,6 +865,20 @@ OverlayImpl::getActivePeers()
     return ret;
 }
 
+Overlay::PeerSequence
+OverlayImpl::getSanePeers()
+{
+    Overlay::PeerSequence ret;
+    ret.reserve(size());
+
+    for_each ([&ret](std::shared_ptr<PeerImp>&& sp)
+    {
+        if(sp->sanity() == Peer::Sanity::sane)
+            ret.emplace_back(std::move(sp));
+    });
+    return ret;
+}
+
 void
 OverlayImpl::checkSanity (std::uint32_t index)
 {
