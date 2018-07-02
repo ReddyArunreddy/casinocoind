@@ -33,6 +33,8 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/rpc/Context.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNList.h>
+#include <casinocoin/app/misc/CRNListUpdater.h>
 
 namespace casinocoin {
 
@@ -120,10 +122,12 @@ Json::Value doCRNInfo (RPC::Context& context)
     if (valLedger)
     {
         auto const crnRound = valLedger->read(keylet::crnRound());
+        // create json output
+        Json::Value jvReply = Json::objectValue;
+        // show CRNRound info if we have some
         if (crnRound)
         {
-            // create json output
-            Json::Value jvReply = Json::objectValue;
+            jvReply[jss::crn_rounds] = true;
             jvReply[jss::seq] = Json::UInt (valLedger->info().seq);
             jvReply[jss::hash] = to_string (valLedger->info().hash);
             jvReply[jss::crn_fee_distributed] = crnRound->getFieldAmount(sfCRN_FeeDistributed).getText();
@@ -163,10 +167,20 @@ Json::Value doCRNInfo (RPC::Context& context)
                 jvReply[jss::crn_domain_name] = context.app.getCRN().id().domain();
                 jvReply[jss::crn_activated] = context.app.getCRN().id().activated();
             }
-            return jvReply;
         }
         else
-            return RPC::make_error(casinocoin::error_code_i::rpcNO_CRNROUND);
+        {
+            jvReply[jss::crn_rounds] = true;
+        }
+        if(context.app.isValidator())
+        {
+            // add site info
+            jvReply[jss::crn_update_sites] = context.app.crnListUpdater().getJson();
+            // add node info
+            jvReply[jss::crn_nodes] = context.app.relaynodes().getJson();
+        }
+        // return result
+        return jvReply;
     }
     else
         return RPC::make_error(casinocoin::error_code_i::rpcLGR_NOT_VALIDATED);

@@ -57,7 +57,6 @@ class CRNList
 {
     TimeKeeper& timeKeeper_;
     beast::Journal j_;
-    boost::shared_mutex mutable mutex_;
 
     // Listed CRN public keys with their registered domain names
     // std::unordered_map<PublicKey, std::string> keyListings_;
@@ -114,28 +113,14 @@ public:
         std::string const& publicKeyString,
         std::string const& domainName,
         bool const& enabled);
+
+    /** Return JSON representation of configured nodelist
+     */
+    Json::Value
+    getJson() const;
 };
 
 //------------------------------------------------------------------------------
-
-// template<class KeySet>
-// void
-// CRNList::onConsensusStart ()
-// {
-//     boost::unique_lock<boost::shared_mutex> lock{mutex_};
-
-//     std::multimap<std::size_t, PublicKey> rankedKeys;
-//     bool localKeyListed = false;
-
-//     // "Iterate" the listed keys in random order so that the rank of multiple
-//     // keys with the same number of listings is not deterministic
-//     std::vector<std::size_t> indexes (keyListings_.size());
-//     std::iota (indexes.begin(), indexes.end(), 0);
-//     std::shuffle (indexes.begin(), indexes.end(), crypto_prng());
-
-//     JLOG (j_.debug()) << "CRNList onConsensusStart";
-
-// }
 
 } // casinocoin
 

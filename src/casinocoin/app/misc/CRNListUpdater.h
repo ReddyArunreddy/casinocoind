@@ -142,7 +142,7 @@ public:
     void
     stop ();
 
-    /** Return JSON representation of configured validator sites
+    /** Return JSON representation of configured nodelist sites
      */
     Json::Value
     getJson() const;

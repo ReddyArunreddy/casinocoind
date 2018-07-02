@@ -334,6 +334,8 @@ public:
 
     io_latency_sampler m_io_latency_sampler;
 
+    std::atomic<bool> isValidator_;
+
     //--------------------------------------------------------------------------
 
     static
@@ -415,6 +417,9 @@ public:
 
     CRNRound&
     getCRNRound() override { return *m_crnRound; }
+
+    bool
+    isValidator() override { return isValidator_; }
 
     NodeCache&
     getTempNodeCache () override { return m_tempNodeCache; }
@@ -840,6 +845,7 @@ bool ApplicationImp::setup()
         PublicKey valPublic;
         SecretKey valSecret;
         std::string manifest;
+        isValidator_ = false;
         // load validator private key
         if (config().exists (SECTION_VALIDATOR_TOKEN))
         {
@@ -849,6 +855,7 @@ bool ApplicationImp::setup()
                 valSecret = token->validationSecret;
                 valPublic = derivePublicKey (KeyType::secp256k1, valSecret);
                 manifest = std::move(token->manifest);
+                isValidator_ = true;
             }
             else
             {
@@ -866,6 +873,7 @@ bool ApplicationImp::setup()
                             "Invalid seed specified in [" SECTION_VALIDATION_SEED "]");
             valSecret = generateSecretKey (KeyType::secp256k1, *seed);
             valPublic = derivePublicKey (KeyType::secp256k1, valSecret);
+            isValidator_ = true;
         }
 
         if (!validatorManifests_->load (
@@ -1674,10 +1682,10 @@ void ApplicationImp::onStop()
 
     mValidations->flush ();
 
-    validatorSites_->stop ();
-
     // stop the relaynode refresh cycle
     crnListUpdater_->stop ();
+    // stop the validator site refresh cycle
+    validatorSites_->stop ();
 
     // TODO Store manifests in manifests.sqlite instead of wallet.db
     validatorManifests_->save (getWalletDB (), "ValidatorManifests",
