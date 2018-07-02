@@ -174,6 +174,9 @@ public:
     PeerSequence
     getActivePeers() override;
 
+    PeerSequence
+    getSanePeers() override;
+
     void
     check () override;
 
