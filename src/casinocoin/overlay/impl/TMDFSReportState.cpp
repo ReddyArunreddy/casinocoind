@@ -51,7 +51,7 @@ TMDFSReportState::~TMDFSReportState()
 
 void TMDFSReportState::start()
 {
-    JLOG(journal_.info()) << "TMDFSReportState::start TMDFSReportState";
+    JLOG(journal_.debug()) << "TMDFSReportState::start TMDFSReportState";
     protocol::TMDFSReportState msg;
 
     fillMessage(msg);
@@ -67,7 +67,7 @@ void TMDFSReportState::start()
 
 void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportState> const& m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateRequest() node "
+    JLOG(journal_.debug()) << "TMDFSReportState::evaluateRequest() node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
@@ -90,7 +90,7 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
 
 void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateResponse node "
+    JLOG(journal_.debug()) << "TMDFSReportState::evaluateResponse node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
@@ -115,13 +115,13 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
+    JLOG(journal_.debug()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
     overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), TMDFSReportStateData::ACK_TIMER);
 }
 
 void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportState> const& m, const std::string &timedOutNode)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
+    JLOG(journal_.debug()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
@@ -151,9 +151,9 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         return;
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
+    JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
     for (int i = 0; i < m->visited_size(); ++i)
-            JLOG(journal_.info()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
+            JLOG(journal_.debug()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
 
     CRN::EligibilityMap eligibilityMap;
     for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
@@ -162,7 +162,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
         {
             boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
-            JLOG(journal_.info()) << "TMDFSReportState - currStatus " << rep.currstatus()
+            JLOG(journal_.debug()) << "TMDFSReportState - currStatus " << rep.currstatus()
                                   << " ledgerSeqBegin " << rep.ledgerseqbegin()
                                   << " ledgerSeqEnd " << rep.ledgerseqend()
                                   << " latency " << rep.latency()
@@ -171,7 +171,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                                   << " signature " << rep.signature();
             for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
             {
-                JLOG(journal_.info()) << "mode " << iterStatuses->mode()
+                JLOG(journal_.debug()) << "mode " << iterStatuses->mode()
                                       << "transitions " << iterStatuses->transitions()
                                       << "duration " << iterStatuses->duration();
             }
@@ -192,38 +192,38 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                 else
                 {
                     eligible &= false;
-                    JLOG(journal_.info()) << "TMDFSReportState - failed to read PubKey or signature of CRN candidate";
+                    JLOG(journal_.debug()) << "TMDFSReportState - failed to read PubKey or signature of CRN candidate";
                 }
                 if(eligible)
                 {
                     // check if account is funded
                     if (!CRNId::activated(*pk, app_.getLedgerMaster(), journal_, app_.config()))
                     {
-                        JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                        JLOG(journal_.debug()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
                         eligible &= false;
                     }
                     // check if latency is acceptable
                     if(rep.latency() > app_.config().CRN_MAX_LATENCY)
                     {
-                        JLOG(journal_.info()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                        JLOG(journal_.debug()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
                         eligible &= false;
                     }
                 }
                 else
                 {
-                    JLOG(journal_.info()) << "TMDFSReportState - Signature is invalid: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                    JLOG(journal_.debug()) << "TMDFSReportState - Signature is invalid: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
                 }
             }
             else
             {
-                JLOG(journal_.info()) << "TMDFSReportState - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                JLOG(journal_.debug()) << "TMDFSReportState - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
                 eligible &= false;
             }
             JLOG(journal_.info()) << "TMDFSReportState - PublicKey: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " Eligible:" << eligible;
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
         }
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
+    JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
     overlay_.getDFSReportStateData().conclude(pubKeyString_);
@@ -231,7 +231,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::fillMessage()"
+    JLOG(journal_.debug()) << "TMDFSReportState::fillMessage()"
                           << " dfsSize " << m.dfs_size();
     if (app_.isCRN())
     {
@@ -245,7 +245,7 @@ void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)
 
 bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::forwardRequest()"
+    JLOG(journal_.debug()) << "TMDFSReportState::forwardRequest()"
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
@@ -288,7 +288,7 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
 
 bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSReportState> &m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::forwardResponse()"
+    JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse()"
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
@@ -326,7 +326,7 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
 
 bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::checkReq()"
+    JLOG(journal_.debug()) << "TMDFSReportState::checkReq()"
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
@@ -354,7 +354,7 @@ bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> cons
 
 bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
-    JLOG(journal_.info()) << "TMDFSReportState::checkResp()"
+    JLOG(journal_.debug()) << "TMDFSReportState::checkResp()"
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;

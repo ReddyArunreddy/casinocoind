@@ -39,7 +39,7 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
                                         std::string const& currRecipient,
                                         protocol::TMDFSReportState const& currPayload)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::restartACKTimer()"
+    JLOG(journal_.debug()) << "TMDFSReportStateData::restartACKTimer()"
                           << "initiator: " << initiatorPubKey
                           << " curr recipient: " << currRecipient;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
@@ -59,7 +59,7 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
 
 void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer() "
+    JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     cancelTimer_private(initiatorPubKey, type);
@@ -67,7 +67,7 @@ void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, Timer
 
 protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::getLastRequest() "
+    JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRequest() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     return lastReq_[initiatorPubKey];
@@ -75,7 +75,7 @@ protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string con
 
 std::string& TMDFSReportStateData::getLastRecipient(std::string const& initiatorPubKey)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::getLastRecipient() "
+    JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRecipient() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     return lastReqRecipient_[initiatorPubKey];
@@ -83,7 +83,7 @@ std::string& TMDFSReportStateData::getLastRecipient(std::string const& initiator
 
 void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::conclude() "
+    JLOG(journal_.debug()) << "TMDFSReportStateData::conclude() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     ackTimers_[initiatorPubKey].reset();
@@ -100,7 +100,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
     // visited and do not account its state
     protocol::TMDFSReportState msgToSend;
     std::string recipient;
-    JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer()";
+    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer()";
     {
         std::lock_guard<decltype(mutex_)> lock(mutex_);
 
@@ -111,7 +111,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
             if (*(iter->second) == timer)
             {
                 initiator = iter->first;
-                JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
+                JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
                 cancelTimer_private(initiator, RESPONSE_TIMER);
                 break;
             }
@@ -123,7 +123,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
                 if (*(iter->second) == timer)
                 {
                     initiator = iter->first;
-                    JLOG(journal_.info()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
+                    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
                     break;
                 }
             }
@@ -148,7 +148,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
 
 void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKey, TMDFSReportStateData::TimerType type)
 {
-    JLOG(journal_.info()) << "TMDFSReportStateData::cancelTimer_private() "
+    JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer_private() "
                           << "initiator: " << initiatorPubKey;
     if (type == ACK_TIMER)
     {
