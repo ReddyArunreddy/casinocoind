@@ -337,7 +337,8 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
                                << pubKeyString_ << " from DFS list";
         for (std::string const& dfsEntry : m->dfs())
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
-        return false;
+        // jrojek: FIXME continue... it is basically sick behavior, but lets allow it for now
+        // return false;
     }
 
     Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
