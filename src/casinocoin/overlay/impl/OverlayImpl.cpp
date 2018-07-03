@@ -984,13 +984,13 @@ TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
     return dfsCrawlReportData_;
 }
 
-void OverlayImpl::startDFSReportStateCrawl()
+void OverlayImpl::startDFSReportStateCrawl(LedgerIndex const& startLedger)
 {
-    JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl";
+    JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl at ledger: " << startLedger;
     Overlay::PeerSequence activePeers = getActivePeers();
     if (activePeers.size() > 0)
     {
-        activePeers[0]->dfsReportState().start();
+        activePeers[0]->dfsReportState().start(startLedger);
     }
 }
 

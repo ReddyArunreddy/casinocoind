@@ -204,7 +204,7 @@ public:
     getDFSReportStateData() override;
 
     void
-    startDFSReportStateCrawl() override;
+    startDFSReportStateCrawl(const LedgerIndex &startLedger) override;
 
     //--------------------------------------------------------------------------
     //

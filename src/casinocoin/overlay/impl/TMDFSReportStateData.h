@@ -42,28 +42,45 @@ class OverlayImpl;
 class TMDFSReportStateData
 {
 public:
+    struct CrawlInstance
+    {
+        std::string initiator_;
+        LedgerIndex startLedger_;
+
+        bool operator==(CrawlInstance const& other) const
+        {
+            bool ret = true;
+            ret &= initiator_ == other.initiator_;
+            ret &= startLedger_ == other.startLedger_;
+            return ret;
+        }
+    };
+
     TMDFSReportStateData(OverlayImpl& overlay,
                          beast::Journal journal);
 
-    void startCrawl(std::string const& initiatorPubKey);
+    void startCrawl(CrawlInstance const& crawlInstance);
+    bool exists(CrawlInstance const& crawlInstance) const;
 
-    void restartTimers(std::string const& initiatorPubKey,
+    void restartTimers(CrawlInstance const& crawlInstance,
                       std::string const& currRecipient,
                       protocol::TMDFSReportState const& currPayload);
 
-    void cancelTimer(std::string const& initiatorPubKey, CrawlData::TimerType type);
+    void cancelTimer(CrawlInstance const& crawlInstance, CrawlData::TimerType type);
 
-    protocol::TMDFSReportState const& getLastRequest(std::string const& initiatorPubKey) const;
-    std::string const& getLastRecipient(std::string const& initiatorPubKey) const;
+    protocol::TMDFSReportState const& getLastRequest(CrawlInstance const& crawlInstance) const;
+    std::string const& getLastRecipient(CrawlInstance const& crawlInstance) const;
 
-    void conclude(std::string const& initiatorPubKey);
+    void conclude(CrawlInstance const& crawlInstance);
+    bool isConcluded(CrawlInstance const& crawlInstance) const;
 
 private:
-    void cancelTimer_private(std::string const& initiatorPubKey, CrawlData::TimerType type);
+    void startCrawl_private(const CrawlInstance &crawlInstance);
+    void cancelTimer_private(CrawlInstance const& crawlInstance, CrawlData::TimerType type);
 
     // jrojek: map contain base58 public key of initiator
     // (first entry on dfs list of TMDFSReportState) and a corresponding crawl instance data
-    std::map<std::string, std::unique_ptr<CrawlData>> crawls_;
+    std::map<CrawlInstance, std::unique_ptr<CrawlData>> crawls_;
 
     std::mutex mutex_;
 

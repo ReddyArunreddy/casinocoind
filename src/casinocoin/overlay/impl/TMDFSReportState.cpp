@@ -49,16 +49,18 @@ TMDFSReportState::~TMDFSReportState()
 {
 }
 
-void TMDFSReportState::start()
+void TMDFSReportState::start(LedgerIndex const& startLedger)
 {
     JLOG(journal_.debug()) << "TMDFSReportState::start TMDFSReportState";
     protocol::TMDFSReportState msg;
 
     fillMessage(msg);
-
+    msg.set_startledger(static_cast<uint32_t>(startLedger));
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
-    overlay_.getDFSReportStateData().startCrawl(pubKeyString_);
+    TMDFSReportStateData::CrawlInstance crawlInstance {pubKeyString_, startLedger};
+
+    overlay_.getDFSReportStateData().startCrawl(crawlInstance);
     overlay_.getDFSReportStateData().restartTimers(pubKeyString_,
                                                   toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
                                                   msg);
@@ -143,6 +145,12 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
 
 void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)
 {
+    if (!m->has_startledger())
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::forwardRequest() old protocol version. Please update to most recent one";
+        return;
+    }
+
     if (m->dfs_size() != 0)
     {
         JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
@@ -151,7 +159,8 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
         return;
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << pubKeyString_ << " started at ledger: " << m->startledger() << " concluded.";
+    JLOG(journal_.info()) << "DFS list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
     for (int i = 0; i < m->visited_size(); ++i)
             JLOG(journal_.debug()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
@@ -251,6 +260,12 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
+    if (!m->has_startledger())
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::forwardRequest() old protocol version. Please update to most recent one";
+        return false;
+    }
+
     Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
     if (sanePeers.size() > 0)
     {
@@ -269,7 +284,8 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
             if (alreadyVisited)
                 continue;
 
-            overlay_.getDFSReportStateData().restartTimers(m->dfs(0),
+            TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+            overlay_.getDFSReportStateData().restartTimers(crawlInstance,
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           *m);
 
@@ -294,10 +310,17 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
+    if (!m->has_startledger())
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::forwardResponse() old protocol version. Please update to most recent one";
+        return false;
+    }
+
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
     {
-        overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), CrawlData::RESPONSE_TIMER);
+        overlay_.getDFSReportStateData().cancelTimer(crawlInstance, CrawlData::RESPONSE_TIMER);
         dfsList->RemoveLast();
     }
     else
@@ -341,13 +364,33 @@ bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> cons
         m->set_type(protocol::TMDFSReportState::rtREQ);
     }
 
+    if (!m->has_startledger())
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::checkReq() old protocol version. Please update to most recent one";
+        return false;
+    }
+
     for (std::string const& visitedNode : m->visited())
     {
         if (visitedNode == pubKeyString_)
         {
             JLOG(journal_.error()) << "TMDFSReportState::checkReq() "
                                    << "TMDFSReportState received Req in a node which is already on the list! " << pubKeyString_;
-            // jrojek... ignore this case for now
+            return false;
+        }
+    }
+    if (m->dfs_size() > 0)
+    {
+        TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+        if (!overlay_.getDFSReportStateData().exists(crawlInstance))
+        {
+            overlay_.getDFSReportStateData().startCrawl(crawlInstance);
+        }
+        if (overlay_.getDFSReportStateData().isConcluded(crawlInstance))
+        {
+            JLOG(journal_.debug()) << "TMDFSReportState::checkReq() "
+                                   << "crawl for " << crawlInstance.initiator_ << " at ledger " << crawlInstance.startLedger_ << " already concluded. Discarding msg";
+            return false;
         }
     }
     return true;
@@ -368,15 +411,32 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
         m->set_type(protocol::TMDFSReportState::rtRESP);
     }
 
-    // check if the response we recently received does not come from a node which already timed-out in our scope
-    std::string parentPeerPubKey = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
-    auto const& visitedNodes = overlay_.getDFSReportStateData().getLastRequest(m->dfs(0)).visited();
-    for (std::string const& visitedNode : visitedNodes)
+    if (!m->has_startledger())
     {
-        if (visitedNode == parentPeerPubKey)
+        JLOG(journal_.error()) << "TMDFSReportState::checkResp() old protocol version. Please update to most recent one";
+        return false;
+    }
+
+    // check if the response we recently received does not come from a node which already timed-out in our scope
+    if (m->dfs_size() > 0)
+    {
+        TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+        std::string parentPeerPubKey = toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic());
+        auto const& visitedNodes = overlay_.getDFSReportStateData().getLastRequest(crawlInstance).visited();
+        for (std::string const& visitedNode : visitedNodes)
         {
-            JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from already visited peer: " << parentPeerPubKey
-                                  << " Probably obsolete response";
+            if (visitedNode == parentPeerPubKey)
+            {
+                JLOG(journal_.warn()) << "TMDFSReportState::checkResp() received response from already visited peer: " << parentPeerPubKey
+                                      << " Probably obsolete response";
+                return false;
+            }
+        }
+
+        if (overlay_.getDFSReportStateData().isConcluded(crawlInstance))
+        {
+            JLOG(journal_.debug()) << "TMDFSReportState::checkResp() "
+                                   << "crawl for " << crawlInstance.initiator_ << " at ledger " << crawlInstance.startLedger_ << " already concluded. Discarding msg";
             return false;
         }
     }

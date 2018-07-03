@@ -41,6 +41,8 @@ public:
     void startResponseTimer(std::chrono::milliseconds timeout);
     void cancelResponseTimer();
 
+    bool isValid() const;
+
 private:
     void onDeadlineTimer (DeadlineTimer& timer) override;
     std::string lastReqRecipient_;

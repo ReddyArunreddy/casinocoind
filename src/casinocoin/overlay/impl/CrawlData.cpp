@@ -42,6 +42,7 @@ bool CrawlData::concluded() const
 void CrawlData::start()
 {
     std::lock_guard<decltype(mutex_)> lock(mutex_);
+
     lastReqRecipient_.clear();
     lastMsg_.Clear();
     ackTimer_.cancel();
@@ -53,8 +54,8 @@ void CrawlData::setRecipient(const std::string &recipient)
 {
     if (concluded())
         return;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
 
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     lastReqRecipient_ = recipient;
 }
 
@@ -67,6 +68,7 @@ void CrawlData::setMsg(const protocol::TMDFSReportState &msg)
 {
     if (concluded())
         return;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     lastMsg_ = msg;
 }
@@ -80,13 +82,16 @@ void CrawlData::startAckTimer(std::chrono::milliseconds timeout)
 {
     if (concluded())
         return;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
+    JLOG(journal_.debug()) << "CrawlData::startAckTimer timeout ms: " << timeout.count();
     ackTimer_.setExpiration(timeout);
 }
 
 void CrawlData::cancelAckTimer()
 {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     ackTimer_.cancel();
 }
 
@@ -94,14 +99,23 @@ void CrawlData::startResponseTimer(std::chrono::milliseconds timeout)
 {
     if (concluded())
         return;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
+    JLOG(journal_.debug()) << "CrawlData::startResponseTimer timeout ms: " << timeout.count();
     responseTimer_.setExpiration(timeout);
 }
 
 void CrawlData::cancelResponseTimer()
 {
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     responseTimer_.cancel();
+}
+
+bool CrawlData::isValid() const
+{
+    // jrojek: this is to ensure that instance was created on purpose, not via default construction
+    return (overlay_ != nullptr);
 }
 
 void CrawlData::onDeadlineTimer(DeadlineTimer &timer)
@@ -113,7 +127,7 @@ void CrawlData::onDeadlineTimer(DeadlineTimer &timer)
 
         if (timer == ackTimer_)
         {
-            cancelResponseTimer();
+            responseTimer_.cancel();
         }
         else if (timer == responseTimer_)
         {

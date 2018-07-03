@@ -219,6 +219,7 @@ message TMDFSReportState
     repeated PubKeyReportMap reports       = 4;
     repeated string visited                = 5;
     repeated string dfs                    = 6; 
+    optional uint32 startLedger            = 7;
 }
 
 message TMDFSReportStateAck

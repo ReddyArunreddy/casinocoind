@@ -51,7 +51,7 @@ public:
                      PeerImp& parent,
                      beast::Journal journal);
     ~TMDFSReportState();
-    void start();
+    void start(const LedgerIndex &startLedger);
 
     void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
