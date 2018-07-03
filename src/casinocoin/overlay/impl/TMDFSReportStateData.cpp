@@ -94,7 +94,7 @@ protocol::TMDFSReportState const& TMDFSReportStateData::getLastRequest(CrawlInst
                               << " initiator: " << crawlInstance.initiator_
                               << " startLedger: " << crawlInstance.startLedger_;
     }
-    return protocol::TMDFSReportState();
+    return msgNone_;
 }
 
 std::string const& TMDFSReportStateData::getLastRecipient(CrawlInstance const& crawlInstance) const
@@ -112,7 +112,7 @@ std::string const& TMDFSReportStateData::getLastRecipient(CrawlInstance const& c
                               << " initiator: " << crawlInstance.initiator_
                               << " startLedger: " << crawlInstance.startLedger_;
     }
-    return std::string();
+    return recipientNone_;
 }
 
 void TMDFSReportStateData::conclude(CrawlInstance const&crawlInstance)
@@ -158,7 +158,7 @@ void TMDFSReportStateData::startCrawl_private(CrawlInstance const& crawlInstance
     crawls_.erase(previousCrawl);
 
     crawls_[crawlInstance].reset(new CrawlData(&overlay_, journal_));
-    crawls_[crawlInstance].start();
+    crawls_[crawlInstance]->start();
     JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl_private() crawls_ size after: " << crawls_.size();
 }
 

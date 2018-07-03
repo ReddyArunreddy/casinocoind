@@ -160,15 +160,16 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         return;
     }
 
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
     if (m->dfs_size() != 0)
     {
         JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
-        overlay_.getDFSReportStateData().conclude(pubKeyString_);
+        overlay_.getDFSReportStateData().conclude(crawlInstance);
         for (std::string const& dfsEntry : m->dfs())
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
         return;
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << pubKeyString_ << " started at ledger: " << m->startledger() << " concluded.";
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded.";
     JLOG(journal_.info()) << "DFS list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
     for (int i = 0; i < m->visited_size(); ++i)
@@ -245,7 +246,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
-    overlay_.getDFSReportStateData().conclude(pubKeyString_);
+    overlay_.getDFSReportStateData().conclude(crawlInstance);
 }
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)

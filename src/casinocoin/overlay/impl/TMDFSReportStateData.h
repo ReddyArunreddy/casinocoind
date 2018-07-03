@@ -56,6 +56,14 @@ public:
         }
     };
 
+    struct CrawlInstanceCompare
+    {
+       bool operator() (const CrawlInstance& lhs, const CrawlInstance& rhs) const
+       {
+           return lhs.startLedger_ < rhs.startLedger_;
+       }
+    };
+
     TMDFSReportStateData(OverlayImpl& overlay,
                          beast::Journal journal);
 
@@ -80,12 +88,15 @@ private:
 
     // jrojek: map contain base58 public key of initiator
     // (first entry on dfs list of TMDFSReportState) and a corresponding crawl instance data
-    std::map<CrawlInstance, std::unique_ptr<CrawlData>> crawls_;
+    std::map<CrawlInstance, std::unique_ptr<CrawlData>, CrawlInstanceCompare> crawls_;
 
     std::mutex mutex_;
 
     OverlayImpl& overlay_;
     beast::Journal journal_;
+
+    std::string recipientNone_;
+    protocol::TMDFSReportState msgNone_;
 };
 
 } // namespace casinocoin
