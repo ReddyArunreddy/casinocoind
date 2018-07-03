@@ -55,8 +55,12 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
                                         protocol::TMDFSReportState const& currPayload)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::restartACKTimer()"
+<<<<<<< HEAD
                           << " initiator: " << crawlInstance.initiator_
                           << " startLedger: " << crawlInstance.startLedger_
+=======
+                          << "initiator: " << initiatorPubKey
+>>>>>>> upstream/CRN
                           << " curr recipient: " << currRecipient;
 
     if (crawls_[crawlInstance]->concluded())
@@ -75,6 +79,7 @@ void TMDFSReportStateData::cancelTimer(CrawlInstance const& crawlInstance, Crawl
     JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer() "
                            << " initiator: " << crawlInstance.initiator_
                            << " startLedger: " << crawlInstance.startLedger_;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     cancelTimer_private(crawlInstance, type);
 }
