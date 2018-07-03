@@ -35,6 +35,11 @@ TMDFSReportStateData::TMDFSReportStateData(OverlayImpl& overlay,
 {
 }
 
+void TMDFSReportStateData::startCrawl(const std::string &initiatorPubKey)
+{
+    crawls_[initiatorPubKey].reset(&overlay_, journal_);
+}
+
 void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
                                         std::string const& currRecipient,
                                         protocol::TMDFSReportState const& currPayload)
@@ -44,20 +49,17 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
                           << " curr recipient: " << currRecipient;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
 
-//    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
-    ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+    if (crawls_[initiatorPubKey]->concluded())
+        return;
 
-//    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
-    responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
-
-    ackTimers_[initiatorPubKey]->setExpiration(1s);
-    responseTimers_[initiatorPubKey]->setExpiration(20s);
-
-    lastReqRecipient_[initiatorPubKey] = currRecipient;
-    lastReq_[initiatorPubKey] = currPayload;
+    unique_ptr<CrawlData> theCrawl = crawls_[initiatorPubKey];
+    theCrawl->startAckTimer(1s);
+    theCrawl->startResponseTimer(20s);
+    theCrawl->setRecipient(currRecipient);
+    theCrawl->setMsg(currPayload);
 }
 
-void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
+void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, CrawlData::TimerType type)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer() "
                           << "initiator: " << initiatorPubKey;
@@ -65,20 +67,18 @@ void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, Timer
     cancelTimer_private(initiatorPubKey, type);
 }
 
-protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
+protocol::TMDFSReportState const& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey) const
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRequest() "
                           << "initiator: " << initiatorPubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-    return lastReq_[initiatorPubKey];
+    return crawls_.at(initiatorPubKey)->getMsg();
 }
 
-std::string& TMDFSReportStateData::getLastRecipient(std::string const& initiatorPubKey)
+std::string const& TMDFSReportStateData::getLastRecipient(std::string const& initiatorPubKey) const
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRecipient() "
                           << "initiator: " << initiatorPubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-    return lastReqRecipient_[initiatorPubKey];
+    return crawls_.at(initiatorPubKey)->getRecipient();
 }
 
 void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
@@ -86,86 +86,23 @@ void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
     JLOG(journal_.debug()) << "TMDFSReportStateData::conclude() "
                           << "initiator: " << initiatorPubKey;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
-    ackTimers_[initiatorPubKey].reset();
-    responseTimers_[initiatorPubKey].reset();
-
-    lastReqRecipient_[initiatorPubKey] = std::string();
-    lastReq_[initiatorPubKey] = protocol::TMDFSReportState();
+    crawls_[initiatorPubKey]->conclude(false);
 }
 
-void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
-{
-    // jrojek this might be because node just recently gone offline
-    // or because node does not support CRN feature. Either way, we decide that this node is already
-    // visited and do not account its state
-    protocol::TMDFSReportState msgToSend;
-    std::string recipient;
-    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer()";
-    {
-        std::lock_guard<decltype(mutex_)> lock(mutex_);
-
-        std::string initiator;
-        // try to map to initiator using ACK timers
-        for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
-        {
-            if (*(iter->second) == timer)
-            {
-                initiator = iter->first;
-                JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
-                cancelTimer_private(initiator, RESPONSE_TIMER);
-                break;
-            }
-        }
-        if (initiator.empty())
-        {
-            for (auto iter = responseTimers_.begin(); iter != responseTimers_.end(); ++iter)
-            {
-                if (*(iter->second) == timer)
-                {
-                    initiator = iter->first;
-                    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
-                    break;
-                }
-            }
-        }
-        if (initiator.empty())
-        {
-            JLOG(journal_.error()) << "TMDFSReportStateData::onDeadlineTimer() couldn't find corresponding timer. honestly don't know what to do";
-            return;
-        }
-        lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
-        msgToSend = lastReq_[initiator];
-        recipient = lastReqRecipient_[initiator];
-    }
-
-    Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
-    if (knownPeers.size() > 0)
-    // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
-    {
-        knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(msgToSend), recipient);
-    }
-}
-
-void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKey, TMDFSReportStateData::TimerType type)
+void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKey, CrawlData::TimerType type)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer_private() "
                           << "initiator: " << initiatorPubKey;
-    if (type == ACK_TIMER)
+    if (crawls_.find(initiatorPubKey) != crawls_.end())
     {
-        if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
-            ackTimers_[initiatorPubKey].reset();
-        else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find ACK_TIMER "
-                                  << "for root node: " << initiatorPubKey;
+        if (type == CrawlData::ACK_TIMER)
+            crawls_[initiatorPubKey]->cancelAckTimer();
+        else if (type == CrawlData::RESPONSE_TIMER)
+            crawls_[initiatorPubKey]->cancelResponseTimer();
     }
-    else if (type == RESPONSE_TIMER)
-    {
-        if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
-            responseTimers_[initiatorPubKey].reset();
-        else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find RESPONSE_TIMER "
-                                  <<"for root node: " << initiatorPubKey;
-    }
+    else
+        JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find crawl data "
+                              << "for root node: " << initiatorPubKey;
 }
 
 }

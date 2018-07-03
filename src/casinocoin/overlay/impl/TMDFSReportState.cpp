@@ -58,6 +58,7 @@ void TMDFSReportState::start()
 
     msg.set_type(protocol::TMDFSReportState::rtREQ);
 
+    overlay_.getDFSReportStateData().startCrawl(pubKeyString_);
     overlay_.getDFSReportStateData().restartTimers(pubKeyString_,
                                                   toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
                                                   msg);
@@ -116,7 +117,7 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
     JLOG(journal_.debug()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
-    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), TMDFSReportStateData::ACK_TIMER);
+    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), CrawlData::ACK_TIMER);
 }
 
 void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportState> const& m, const std::string &timedOutNode)
@@ -296,7 +297,7 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
     auto dfsList = m->mutable_dfs();
     if (dfsList->size() > 0 && dfsList->Get(dfsList->size() - 1) == pubKeyString_)
     {
-        overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), TMDFSReportStateData::RESPONSE_TIMER);
+        overlay_.getDFSReportStateData().cancelTimer(m->dfs(0), CrawlData::RESPONSE_TIMER);
         dfsList->RemoveLast();
     }
     else

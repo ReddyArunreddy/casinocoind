@@ -34,44 +34,36 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <boost/algorithm/string/predicate.hpp>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
-#include <casinocoin/core/DeadlineTimer.h>
+#include <casinocoin/overlay/impl/CrawlData.h>
 
 namespace casinocoin {
 class OverlayImpl;
 
-class TMDFSReportStateData : public DeadlineTimer::Listener
+class TMDFSReportStateData
 {
 public:
-    enum TimerType {
-        // number corresponds to position in dfsTimers vector
-        ACK_TIMER = 0,
-        RESPONSE_TIMER = 1
-    };
-
     TMDFSReportStateData(OverlayImpl& overlay,
                          beast::Journal journal);
+
+    void startCrawl(std::string const& initiatorPubKey);
 
     void restartTimers(std::string const& initiatorPubKey,
                       std::string const& currRecipient,
                       protocol::TMDFSReportState const& currPayload);
 
-    void cancelTimer(std::string const& initiatorPubKey, TimerType type);
+    void cancelTimer(std::string const& initiatorPubKey, CrawlData::TimerType type);
 
-    protocol::TMDFSReportState& getLastRequest(std::string const& initiatorPubKey);
-    std::string& getLastRecipient(std::string const& initiatorPubKey);
+    protocol::TMDFSReportState const& getLastRequest(std::string const& initiatorPubKey) const;
+    std::string const& getLastRecipient(std::string const& initiatorPubKey) const;
 
     void conclude(std::string const& initiatorPubKey);
 
 private:
-    void onDeadlineTimer (DeadlineTimer& timer) override;
-    void cancelTimer_private(std::string const& initiatorPubKey, TimerType type);
+    void cancelTimer_private(std::string const& initiatorPubKey, CrawlData::TimerType type);
 
-    // jrojek: all maps contain base58 public key of initiator
-    // (first entry on dfs list of TMDFSReportState) and a corresponding attribute
-    std::map<std::string, std::string> lastReqRecipient_;
-    std::map<std::string, protocol::TMDFSReportState> lastReq_;
-    std::map<std::string, std::unique_ptr<DeadlineTimer>> ackTimers_;
-    std::map<std::string, std::unique_ptr<DeadlineTimer>> responseTimers_;
+    // jrojek: map contain base58 public key of initiator
+    // (first entry on dfs list of TMDFSReportState) and a corresponding crawl instance data
+    std::map<std::string, std::unique_ptr<CrawlData>> crawls_;
 
     std::mutex mutex_;
 
