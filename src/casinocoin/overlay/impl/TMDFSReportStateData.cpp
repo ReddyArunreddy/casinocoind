@@ -155,8 +155,12 @@ bool TMDFSReportStateData::isConcluded(CrawlInstance const& crawlInstance) const
 void TMDFSReportStateData::startCrawl_private(CrawlInstance const& crawlInstance)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl_private() crawls_ size before: " << crawls_.size();
-    CrawlInstance previousCrawl { crawlInstance.initiator_, (static_cast<uint32_t>(crawlInstance.startLedger_) - CRNPerformance::getReportingPeriod())};
-    crawls_.erase(previousCrawl);
+    // jrojek FIXME (or at least const-me)
+    if (static_cast<uint32_t>(crawlInstance.startLedger_) > (6*CRNPerformance::getReportingPeriod()))
+    {
+        CrawlInstance previousCrawl { crawlInstance.initiator_, (static_cast<uint32_t>(crawlInstance.startLedger_) - (5*CRNPerformance::getReportingPeriod()))};
+        crawls_.erase(previousCrawl);
+    }
 
     crawls_[crawlInstance].reset(new CrawlData(&overlay_, journal_));
     crawls_[crawlInstance]->start();

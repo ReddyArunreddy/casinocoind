@@ -156,7 +156,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
 {
     if (!m->has_startledger())
     {
-        JLOG(journal_.error()) << "TMDFSReportState::forwardRequest() old protocol version. Please update to most recent one";
+        JLOG(journal_.error()) << "TMDFSReportState::conclude() old protocol version. Please update to most recent one";
         return;
     }
 
@@ -164,10 +164,8 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     if (m->dfs_size() != 0)
     {
         JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
-        overlay_.getDFSReportStateData().conclude(crawlInstance);
         for (std::string const& dfsEntry : m->dfs())
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
-        return;
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded.";
     JLOG(journal_.info()) << "DFS list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
