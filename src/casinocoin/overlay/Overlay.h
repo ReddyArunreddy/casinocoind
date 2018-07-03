@@ -35,6 +35,7 @@
 #include <casinocoin/core/Stoppable.h>
 #include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/beast/utility/PropertyStream.h>
+#include <casinocoin/protocol/Protocol.h>
 #include <memory>
 #include <type_traits>
 #include <boost/asio/buffer.hpp>
@@ -183,7 +184,7 @@ public:
 
     virtual
     void
-    startDFSReportStateCrawl() = 0;
+    startDFSReportStateCrawl(LedgerIndex const& startLedger) = 0;
 
     /** Visit every active peer and return a value
         The functor must:

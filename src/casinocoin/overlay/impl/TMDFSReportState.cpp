@@ -61,7 +61,7 @@ void TMDFSReportState::start(LedgerIndex const& startLedger)
     TMDFSReportStateData::CrawlInstance crawlInstance {pubKeyString_, startLedger};
 
     overlay_.getDFSReportStateData().startCrawl(crawlInstance);
-    overlay_.getDFSReportStateData().restartTimers(pubKeyString_,
+    overlay_.getDFSReportStateData().restartTimers(crawlInstance,
                                                   toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic()),
                                                   msg);
 
@@ -118,8 +118,17 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
 {
-    JLOG(journal_.debug()) << "TMDFSReportState::evaluateAck() " << m->dfsroot();
-    overlay_.getDFSReportStateData().cancelTimer(m->dfsroot(), CrawlData::ACK_TIMER);
+    if (!m->has_startledger())
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::evaluateAck() old protocol version. Please update to most recent one";
+        return;
+    }
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfsroot(), m->startledger()};
+
+    JLOG(journal_.debug()) << "TMDFSReportState::evaluateAck() "
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    overlay_.getDFSReportStateData().cancelTimer(crawlInstance, CrawlData::ACK_TIMER);
 }
 
 void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportState> const& m, const std::string &timedOutNode)

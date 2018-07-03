@@ -224,7 +224,8 @@ message TMDFSReportState
 
 message TMDFSReportStateAck
 {
-    required string dfsRoot                = 1;  
+    required string dfsRoot                = 1;
+    optional uint32 startLedger            = 2;	
 }
 
 // Announce to the network our position on a closing ledger
