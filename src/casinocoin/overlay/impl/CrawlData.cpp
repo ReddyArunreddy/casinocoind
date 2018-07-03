@@ -26,7 +26,14 @@ bool CrawlData::concluded() const
 {
     if (state_ != RUNNING)
     {
-        JLOG(journal_.debug()) << "Crawl " << state_ == CONCLUDED ? "concluded normally" : "force concluded";
+        if (state_ == CONCLUDED)
+        {
+            JLOG(journal_.debug()) << "Crawl concluded normally";
+        }
+        if (state_ == FORCE_CONCLUDED)
+        {
+            JLOG(journal_.debug()) << "Crawl force concluded";
+        }
         return true;
     }
     return false;
@@ -115,7 +122,7 @@ void CrawlData::onDeadlineTimer(DeadlineTimer &timer)
         {
             return;
         }
-        setMsg(getMsg().add_visited(getRecipient()));
+        lastMsg_.add_visited(getRecipient());
 
         msgToSend = getMsg();
         recipient = getRecipient();
