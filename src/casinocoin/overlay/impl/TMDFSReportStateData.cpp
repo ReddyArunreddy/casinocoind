@@ -55,12 +55,8 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
                                         protocol::TMDFSReportState const& currPayload)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::restartACKTimer()"
-<<<<<<< HEAD
                           << " initiator: " << crawlInstance.initiator_
                           << " startLedger: " << crawlInstance.startLedger_
-=======
-                          << "initiator: " << initiatorPubKey
->>>>>>> upstream/CRN
                           << " curr recipient: " << currRecipient;
 
     if (crawls_[crawlInstance]->concluded())
