@@ -35,6 +35,7 @@
 #include <casinocoin/overlay/impl/TrafficCount.cpp>
 #include <casinocoin/overlay/impl/TMDFSReportState.cpp>
 #include <casinocoin/overlay/impl/TMDFSReportStateData.cpp>
+#include <casinocoin/overlay/impl/CrawlData.cpp>
 
 #if DOXYGEN
 #include <casinocoin/overlay/README.md>

@@ -37,7 +37,7 @@ TMDFSReportStateData::TMDFSReportStateData(OverlayImpl& overlay,
 
 void TMDFSReportStateData::startCrawl(const std::string &initiatorPubKey)
 {
-    crawls_[initiatorPubKey].reset(&overlay_, journal_);
+    crawls_[initiatorPubKey].reset(new CrawlData(&overlay_, journal_));
 }
 
 void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
@@ -52,7 +52,7 @@ void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
     if (crawls_[initiatorPubKey]->concluded())
         return;
 
-    unique_ptr<CrawlData> theCrawl = crawls_[initiatorPubKey];
+    std::unique_ptr<CrawlData>& theCrawl = crawls_[initiatorPubKey];
     theCrawl->startAckTimer(1s);
     theCrawl->startResponseTimer(20s);
     theCrawl->setRecipient(currRecipient);
