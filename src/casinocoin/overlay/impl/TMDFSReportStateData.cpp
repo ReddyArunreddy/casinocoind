@@ -64,7 +64,7 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
 
     std::unique_ptr<CrawlData>& theCrawl = crawls_[crawlInstance];
     theCrawl->startAckTimer(1s);
-    theCrawl->startResponseTimer(50s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1));
+    theCrawl->startResponseTimer(1s + (30s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1)));
     theCrawl->setRecipient(currRecipient);
     theCrawl->setMsg(currPayload);
 
@@ -116,7 +116,7 @@ std::string const& TMDFSReportStateData::getLastRecipient(CrawlInstance const& c
     return recipientNone_;
 }
 
-void TMDFSReportStateData::conclude(CrawlInstance const&crawlInstance)
+void TMDFSReportStateData::conclude(CrawlInstance const& crawlInstance, bool forceConclude)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::conclude() "
                            << " initiator: " << crawlInstance.initiator_
@@ -124,7 +124,7 @@ void TMDFSReportStateData::conclude(CrawlInstance const&crawlInstance)
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (crawls_.find(crawlInstance) != crawls_.end())
     {
-        crawls_[crawlInstance]->conclude(false);
+        crawls_[crawlInstance]->conclude(forceConclude);
     }
     else
     {

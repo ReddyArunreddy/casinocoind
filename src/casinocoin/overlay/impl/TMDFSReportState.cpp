@@ -76,6 +76,12 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
+    if (shouldForceConclude(m))
+    {
+        conclude(m, true);
+        return;
+    }
+
     if (!checkReq(m))
         return;
 
@@ -98,6 +104,12 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+
+    if (shouldForceConclude(m))
+    {
+        conclude(m, true);
+        return;
+    }
 
     if (!checkResp(m))
         return;
@@ -138,6 +150,12 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
+    if (shouldForceConclude(m))
+    {
+        conclude(m, true);
+        return;
+    }
+
     m->set_type(protocol::TMDFSReportState::rtREQ);
 
     if (forwardRequest(m))
@@ -152,7 +170,27 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
     conclude(m);
 }
 
-void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)
+bool TMDFSReportState::shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const
+{
+    if (m->dfs_size() == 0)
+    {
+        JLOG(journal_.debug()) << "TMDFSReportState::shouldForceConclude() dfs list already empty. return true";
+        return true;
+    }
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+    JLOG(journal_.debug()) << "TMDFSReportState::shouldForceConclude() "
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+
+    if (((app_.getLedgerMaster().getValidLedgerIndex() + 1) % CRNPerformance::getReportingPeriod()) == 0
+            && !overlay_.getDFSReportStateData().isConcluded(crawlInstance))
+    {
+        return true;
+    }
+    return false;
+}
+
+void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m, bool forceConclude)
 {
     if (!m->has_startledger())
     {
@@ -244,7 +282,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
 
     app_.getCRNRound().updatePosition(eligibilityMap);
-    overlay_.getDFSReportStateData().conclude(crawlInstance);
+    overlay_.getDFSReportStateData().conclude(crawlInstance, forceConclude);
 }
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)

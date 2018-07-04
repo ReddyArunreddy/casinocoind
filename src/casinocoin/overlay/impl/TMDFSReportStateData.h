@@ -79,7 +79,7 @@ public:
     protocol::TMDFSReportState const& getLastRequest(CrawlInstance const& crawlInstance) const;
     std::string const& getLastRecipient(CrawlInstance const& crawlInstance) const;
 
-    void conclude(CrawlInstance const& crawlInstance);
+    void conclude(CrawlInstance const& crawlInstance, bool forceConclude = false);
     bool isConcluded(CrawlInstance const& crawlInstance) const;
 
 private:
