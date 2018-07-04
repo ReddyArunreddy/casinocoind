@@ -59,6 +59,7 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
                           << " startLedger: " << crawlInstance.startLedger_
                           << " curr recipient: " << currRecipient;
 
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (crawls_[crawlInstance]->concluded())
         return;
 

@@ -120,6 +120,7 @@ bool CrawlData::isValid() const
 
 void CrawlData::onDeadlineTimer(DeadlineTimer &timer)
 {
+    JLOG(journal_.debug()) << "CrawlData::onDeadlineTimer";
     protocol::TMDFSReportState msgToSend;
     std::string recipient;
     {
@@ -148,6 +149,7 @@ void CrawlData::onDeadlineTimer(DeadlineTimer &timer)
         if (knownPeers.size() > 0)
             // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
         {
+            JLOG(journal_.debug()) << "CrawlData::onDeadlineTimer add node " << recipient << " as visitedS";
             knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(msgToSend), recipient);
         }
     }
