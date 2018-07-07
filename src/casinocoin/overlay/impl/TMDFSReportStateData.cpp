@@ -138,7 +138,7 @@ void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
         recipient = lastReqRecipient_[initiator];
     }
 
-    Overlay::PeerSequence knownPeers = overlay_.getActivePeers();
+    Overlay::PeerSequence knownPeers = overlay_.getSanePeers();
     if (knownPeers.size() > 0)
     // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
     {

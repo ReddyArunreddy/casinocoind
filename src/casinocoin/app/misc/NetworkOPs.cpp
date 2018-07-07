@@ -1233,7 +1233,7 @@ void NetworkOPsImp::tryStartConsensus ()
 {
     uint256 networkClosed;
     bool ledgerChange = checkLastClosedLedger (
-        app_.overlay ().getActivePeers (), networkClosed);
+        app_.overlay ().getSanePeers (), networkClosed);
 
     if (networkClosed.isZero ())
         return;

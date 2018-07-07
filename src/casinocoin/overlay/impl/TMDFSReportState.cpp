@@ -53,6 +53,7 @@ void TMDFSReportState::start()
 {
     JLOG(journal_.debug()) << "TMDFSReportState::start TMDFSReportState";
     protocol::TMDFSReportState msg;
+    crawlRunning_ = true;
 
     fillMessage(msg);
 
@@ -93,6 +94,7 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
     JLOG(journal_.debug()) << "TMDFSReportState::evaluateResponse node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
+    lastMessage_ = m;                           
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
@@ -110,7 +112,7 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
         return;
 
     // jrojek: reaching this point means we are the initiator of crawl and should now conclude
-    conclude(m);
+    conclude(m, false);
 }
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
@@ -137,12 +139,34 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
         return;
 
     // jrojek: reaching this point means we are the initiator of crawl and should now conclude
-    conclude(m);
+    conclude(m, false);
 }
 
-void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m)
+void TMDFSReportState::forceConclude()
 {
-    if (m->dfs_size() != 0)
+    JLOG(journal_.info()) << "TMDFSReportState::forceConclude Stop Crawl before voting!";
+    if(crawlRunning_ && lastMessage_)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::forceConclude dfs_size: " << lastMessage_->dfs_size();
+        if(lastMessage_->dfs_size() > 0)
+        {
+            JLOG(journal_.info()) << "TMDFSReportState::forceConclude dfs_size > 0 -> call conclude";
+            conclude(lastMessage_, true);
+        }
+    }
+}
+
+void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m, bool forceConclude)
+{
+    // if crawl is no longer running return!
+    if(!crawlRunning_)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() - But Crawl already Finished! -->> Ignore";
+        return;
+    }
+    
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() - force?: " << forceConclude;
+    if (m->dfs_size() != 0 && !forceConclude)
     {
         JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
         overlay_.getDFSReportStateData().conclude(pubKeyString_);
@@ -150,8 +174,19 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
         return;
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
+    else if(m->dfs_size() != 0 && forceConclude)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() Force Crawl concluded but dfs list not empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
+    }
+    else
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl concluded. dfs list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
+    }
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
+    
+    // set crawl finished
+    crawlRunning_ = false;
+
     for (int i = 0; i < m->visited_size(); ++i)
             JLOG(journal_.debug()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
 
@@ -163,17 +198,17 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         {
             boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
             JLOG(journal_.debug()) << "TMDFSReportState - currStatus " << rep.currstatus()
-                                  << " ledgerSeqBegin " << rep.ledgerseqbegin()
-                                  << " ledgerSeqEnd " << rep.ledgerseqend()
-                                  << " latency " << rep.latency()
-                                  << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,*pk)
-                                  << " domain " << rep.domain()
-                                  << " signature " << rep.signature();
+                                << " ledgerSeqBegin " << rep.ledgerseqbegin()
+                                << " ledgerSeqEnd " << rep.ledgerseqend()
+                                << " latency " << rep.latency()
+                                << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,*pk)
+                                << " domain " << rep.domain()
+                                << " signature " << rep.signature();
             for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
             {
                 JLOG(journal_.debug()) << "mode " << iterStatuses->mode()
-                                      << "transitions " << iterStatuses->transitions()
-                                      << "duration " << iterStatuses->duration();
+                                    << "transitions " << iterStatuses->transitions()
+                                    << "duration " << iterStatuses->duration();
             }
             bool eligible = true;
             // check if node is on CRNList

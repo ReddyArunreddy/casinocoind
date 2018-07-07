@@ -206,6 +206,9 @@ public:
     void
     startDFSReportStateCrawl() override;
 
+    void
+    forceStopDFSReportStateCrawl() override;
+
     //--------------------------------------------------------------------------
     //
     // OverlayImpl

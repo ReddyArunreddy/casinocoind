@@ -994,6 +994,16 @@ void OverlayImpl::startDFSReportStateCrawl()
     }
 }
 
+void OverlayImpl::forceStopDFSReportStateCrawl()
+{
+    JLOG(journal_.info()) << "CRN OverlayImpl::forceStopDFSReportStateCrawl";
+    Overlay::PeerSequence sanePeers = getSanePeers();
+    if (sanePeers.size() > 0)
+    {
+        sanePeers[0]->dfsReportState().forceConclude();
+    }
+}
+
 //------------------------------------------------------------------------------
 
 void

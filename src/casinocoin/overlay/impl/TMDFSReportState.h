@@ -56,11 +56,12 @@ public:
     void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
-
     void addTimedOutNode(std::shared_ptr <protocol::TMDFSReportState> const& m, std::string const& timedOutNode);
+    void forceConclude ();
+
 private:
 
-    void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m);
+    void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m, bool forceConclude);    
     void fillMessage (protocol::TMDFSReportState& m);
     bool forwardRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     bool forwardResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
@@ -73,6 +74,8 @@ private:
     beast::Journal journal_;
 
     std::string pubKeyString_;
+    std::shared_ptr <protocol::TMDFSReportState> lastMessage_;
+    bool crawlRunning_;
 };
 
 } // namespace casinocoin
