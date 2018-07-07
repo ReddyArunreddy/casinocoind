@@ -986,11 +986,11 @@ TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
 
 void OverlayImpl::startDFSReportStateCrawl()
 {
-    JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl";
-    Overlay::PeerSequence activePeers = getActivePeers();
-    if (activePeers.size() > 0)
+    JLOG(journal_.info()) << "CRN OverlayImpl::startDFSReportStateCrawl";
+    Overlay::PeerSequence sanePeers = getSanePeers();
+    if (sanePeers.size() > 0)
     {
-        activePeers[0]->dfsReportState().start();
+        sanePeers[0]->dfsReportState().start();
     }
 }
 
