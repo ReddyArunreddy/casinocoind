@@ -332,7 +332,7 @@ CCLConsensus::onClose(
         !wrongLCL &&
         ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
     {
-//       app_.overlay().startDFSReportStateCrawl(prevLedger->info().seq);
+        app_.overlay().startDFSReportStateCrawl(prevLedger->info().seq);
     }
     //        }
 

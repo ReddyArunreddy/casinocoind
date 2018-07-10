@@ -219,7 +219,8 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         return;
     }
 
-    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+    // here im using visited array since dfs is supposed to be empty
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->visited(0), m->startledger()};
     if (m->dfs_size() != 0)
     {
         JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
