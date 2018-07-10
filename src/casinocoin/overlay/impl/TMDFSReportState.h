@@ -58,6 +58,7 @@ public:
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
     void addTimedOutNode(std::shared_ptr <protocol::TMDFSReportState> const& m, std::string const& timedOutNode);
     bool shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const;
+    void forceConclude(LedgerIndex const& startLedgerIndex);
 private:
 
     void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m, bool forceConclude = false);

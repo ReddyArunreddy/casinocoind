@@ -171,6 +171,7 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
     conclude(m, false);
 }
 
+// jrojek: i keep this method as 'autodiagnostics' tool for peers that are other than 'validators' and thus will never receive 'forceConclude' call
 bool TMDFSReportState::shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const
 {
     if (m->dfs_size() == 0)
@@ -183,7 +184,7 @@ bool TMDFSReportState::shouldForceConclude(std::shared_ptr<protocol::TMDFSReport
                            << " initiator: " << crawlInstance.initiator_
                            << " startLedger: " << crawlInstance.startLedger_;
 
-    if (((app_.getLedgerMaster().getValidLedgerIndex() + 1) % CRNPerformance::getReportingPeriod()) == 0
+    if (((app_.getLedgerMaster().getValidLedgerIndex() + CRNPerformance::getReportingConclusionOffset()) % CRNPerformance::getReportingPeriod()) == 0
             && !overlay_.getDFSReportStateData().isConcluded(crawlInstance))
     {
         return true;
@@ -191,7 +192,26 @@ bool TMDFSReportState::shouldForceConclude(std::shared_ptr<protocol::TMDFSReport
     return false;
 }
 
-void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const&m, bool forceConclude)
+void TMDFSReportState::forceConclude(LedgerIndex const& startLedgerIndex)
+{
+    JLOG(journal_.info()) << "TMDFSReportState::forceConclude Stop Crawl before voting!";
+    TMDFSReportStateData::CrawlInstance crawlInstance = {pubKeyString_, startLedgerIndex};
+    TMDFSReportStateData& data = overlay_.getDFSReportStateData();
+    if (data.isConcluded(crawlInstance))
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::forceConclude already concluded gracefully";
+        return;
+    }
+    protocol::TMDFSReportState const& lastMsg = data.getLastRequest(crawlInstance);
+    if(lastMsg.dfs_size() > 0)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::forceConclude dfs_size > 0 -> call conclude";
+        auto m = std::make_shared<protocol::TMDFSReportState>(lastMsg);
+        conclude(m, true);
+    }
+}
+
+void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> const& m, bool forceConclude)
 {
     if (!m->has_startledger())
     {

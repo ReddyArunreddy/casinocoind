@@ -323,22 +323,26 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && ((prevLedger->info().seq + 30) % CRNPerformance::getReportingPeriod()) == 0)
+    if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset() + 5) % CRNPerformance::getReportingPeriod()) == 0)
     {
         app_.getCRN().performance().prepareReport(prevLedger->info().seq, app_);
         app_.getCRN().performance().broadcast(app_);
     }
-    if (proposing && !wrongLCL && ((prevLedger->info().seq + 25) % CRNPerformance::getReportingPeriod()) == 0)
+    if (proposing &&
+        !wrongLCL &&
+        ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
     {
 //       app_.overlay().startDFSReportStateCrawl(prevLedger->info().seq);
     }
     //        }
-    
+
     // CRN Crawl should stop in time for the voting round
-    if (proposing && !wrongLCL && ((prevLedger->info().seq + 2) % CRNPerformance::getReportingPeriod()) == 0)
+    if (proposing &&
+        !wrongLCL &&
+        ((prevLedger->info().seq + CRNPerformance::getReportingConclusionOffset()) % CRNPerformance::getReportingPeriod()) == 0)
     {
-       app_.overlay().forceStopDFSReportStateCrawl();
-    } 
+       app_.overlay().forceStopDFSReportStateCrawl(prevLedger->info().seq + CRNPerformance::getReportingConclusionOffset() - CRNPerformance::getReportingStartOffset());
+    }
 
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)))

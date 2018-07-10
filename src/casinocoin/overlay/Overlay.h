@@ -188,7 +188,7 @@ public:
 
     virtual
     void
-    forceStopDFSReportStateCrawl() = 0;
+    forceStopDFSReportStateCrawl(LedgerIndex const& startLedger) = 0;
 
     /** Visit every active peer and return a value
         The functor must:
