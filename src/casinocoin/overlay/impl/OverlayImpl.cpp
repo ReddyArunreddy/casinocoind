@@ -986,11 +986,21 @@ TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
 
 void OverlayImpl::startDFSReportStateCrawl(LedgerIndex const& startLedger)
 {
-    JLOG(journal_.info()) << "OverlayImpl::startDFSReportStateCrawl at ledger: " << startLedger;
-    Overlay::PeerSequence activePeers = getActivePeers();
-    if (activePeers.size() > 0)
+    JLOG(journal_.info()) << "CRN OverlayImpl::startDFSReportStateCrawl";
+    Overlay::PeerSequence sanePeers = getSanePeers();
+    if (sanePeers.size() > 0)
     {
-        activePeers[0]->dfsReportState().start(startLedger);
+        sanePeers[0]->dfsReportState().start();
+    }
+}
+
+void OverlayImpl::forceStopDFSReportStateCrawl()
+{
+    JLOG(journal_.info()) << "CRN OverlayImpl::forceStopDFSReportStateCrawl";
+    Overlay::PeerSequence sanePeers = getSanePeers();
+    if (sanePeers.size() > 0)
+    {
+        sanePeers[0]->dfsReportState().forceConclude();
     }
 }
 

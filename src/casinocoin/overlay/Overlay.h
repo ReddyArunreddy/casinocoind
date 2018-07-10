@@ -186,6 +186,10 @@ public:
     void
     startDFSReportStateCrawl(LedgerIndex const& startLedger) = 0;
 
+    virtual
+    void
+    forceStopDFSReportStateCrawl() = 0;
+
     /** Visit every active peer and return a value
         The functor must:
         - Be callable as:

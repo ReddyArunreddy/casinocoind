@@ -320,7 +320,6 @@ CCLConsensus::onClose(
             false);
     }
 
-    // jrojek TODO enable check
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
@@ -334,6 +333,12 @@ CCLConsensus::onClose(
 //       app_.overlay().startDFSReportStateCrawl(prevLedger->info().seq);
     }
     //        }
+    
+    // CRN Crawl should stop in time for the voting round
+    if (proposing && !wrongLCL && ((prevLedger->info().seq + 2) % CRNPerformance::getReportingPeriod()) == 0)
+    {
+       app_.overlay().forceStopDFSReportStateCrawl();
+    } 
 
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)))

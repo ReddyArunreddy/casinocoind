@@ -76,11 +76,7 @@ bool CRN::onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
 Json::Value CRN::json() const
 {
-    Json::Value ret = Json::objectValue;
-
-    ret[jss::crn_id] = id_.json();
-    ret[jss::state_accounting] = performance_->json();
-    return ret;
+    return id_.json();
 }
 
 CRNId const& CRN::id() const

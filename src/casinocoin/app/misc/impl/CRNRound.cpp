@@ -202,6 +202,8 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
     baseValidation.setFieldArray(sfCRNs, crnArray);
     baseValidation.setFieldAmount(sfCRN_FeeDistributed, STAmount(lastFeeDistributionPosition_));
+    // clear eligibilityMap_ for next round
+    eligibilityMap_.clear();
 }
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
@@ -319,6 +321,7 @@ void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
 {
     // call from outside to update our position
     std::lock_guard <std::mutex> sl (mutex_);
+
     eligibilityMap_ = currentPosition;
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";

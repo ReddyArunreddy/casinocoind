@@ -206,6 +206,9 @@ public:
     void
     startDFSReportStateCrawl(const LedgerIndex &startLedger) override;
 
+    void
+    forceStopDFSReportStateCrawl() override;
+
     //--------------------------------------------------------------------------
     //
     // OverlayImpl

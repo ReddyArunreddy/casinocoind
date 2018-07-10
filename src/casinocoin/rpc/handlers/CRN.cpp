@@ -33,6 +33,7 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/rpc/Context.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/CRNListUpdater.h>
 
@@ -127,7 +128,7 @@ Json::Value doCRNInfo (RPC::Context& context)
         // show CRNRound info if we have some
         if (crnRound)
         {
-            jvReply[jss::crn_rounds] = true;
+            jvReply[jss::crn_rounds] = (crnRound->getFieldU32(sfLedgerSequence) > 0);
             jvReply[jss::seq] = Json::UInt (valLedger->info().seq);
             jvReply[jss::hash] = to_string (valLedger->info().hash);
             jvReply[jss::crn_fee_distributed] = crnRound->getFieldAmount(sfCRN_FeeDistributed).getText();

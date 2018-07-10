@@ -102,6 +102,7 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
     JLOG(journal_.debug()) << "TMDFSReportState::evaluateResponse node "
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
+
     for (std::string const& dfsEntry : m->dfs())
         JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
@@ -125,7 +126,7 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
         return;
 
     // jrojek: reaching this point means we are the initiator of crawl and should now conclude
-    conclude(m);
+    conclude(m, false);
 }
 
 void TMDFSReportState::evaluateAck(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
@@ -167,7 +168,7 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
         return;
 
     // jrojek: reaching this point means we are the initiator of crawl and should now conclude
-    conclude(m);
+    conclude(m, false);
 }
 
 bool TMDFSReportState::shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const
@@ -208,6 +209,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded.";
     JLOG(journal_.info()) << "DFS list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
+
     for (int i = 0; i < m->visited_size(); ++i)
             JLOG(journal_.debug()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
 
@@ -219,17 +221,17 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         {
             boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
             JLOG(journal_.debug()) << "TMDFSReportState - currStatus " << rep.currstatus()
-                                  << " ledgerSeqBegin " << rep.ledgerseqbegin()
-                                  << " ledgerSeqEnd " << rep.ledgerseqend()
-                                  << " latency " << rep.latency()
-                                  << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,*pk)
-                                  << " domain " << rep.domain()
-                                  << " signature " << rep.signature();
+                                << " ledgerSeqBegin " << rep.ledgerseqbegin()
+                                << " ledgerSeqEnd " << rep.ledgerseqend()
+                                << " latency " << rep.latency()
+                                << " crnPubKey " << toBase58(TOKEN_NODE_PUBLIC,*pk)
+                                << " domain " << rep.domain()
+                                << " signature " << rep.signature();
             for (auto iterStatuses = rep.status().begin() ; iterStatuses != rep.status().end() ; ++iterStatuses)
             {
                 JLOG(journal_.debug()) << "mode " << iterStatuses->mode()
-                                      << "transitions " << iterStatuses->transitions()
-                                      << "duration " << iterStatuses->duration();
+                                    << "transitions " << iterStatuses->transitions()
+                                    << "duration " << iterStatuses->duration();
             }
             bool eligible = true;
             // check if node is on CRNList

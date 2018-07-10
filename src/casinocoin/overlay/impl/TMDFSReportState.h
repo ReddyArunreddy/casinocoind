@@ -56,7 +56,6 @@ public:
     void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
-
     void addTimedOutNode(std::shared_ptr <protocol::TMDFSReportState> const& m, std::string const& timedOutNode);
     bool shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const;
 private:

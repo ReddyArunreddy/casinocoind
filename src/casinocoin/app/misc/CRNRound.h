@@ -69,7 +69,7 @@ public:
     updatePosition(CRN::EligibilityMap const& currentPosition) = 0;
 
     // The highest-sequence ledger we have done a CRNRound
-    std::atomic <std::uint32_t> mCRNRoundLedgerSeq;
+    std::atomic <std::uint32_t> mCRNRoundLedgerSeq = {0};
 
 };
 
