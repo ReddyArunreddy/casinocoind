@@ -74,7 +74,9 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
                           << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+        JLOG(journal_.debug()) << "TMDFSReportState::evaluateRequest() dfs: " << dfsEntry;
+    for (std::string const& visitedEntry : m->visited())
+        JLOG(journal_.debug()) << "TMDFSReportState::evaluateRequest() visited: " << visitedEntry;
 
     if (shouldForceConclude(m))
     {
@@ -111,7 +113,10 @@ void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportSta
                           << " dfsSize " << m->dfs_size();
 
     for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+        JLOG(journal_.debug()) << "TMDFSReportState::evaluateResponse() dfs: " << dfsEntry;
+    for (std::string const& visitedEntry : m->visited())
+        JLOG(journal_.debug()) << "TMDFSReportState::evaluateResponse() visited: " << visitedEntry;
+
 
     if (shouldForceConclude(m))
     {
@@ -156,7 +161,10 @@ void TMDFSReportState::addTimedOutNode(std::shared_ptr<protocol::TMDFSReportStat
     JLOG(journal_.debug()) << "TMDFSReportState::addTimedOutNode() " << timedOutNode
                           << " dfsSize " << m->dfs_size();
     for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+        JLOG(journal_.debug()) << "TMDFSReportState::addTimedOutNode() dfs: " << dfsEntry;
+    for (std::string const& visitedEntry : m->visited())
+        JLOG(journal_.debug()) << "TMDFSReportState::addTimedOutNode() visited: " << visitedEntry;
+
 
     if (shouldForceConclude(m))
     {
@@ -333,8 +341,6 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
 {
     JLOG(journal_.debug()) << "TMDFSReportState::forwardRequest()"
                           << " dfsSize " << m->dfs_size();
-    for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (!m->has_startledger())
     {
@@ -383,8 +389,6 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
 {
     JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse()"
                           << " dfsSize " << m->dfs_size();
-    for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (!m->has_startledger())
     {
@@ -404,25 +408,23 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         JLOG(journal_.error()) << "TMDFSReportState::forwardResponse() couldn't remove 'me' "
                                << pubKeyString_ << " from DFS list";
         for (std::string const& dfsEntry : m->dfs())
-            JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+            JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() dfs: " << dfsEntry;
+        for (std::string const& visitedEntry : m->visited())
+            JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() visited: " << visitedEntry;
         // jrojek: FIXME continue... it is basically sick behavior, but lets allow it for now
         // return false;
     }
 
-//    if (dfsList->size() > 0)
-//    {
-//        parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-//        return true;
-//    }
-//    return false;
     Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
     if (dfsList->size() > 0)
     {
         for (auto const& singlePeer : sanePeers)
         {
-            // jrojek: respond to sender... can we use 'parentPeer_' here? :roll:
+            // jrojek: respond to sender...(top of dfs list)
             if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
             {
+                // jrojek: if we send response this means in our scope that given crawl concluded
+                overlay_.getDFSReportStateData().conclude(crawlInstance, false);
                 singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
                 return true;
             }
@@ -435,8 +437,6 @@ bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> cons
 {
     JLOG(journal_.debug()) << "TMDFSReportState::checkReq()"
                           << " dfsSize " << m->dfs_size();
-    for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (m->type() != protocol::TMDFSReportState::rtREQ)
     {
@@ -483,8 +483,6 @@ bool TMDFSReportState::checkResp(std::shared_ptr<protocol::TMDFSReportState> con
 {
     JLOG(journal_.debug()) << "TMDFSReportState::checkResp()"
                           << " dfsSize " << m->dfs_size();
-    for (std::string const& dfsEntry : m->dfs())
-        JLOG(journal_.debug()) << "dfs: " << dfsEntry;
 
     if (m->type() != protocol::TMDFSReportState::rtRESP)
     {
