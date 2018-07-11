@@ -94,7 +94,14 @@ void TMDFSReportState::evaluateRequest(std::shared_ptr<protocol::TMDFSReportStat
 
     // if we reach this point this means that we already visited all our peers and we know of their state
     m->set_type(protocol::TMDFSReportState::rtRESP);
-    parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+
+    if (forwardResponse(m))
+        return;
+
+    JLOG(journal_.error()) << "TMDFSReportState::evaluateRequest() node "
+                          << toBase58(TOKEN_NODE_PUBLIC, parentPeer_.getNodePublic())
+                          << " dfsSize " << m->dfs_size()
+                          << " exhausted. i just drop the msg here.";
 }
 
 void TMDFSReportState::evaluateResponse(std::shared_ptr<protocol::TMDFSReportState> const&m)
@@ -402,19 +409,25 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         // return false;
     }
 
-    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
     if (dfsList->size() > 0)
     {
-        for (auto const& singlePeer : sanePeers)
-        {
-            // jrojek: respond to sender
-            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
-            {
-                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-                return true;
-            }
-        }
+        parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+        return true;
     }
+    return false;
+//    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
+//    if (dfsList->size() > 0)
+//    {
+//        for (auto const& singlePeer : sanePeers)
+//        {
+//            // jrojek: respond to sender... can we use 'parentPeer_' here? :roll:
+//            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
+//            {
+//                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+//                return true;
+//            }
+//        }
+//    }
     return false;
 }
 
