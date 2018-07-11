@@ -409,25 +409,25 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         // return false;
     }
 
-    if (dfsList->size() > 0)
-    {
-        parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-        return true;
-    }
-    return false;
-//    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
 //    if (dfsList->size() > 0)
 //    {
-//        for (auto const& singlePeer : sanePeers)
-//        {
-//            // jrojek: respond to sender... can we use 'parentPeer_' here? :roll:
-//            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
-//            {
-//                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-//                return true;
-//            }
-//        }
+//        parentPeer_.send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+//        return true;
 //    }
+//    return false;
+    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
+    if (dfsList->size() > 0)
+    {
+        for (auto const& singlePeer : sanePeers)
+        {
+            // jrojek: respond to sender... can we use 'parentPeer_' here? :roll:
+            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
+            {
+                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+                return true;
+            }
+        }
+    }
     return false;
 }
 
