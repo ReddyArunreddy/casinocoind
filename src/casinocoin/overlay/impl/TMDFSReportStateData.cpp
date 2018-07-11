@@ -64,6 +64,7 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
         return;
 
     std::unique_ptr<CrawlData>& theCrawl = crawls_[crawlInstance];
+    // jrojek: FIXME
     theCrawl->startAckTimer(1s);
     theCrawl->startResponseTimer(1s + (30s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1)));
     theCrawl->setRecipient(currRecipient);
@@ -157,9 +158,9 @@ void TMDFSReportStateData::startCrawl_private(CrawlInstance const& crawlInstance
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl_private() crawls_ size before: " << crawls_.size();
     // jrojek FIXME (or at least const-me)
-    if (static_cast<uint32_t>(crawlInstance.startLedger_) > (6*CRNPerformance::getReportingPeriod()))
+    if (static_cast<uint32_t>(crawlInstance.startLedger_) > CRNPerformance::getReportingPeriod())
     {
-        CrawlInstance previousCrawl { crawlInstance.initiator_, (static_cast<uint32_t>(crawlInstance.startLedger_) - (5*CRNPerformance::getReportingPeriod()))};
+        CrawlInstance previousCrawl { crawlInstance.initiator_, (static_cast<uint32_t>(crawlInstance.startLedger_) - CRNPerformance::getReportingPeriod())};
         crawls_.erase(previousCrawl);
     }
 

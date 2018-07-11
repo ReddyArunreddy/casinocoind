@@ -1818,15 +1818,20 @@ void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
         JLOG(journal_.error()) << "PeerImp::onMessage() old protocol version. Please update to most recent one";
         return;
     }
-    protocol::TMDFSReportStateAck ack;
-    ack.set_dfsroot(m->dfs(0));
-    ack.set_startledger(m->startledger());
-    send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
 
     if (m->type() == protocol::TMDFSReportState::rtREQ)
+    {
+        protocol::TMDFSReportStateAck ack;
+        ack.set_dfsroot(m->dfs(0));
+        ack.set_startledger(m->startledger());
+        send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
+
         dfsReportState_.evaluateRequest(m);
+    }
     if (m->type() == protocol::TMDFSReportState::rtRESP)
+    {
         dfsReportState_.evaluateResponse(m);
+    }
 }
 
 void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
