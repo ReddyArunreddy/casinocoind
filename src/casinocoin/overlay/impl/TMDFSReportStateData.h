@@ -60,6 +60,8 @@ public:
     {
        bool operator() (const CrawlInstance& lhs, const CrawlInstance& rhs) const
        {
+           if (lhs.startLedger_ == rhs.startLedger_)
+               return lhs.initiator_ < rhs.initiator_;
            return lhs.startLedger_ < rhs.startLedger_;
        }
     };
