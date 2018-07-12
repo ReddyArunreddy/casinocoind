@@ -1828,7 +1828,7 @@ void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
 
         dfsReportState_.evaluateRequest(m);
     }
-    if (m->type() == protocol::TMDFSReportState::rtRESP)
+    else if (m->type() == protocol::TMDFSReportState::rtRESP)
     {
         dfsReportState_.evaluateResponse(m);
     }
