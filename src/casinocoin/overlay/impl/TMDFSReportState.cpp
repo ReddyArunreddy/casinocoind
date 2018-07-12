@@ -242,8 +242,8 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
         for (std::string const& dfsEntry : m->dfs())
             JLOG(journal_.debug()) << "dfs: " << dfsEntry;
     }
-    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded.";
-    JLOG(journal_.info()) << "DFS list empty. final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
+    JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded. forced? " << forceConclude;
+    JLOG(journal_.info()) << "final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
     JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::::::::::::: VERBOSE PRINTOUT :::::::::::::::::::::::";
 
     for (int i = 0; i < m->visited_size(); ++i)
@@ -371,6 +371,7 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
                                                           toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()),
                                                           *m);
 
+            JLOG(journal_.debug()) << "TMDFSReportState::forwardRequest() forwarding to: " << singlePeerPubKeyString;
             singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
 
             return true;
@@ -415,22 +416,26 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         // return false;
     }
 
-    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
-    if (dfsList->size() > 0)
+    if (dfsList->size() == 0)
     {
-        for (auto const& singlePeer : sanePeers)
+        JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() dfs list empty";
+        return false;
+    }
+    Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
+    for (auto const& singlePeer : sanePeers)
+    {
+        // jrojek: respond to sender...(top of dfs list)
+        if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
         {
-            // jrojek: respond to sender...(top of dfs list)
-            if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
-            {
-                // jrojek: if we send response this means in our scope that given crawl concluded
-                // jrojek: not quite the result i expected
-                // overlay_.getDFSReportStateData().conclude(crawlInstance, false);
-                singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
-                return true;
-            }
+            // jrojek: if we send response this means in our scope that given crawl concluded
+            // jrojek: not quite the result i expected
+            // overlay_.getDFSReportStateData().conclude(crawlInstance, false);
+            JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() forwarding to: " << toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
+            singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
+            return true;
         }
     }
+    JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() didn't find a peer matching " << dfsList->Get(dfsList->size() - 1);
     return false;
 }
 
@@ -463,19 +468,21 @@ bool TMDFSReportState::checkReq(std::shared_ptr<protocol::TMDFSReportState> cons
             return false;
         }
     }
-    if (m->dfs_size() > 0)
+    if (m->dfs_size() == 0)
     {
-        TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
-        if (!overlay_.getDFSReportStateData().exists(crawlInstance))
-        {
-            overlay_.getDFSReportStateData().startCrawl(crawlInstance);
-        }
-        if (overlay_.getDFSReportStateData().isConcluded(crawlInstance))
-        {
-            JLOG(journal_.debug()) << "TMDFSReportState::checkReq() "
-                                   << "crawl for " << crawlInstance.initiator_ << " at ledger " << crawlInstance.startLedger_ << " already concluded. Discarding msg";
-            return false;
-        }
+        JLOG(journal_.error()) << "TMDFSReportState::checkReq() dfs list empty. we should not receive a REQ then!";
+        return false;
+    }
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->dfs(0), m->startledger()};
+    if (!overlay_.getDFSReportStateData().exists(crawlInstance))
+    {
+        overlay_.getDFSReportStateData().startCrawl(crawlInstance);
+    }
+    if (overlay_.getDFSReportStateData().isConcluded(crawlInstance))
+    {
+        JLOG(journal_.debug()) << "TMDFSReportState::checkReq() "
+                               << "crawl for " << crawlInstance.initiator_ << " at ledger " << crawlInstance.startLedger_ << " already concluded. Discarding msg";
+        return false;
     }
     return true;
 }

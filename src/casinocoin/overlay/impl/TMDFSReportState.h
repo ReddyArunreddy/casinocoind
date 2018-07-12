@@ -57,10 +57,10 @@ public:
     void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
     void addTimedOutNode(std::shared_ptr <protocol::TMDFSReportState> const& m, std::string const& timedOutNode);
-    bool shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const;
     void forceConclude(LedgerIndex const& startLedgerIndex);
 private:
 
+    bool shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const;
     void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m, bool forceConclude = false);
     void fillMessage (protocol::TMDFSReportState& m);
     bool forwardRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
