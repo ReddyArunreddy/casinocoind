@@ -35,136 +35,157 @@ TMDFSReportStateData::TMDFSReportStateData(OverlayImpl& overlay,
 {
 }
 
-void TMDFSReportStateData::restartTimers(std::string const& initiatorPubKey,
+void TMDFSReportStateData::startCrawl(CrawlInstance const& crawlInstance)
+{
+    JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl()"
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    std::lock_guard<decltype(mutex_)> lock(mutex_);
+    if (crawls_.find(crawlInstance) == crawls_.end())
+        startCrawl_private(crawlInstance);
+}
+
+bool TMDFSReportStateData::exists(CrawlInstance const& crawlInstance) const
+{
+    return (crawls_.find(crawlInstance) != crawls_.end());
+}
+
+void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
                                         std::string const& currRecipient,
                                         protocol::TMDFSReportState const& currPayload)
 {
-    JLOG(journal_.debug()) << "TMDFSReportStateData::restartACKTimer()"
-                          << "initiator: " << initiatorPubKey
+    JLOG(journal_.debug()) << "TMDFSReportStateData::restartTimers()"
+                          << " initiator: " << crawlInstance.initiator_
+                          << " startLedger: " << crawlInstance.startLedger_
                           << " curr recipient: " << currRecipient;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
+    if (crawls_[crawlInstance]->concluded())
+        return;
 
-//    if (ackTimers_.find(initiatorPubKey) == ackTimers_.end())
-    ackTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
+    std::unique_ptr<CrawlData>& theCrawl = crawls_[crawlInstance];
+    // jrojek: FIXME
+    theCrawl->startAckTimer(1s);
+    theCrawl->startResponseTimer(1s + (30s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1)));
+    theCrawl->setRecipient(currRecipient);
+    theCrawl->setMsg(currPayload);
 
-//    if (responseTimers_.find(initiatorPubKey) == responseTimers_.end())
-    responseTimers_[initiatorPubKey] = std::make_unique<DeadlineTimer>(this);
-
-    ackTimers_[initiatorPubKey]->setExpiration(1s);
-    responseTimers_[initiatorPubKey]->setExpiration(20s);
-
-    lastReqRecipient_[initiatorPubKey] = currRecipient;
-    lastReq_[initiatorPubKey] = currPayload;
 }
 
-void TMDFSReportStateData::cancelTimer(std::string const& initiatorPubKey, TimerType type)
+void TMDFSReportStateData::cancelTimer(CrawlInstance const& crawlInstance, CrawlData::TimerType type)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer() "
-                          << "initiator: " << initiatorPubKey;
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+
     std::lock_guard<decltype(mutex_)> lock(mutex_);
-    cancelTimer_private(initiatorPubKey, type);
+    cancelTimer_private(crawlInstance, type);
 }
 
-protocol::TMDFSReportState& TMDFSReportStateData::getLastRequest(std::string const& initiatorPubKey)
+protocol::TMDFSReportState const& TMDFSReportStateData::getLastRequest(CrawlInstance const& crawlInstance) const
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRequest() "
-                          << "initiator: " << initiatorPubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-    return lastReq_[initiatorPubKey];
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    if (crawls_.find(crawlInstance) != crawls_.end())
+    {
+        return crawls_.at(crawlInstance)->getMsg();
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "TMDFSReportStateData::getLastRequest couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
+    }
+    return msgNone_;
 }
 
-std::string& TMDFSReportStateData::getLastRecipient(std::string const& initiatorPubKey)
+std::string const& TMDFSReportStateData::getLastRecipient(CrawlInstance const& crawlInstance) const
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::getLastRecipient() "
-                          << "initiator: " << initiatorPubKey;
-    std::lock_guard<decltype(mutex_)> lock(mutex_);
-    return lastReqRecipient_[initiatorPubKey];
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    if (crawls_.find(crawlInstance) != crawls_.end())
+    {
+        return crawls_.at(crawlInstance)->getRecipient();
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "TMDFSReportStateData::getLastRecipient couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
+    }
+    return recipientNone_;
 }
 
-void TMDFSReportStateData::conclude(const std::string &initiatorPubKey)
+void TMDFSReportStateData::conclude(CrawlInstance const& crawlInstance, bool forceConclude)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::conclude() "
-                          << "initiator: " << initiatorPubKey;
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
     std::lock_guard<decltype(mutex_)> lock(mutex_);
-    ackTimers_[initiatorPubKey].reset();
-    responseTimers_[initiatorPubKey].reset();
-
-    lastReqRecipient_[initiatorPubKey] = std::string();
-    lastReq_[initiatorPubKey] = protocol::TMDFSReportState();
+    if (crawls_.find(crawlInstance) != crawls_.end())
+    {
+        crawls_[crawlInstance]->conclude(forceConclude);
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "TMDFSReportStateData::conclude couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
+    }
 }
 
-void TMDFSReportStateData::onDeadlineTimer(DeadlineTimer &timer)
+bool TMDFSReportStateData::isConcluded(CrawlInstance const& crawlInstance) const
 {
-    // jrojek this might be because node just recently gone offline
-    // or because node does not support CRN feature. Either way, we decide that this node is already
-    // visited and do not account its state
-    protocol::TMDFSReportState msgToSend;
-    std::string recipient;
-    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer()";
+    JLOG(journal_.debug()) << "TMDFSReportStateData::isConcluded() "
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    if (crawls_.find(crawlInstance) != crawls_.end())
     {
-        std::lock_guard<decltype(mutex_)> lock(mutex_);
-
-        std::string initiator;
-        // try to map to initiator using ACK timers
-        for (auto iter = ackTimers_.begin(); iter != ackTimers_.end(); ++iter)
-        {
-            if (*(iter->second) == timer)
-            {
-                initiator = iter->first;
-                JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() ACK timer for initiator: " << initiator;
-                cancelTimer_private(initiator, RESPONSE_TIMER);
-                break;
-            }
-        }
-        if (initiator.empty())
-        {
-            for (auto iter = responseTimers_.begin(); iter != responseTimers_.end(); ++iter)
-            {
-                if (*(iter->second) == timer)
-                {
-                    initiator = iter->first;
-                    JLOG(journal_.debug()) << "TMDFSReportStateData::onDeadlineTimer() RESPONSE timer for initiator: " << initiator;
-                    break;
-                }
-            }
-        }
-        if (initiator.empty())
-        {
-            JLOG(journal_.error()) << "TMDFSReportStateData::onDeadlineTimer() couldn't find corresponding timer. honestly don't know what to do";
-            return;
-        }
-        lastReq_[initiator].add_visited(lastReqRecipient_[initiator]);
-        msgToSend = lastReq_[initiator];
-        recipient = lastReqRecipient_[initiator];
+        return crawls_.at(crawlInstance)->concluded();
     }
-
-    Overlay::PeerSequence knownPeers = overlay_.getSanePeers();
-    if (knownPeers.size() > 0)
-    // jrojek need to call that on any instance of TMDFSReportState as this is basically callback to 'me'
+    else
     {
-        knownPeers[0]->dfsReportState().addTimedOutNode(std::make_shared<protocol::TMDFSReportState>(msgToSend), recipient);
+        JLOG(journal_.warn()) << "TMDFSReportStateData::isConcluded couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
     }
+    return true;
 }
 
-void TMDFSReportStateData::cancelTimer_private(const std::string &initiatorPubKey, TMDFSReportStateData::TimerType type)
+void TMDFSReportStateData::startCrawl_private(CrawlInstance const& crawlInstance)
+{
+    JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl_private() crawls_ size before: " << crawls_.size();
+    // jrojek FIXME (or at least const-me)
+    if (static_cast<uint32_t>(crawlInstance.startLedger_) > CRNPerformance::getReportingPeriod())
+    {
+        CrawlInstance previousCrawl { crawlInstance.initiator_, (static_cast<uint32_t>(crawlInstance.startLedger_) - CRNPerformance::getReportingPeriod())};
+        crawls_.erase(previousCrawl);
+    }
+
+    crawls_[crawlInstance].reset(new CrawlData(&overlay_, journal_));
+    crawls_[crawlInstance]->start();
+    JLOG(journal_.debug()) << "TMDFSReportStateData::startCrawl_private() crawls_ size after: " << crawls_.size();
+}
+
+void TMDFSReportStateData::cancelTimer_private(CrawlInstance const& crawlInstance, CrawlData::TimerType type)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::cancelTimer_private() "
-                          << "initiator: " << initiatorPubKey;
-    if (type == ACK_TIMER)
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    if (crawls_.find(crawlInstance) != crawls_.end())
     {
-        if (ackTimers_.find(initiatorPubKey) != ackTimers_.end())
-            ackTimers_[initiatorPubKey].reset();
-        else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find ACK_TIMER "
-                                  << "for root node: " << initiatorPubKey;
+        if (type == CrawlData::ACK_TIMER)
+            crawls_[crawlInstance]->cancelAckTimer();
+        else if (type == CrawlData::RESPONSE_TIMER)
+            crawls_[crawlInstance]->cancelResponseTimer();
     }
-    else if (type == RESPONSE_TIMER)
+    else
     {
-        if (responseTimers_.find(initiatorPubKey) != responseTimers_.end())
-            responseTimers_[initiatorPubKey].reset();
-        else
-            JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find RESPONSE_TIMER "
-                                  <<"for root node: " << initiatorPubKey;
+        JLOG(journal_.warn()) << "TMDFSReportStateData::cancelTimer_private couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
     }
 }
 

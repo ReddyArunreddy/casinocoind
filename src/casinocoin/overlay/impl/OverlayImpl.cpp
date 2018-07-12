@@ -984,23 +984,23 @@ TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
     return dfsCrawlReportData_;
 }
 
-void OverlayImpl::startDFSReportStateCrawl()
+void OverlayImpl::startDFSReportStateCrawl(LedgerIndex const& startLedger)
 {
     JLOG(journal_.info()) << "CRN OverlayImpl::startDFSReportStateCrawl";
     Overlay::PeerSequence sanePeers = getSanePeers();
     if (sanePeers.size() > 0)
     {
-        sanePeers[0]->dfsReportState().start();
+        sanePeers[0]->dfsReportState().start(startLedger);
     }
 }
 
-void OverlayImpl::forceStopDFSReportStateCrawl()
+void OverlayImpl::forceStopDFSReportStateCrawl(LedgerIndex const& startLedger)
 {
     JLOG(journal_.info()) << "CRN OverlayImpl::forceStopDFSReportStateCrawl";
     Overlay::PeerSequence sanePeers = getSanePeers();
     if (sanePeers.size() > 0)
     {
-        sanePeers[0]->dfsReportState().forceConclude();
+        sanePeers[0]->dfsReportState().forceConclude(startLedger);
     }
 }
 
