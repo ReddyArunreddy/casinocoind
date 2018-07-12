@@ -424,7 +424,8 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
             if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
             {
                 // jrojek: if we send response this means in our scope that given crawl concluded
-                overlay_.getDFSReportStateData().conclude(crawlInstance, false);
+                // jrojek: not quite the result i expected
+                // overlay_.getDFSReportStateData().conclude(crawlInstance, false);
                 singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
                 return true;
             }
