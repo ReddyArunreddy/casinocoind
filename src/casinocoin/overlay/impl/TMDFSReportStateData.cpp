@@ -65,11 +65,10 @@ void TMDFSReportStateData::restartTimers(CrawlInstance const& crawlInstance,
 
     std::unique_ptr<CrawlData>& theCrawl = crawls_[crawlInstance];
     // jrojek: FIXME
-    theCrawl->startAckTimer(1s);
-    theCrawl->startResponseTimer(1s + (30s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1)));
+    theCrawl->startAckTimer(500ms);
+    theCrawl->startResponseTimer(1s + (15s / (currPayload.dfs_size() > 0 ? currPayload.dfs_size() : 1)));
     theCrawl->setRecipient(currRecipient);
     theCrawl->setMsg(currPayload);
-
 }
 
 void TMDFSReportStateData::cancelTimer(CrawlInstance const& crawlInstance, CrawlData::TimerType type)

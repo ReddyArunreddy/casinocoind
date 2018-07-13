@@ -368,6 +368,11 @@ bool TMDFSReportState::forwardRequest(std::shared_ptr<protocol::TMDFSReportState
         return false;
     }
 
+    if (m->dfs_size() > app_.config().CRN_MAX_CRAWL_DEPTH)
+    {
+        JLOG(journal_.info()) << "TMDFSReportState::forwardRequest() dfs max depth reached. respond immidiately.";
+        return false;
+    }
     Overlay::PeerSequence sanePeers = overlay_.getSanePeers();
     if (sanePeers.size() > 0)
     {
@@ -447,9 +452,6 @@ bool TMDFSReportState::forwardResponse(const std::shared_ptr<protocol::TMDFSRepo
         // jrojek: respond to sender...(top of dfs list)
         if (toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic()) == dfsList->Get(dfsList->size() - 1))
         {
-            // jrojek: if we send response this means in our scope that given crawl concluded
-            // jrojek: not quite the result i expected
-            // overlay_.getDFSReportStateData().conclude(crawlInstance, false);
             JLOG(journal_.debug()) << "TMDFSReportState::forwardResponse() forwarding to: " << toBase58(TOKEN_NODE_PUBLIC, singlePeer->getNodePublic());
             singlePeer->send(std::make_shared<Message>(*m, protocol::mtDFS_REPORT_STATE));
             return true;
