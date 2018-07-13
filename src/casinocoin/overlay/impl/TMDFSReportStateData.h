@@ -80,8 +80,11 @@ public:
 
     protocol::TMDFSReportState const& getLastRequest(CrawlInstance const& crawlInstance) const;
     std::string const& getLastRecipient(CrawlInstance const& crawlInstance) const;
+    CRN::EligibilityMap const& getEligibilityMap(CrawlInstance const& crawlInstance) const;
 
-    void conclude(CrawlInstance const& crawlInstance, bool forceConclude = false);
+    void conclude(CrawlInstance const& crawlInstance,
+                  CRN::EligibilityMap const& eligibilityMap,
+                  bool forceConclude = false);
     bool isConcluded(CrawlInstance const& crawlInstance) const;
 
 private:

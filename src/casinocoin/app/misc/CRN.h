@@ -65,6 +65,7 @@ public:
 
     bool activated() const;
 
+    static const EligibilityMap eligibilityMapNone;
 private:
     CRNId id_;
     std::unique_ptr<CRNPerformance> performance_;

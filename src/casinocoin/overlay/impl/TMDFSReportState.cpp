@@ -28,7 +28,6 @@
 #include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/impl/PeerImp.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
-#include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/CRNList.h>
 
 namespace casinocoin {
@@ -238,9 +237,9 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     TMDFSReportStateData::CrawlInstance crawlInstance = {m->visited(0), m->startledger()};
     if (m->dfs_size() != 0)
     {
-        JLOG(journal_.warn()) << "TMDFSReportState::conclude() but dfs list is not empty...";
+        JLOG(journal_.warn()) << "TMDFSReportState::conclude() dfs list is not empty...";
         for (std::string const& dfsEntry : m->dfs())
-            JLOG(journal_.debug()) << "dfs: " << dfsEntry;
+            JLOG(journal_.debug()) << "TMDFSReportState::conclude() dfs: " << dfsEntry;
     }
     JLOG(journal_.info()) << "TMDFSReportState::conclude() Crawl for " << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_ << " concluded. forced? " << forceConclude;
     JLOG(journal_.info()) << "final stats: visited: " << m->visited_size() << " CRN nodes reported: " << m->reports_size();
@@ -249,7 +248,12 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
     for (int i = 0; i < m->visited_size(); ++i)
             JLOG(journal_.debug()) << "TMDFSReportState::conclude() visited: " << m->visited(i);
 
-    CRN::EligibilityMap eligibilityMap;
+    if (m->reports_size() == 0)
+    {
+        JLOG(journal_.error()) << "TMDFSReportState::conclude() no reports found. aborting";
+        overlay_.getDFSReportStateData().conclude(crawlInstance, CRN::eligibilityMapNone, forceConclude);
+        return;
+    }
     for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
     {
         protocol::TMReportState const& rep = iter->report();
@@ -269,7 +273,26 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                                     << "transitions " << iterStatuses->transitions()
                                     << "duration " << iterStatuses->duration();
             }
+        }
+    }
+    JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
+
+    decideCRNEligibility(m, forceConclude);
+}
+
+void TMDFSReportState::decideCRNEligibility(std::shared_ptr<protocol::TMDFSReportState> const& m, bool forceConclude)
+{
+    TMDFSReportStateData::CrawlInstance crawlInstance = {m->visited(0), m->startledger()};
+    JLOG(journal_.debug()) << "TMDFSReportState::decideCRNEligibility() for crawl initiated by" << crawlInstance.initiator_ << " started at ledger: " << crawlInstance.startLedger_;
+    CRN::EligibilityMap eligibilityMap;
+    for (auto iter = m->reports().begin() ; iter != m->reports().end() ; ++iter)
+    {
+        protocol::TMReportState const& rep = iter->report();
+        if (rep.has_activated() && rep.has_crnpubkey() && rep.has_currstatus() && rep.has_domain() && rep.has_latency() && rep.has_ledgerseqbegin() && rep.has_ledgerseqend())
+        {
+            boost::optional<PublicKey> pk = PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size()));
             bool eligible = true;
+
             // check if node is on CRNList
             if(app_.relaynodes().listed(*pk))
             {
@@ -293,7 +316,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
                     // check if account is funded
                     if (!CRNId::activated(*pk, app_.getLedgerMaster(), journal_, app_.config()))
                     {
-                        JLOG(journal_.debug()) << "TMDFSReportState - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                        JLOG(journal_.debug()) << "TMDFSReportState - Account " << toBase58(calcAccountID(*pk)) << " assigned to: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " has insufficient funds";
                         eligible &= false;
                     }
                     // check if latency is acceptable
@@ -317,10 +340,7 @@ void TMDFSReportState::conclude(std::shared_ptr<protocol::TMDFSReportState> cons
             eligibilityMap.insert(std::pair<PublicKey, bool>(PublicKey(Slice(rep.crnpubkey().data(), rep.crnpubkey().size())), eligible));
         }
     }
-    JLOG(journal_.debug()) << "TMDFSReportState::conclude() :::::::::::::: VERBOSE PRINTEND ::::::::::::::::::";
-
-    app_.getCRNRound().updatePosition(eligibilityMap);
-    overlay_.getDFSReportStateData().conclude(crawlInstance, forceConclude);
+    overlay_.getDFSReportStateData().conclude(crawlInstance, eligibilityMap, forceConclude);
 }
 
 void TMDFSReportState::fillMessage(protocol::TMDFSReportState& m)

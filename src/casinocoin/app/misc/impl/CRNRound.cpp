@@ -325,6 +325,8 @@ void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
     eligibilityMap_ = currentPosition;
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
+    for ( auto const& candidate : eligibilityMap_)
+        JLOG (j_.debug()) << "CRNRoundImpl::updatePosition " << toBase58(TOKEN_NODE_PUBLIC, candidate.first) << " voted " << candidate.second;
 }
 
 std::unique_ptr<CRNRound> make_CRNRound(int majorityFraction, beast::Journal journal)

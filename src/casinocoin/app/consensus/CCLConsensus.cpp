@@ -894,6 +894,9 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
 
     if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
     {
+        TMDFSReportStateData& data = app_.overlay().getDFSReportStateData();
+        TMDFSReportStateData::CrawlInstance crawlInstance {toBase58(TOKEN_NODE_PUBLIC, app_.nodeIdentity().first), (ledger.seq() + 1 - CRNPerformance::getReportingStartOffset())};
+        app_.getCRNRound().updatePosition(data.getEligibilityMap(crawlInstance));
         app_.getCRNRound().doValidation(ledger.ledger_, *v);
     }
 

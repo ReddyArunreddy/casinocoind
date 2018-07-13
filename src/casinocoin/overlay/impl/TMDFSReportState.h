@@ -68,6 +68,8 @@ private:
     bool checkReq (std::shared_ptr <protocol::TMDFSReportState> const& m);
     bool checkResp (std::shared_ptr <protocol::TMDFSReportState> const& m);
 
+    void decideCRNEligibility(std::shared_ptr<protocol::TMDFSReportState> const& m, bool forceConclude = false);
+
     Application& app_;
     OverlayImpl& overlay_;
     PeerImp& parentPeer_;

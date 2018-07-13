@@ -118,7 +118,27 @@ std::string const& TMDFSReportStateData::getLastRecipient(CrawlInstance const& c
     return recipientNone_;
 }
 
-void TMDFSReportStateData::conclude(CrawlInstance const& crawlInstance, bool forceConclude)
+CRN::EligibilityMap const& TMDFSReportStateData::getEligibilityMap(CrawlInstance const& crawlInstance) const
+{
+    JLOG(journal_.debug()) << "TMDFSReportStateData::getEligibilityMap() "
+                           << " initiator: " << crawlInstance.initiator_
+                           << " startLedger: " << crawlInstance.startLedger_;
+    if (crawls_.find(crawlInstance) != crawls_.end())
+    {
+        return crawls_.at(crawlInstance)->eligibilityMap();
+    }
+    else
+    {
+        JLOG(journal_.warn()) << "TMDFSReportStateData::getEligibilityMap couldn't find crawl data "
+                              << " initiator: " << crawlInstance.initiator_
+                              << " startLedger: " << crawlInstance.startLedger_;
+    }
+    return CRN::eligibilityMapNone;
+}
+
+void TMDFSReportStateData::conclude(CrawlInstance const& crawlInstance,
+                                    CRN::EligibilityMap const& eligibilityMap,
+                                    bool forceConclude)
 {
     JLOG(journal_.debug()) << "TMDFSReportStateData::conclude() "
                            << " initiator: " << crawlInstance.initiator_
@@ -126,7 +146,7 @@ void TMDFSReportStateData::conclude(CrawlInstance const& crawlInstance, bool for
     std::lock_guard<decltype(mutex_)> lock(mutex_);
     if (crawls_.find(crawlInstance) != crawls_.end())
     {
-        crawls_[crawlInstance]->conclude(forceConclude);
+        crawls_[crawlInstance]->conclude(eligibilityMap, forceConclude);
     }
     else
     {
