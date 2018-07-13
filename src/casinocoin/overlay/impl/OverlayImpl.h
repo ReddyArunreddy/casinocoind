@@ -204,10 +204,10 @@ public:
     getDFSReportStateData() override;
 
     void
-    startDFSReportStateCrawl() override;
+    startDFSReportStateCrawl(LedgerIndex const& startLedger) override;
 
     void
-    forceStopDFSReportStateCrawl() override;
+    forceStopDFSReportStateCrawl(LedgerIndex const& startLedger) override;
 
     //--------------------------------------------------------------------------
     //

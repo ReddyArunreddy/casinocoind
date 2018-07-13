@@ -48,6 +48,8 @@ public:
      * ---------------
     */
     static uint32_t getReportingPeriod() { return 100; }
+    static uint32_t getReportingStartOffset() { return 25; }
+    static uint32_t getReportingConclusionOffset() { return 2; }
 
     /** Returns a Json::objectValue. */
     virtual Json::Value json () const = 0;

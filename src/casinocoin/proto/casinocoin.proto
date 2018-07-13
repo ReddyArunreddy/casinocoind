@@ -219,11 +219,13 @@ message TMDFSReportState
     repeated PubKeyReportMap reports       = 4;
     repeated string visited                = 5;
     repeated string dfs                    = 6; 
+    optional uint32 startLedger            = 7;
 }
 
 message TMDFSReportStateAck
 {
-    required string dfsRoot                = 1;  
+    required string dfsRoot                = 1;
+    optional uint32 startLedger            = 2;	
 }
 
 // Announce to the network our position on a closing ledger

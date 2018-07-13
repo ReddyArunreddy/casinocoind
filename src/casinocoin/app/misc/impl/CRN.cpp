@@ -39,6 +39,8 @@
 
 namespace casinocoin {
 
+const CRN::EligibilityMap CRN::eligibilityMapNone = CRN::EligibilityMap();
+
 CRN::CRN(const PublicKey &pubKey,
          const std::string &domain,
          const std::string &domainSignature,

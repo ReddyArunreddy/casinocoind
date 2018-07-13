@@ -51,22 +51,24 @@ public:
                      PeerImp& parent,
                      beast::Journal journal);
     ~TMDFSReportState();
-    void start();
+    void start(const LedgerIndex &startLedger);
 
     void evaluateRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
     void evaluateAck (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
     void addTimedOutNode(std::shared_ptr <protocol::TMDFSReportState> const& m, std::string const& timedOutNode);
-    void forceConclude ();
-
+    void forceConclude(LedgerIndex const& startLedgerIndex);
 private:
 
-    void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m, bool forceConclude);    
+    bool shouldForceConclude(std::shared_ptr<protocol::TMDFSReportState> const& m) const;
+    void conclude (std::shared_ptr <protocol::TMDFSReportState> const& m, bool forceConclude = false);
     void fillMessage (protocol::TMDFSReportState& m);
     bool forwardRequest (std::shared_ptr <protocol::TMDFSReportState> const& m);
     bool forwardResponse (std::shared_ptr <protocol::TMDFSReportState> const& m);
     bool checkReq (std::shared_ptr <protocol::TMDFSReportState> const& m);
     bool checkResp (std::shared_ptr <protocol::TMDFSReportState> const& m);
+
+    void decideCRNEligibility(std::shared_ptr<protocol::TMDFSReportState> const& m, bool forceConclude = false);
 
     Application& app_;
     OverlayImpl& overlay_;
@@ -74,8 +76,6 @@ private:
     beast::Journal journal_;
 
     std::string pubKeyString_;
-    std::shared_ptr <protocol::TMDFSReportState> lastMessage_;
-    bool crawlRunning_;
 };
 
 } // namespace casinocoin
