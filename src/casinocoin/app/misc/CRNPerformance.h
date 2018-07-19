@@ -35,6 +35,7 @@ namespace casinocoin {
 
 class NetworkOPs;
 class Application;
+
 class CRNId;
 
 class CRNPerformance

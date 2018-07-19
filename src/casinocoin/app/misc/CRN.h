@@ -34,6 +34,9 @@
 
 namespace casinocoin {
 
+class NetworkOPs;
+class Application;
+
 class CRN
 {
 public:
@@ -64,6 +67,8 @@ public:
     CRNPerformance& performance() const;
 
     bool activated() const;
+
+    void prepareReport (LedgerIndex const& lastClosedLedgerSeq, Application& app);
 
     static const EligibilityMap eligibilityMapNone;
 private:

@@ -166,6 +166,11 @@ public:
     void
     send (protocol::TMValidation& m) = 0;
 
+    /** Broadcast performance report. */
+    virtual
+    void
+    send (protocol::TMPerformanceReport& m) = 0;
+
     /** Relay a proposal. */
     virtual
     void
@@ -177,6 +182,14 @@ public:
     void
     relay (protocol::TMValidation& m,
         uint256 const& uid) = 0;
+
+    /** Relay performance report. */
+    virtual
+    void
+    relay (protocol::TMPerformanceReport& m,
+        uint256 const& uid) = 0;
+
+
 
     virtual
     TMDFSReportStateData&

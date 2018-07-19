@@ -40,6 +40,7 @@
 #include <casinocoin/protocol/Protocol.h>
 #include <casinocoin/protocol/STTx.h>
 #include <casinocoin/protocol/STValidation.h>
+#include <casinocoin/protocol/STPerformanceReport.h>
 #include <casinocoin/beast/core/ByteOrder.h>
 #include <casinocoin/beast/net/IPAddressConversion.h>
 #include <beast/core/placeholders.hpp>
@@ -439,6 +440,7 @@ public:
     void onMessage (std::shared_ptr <protocol::TMStatusChange> const& m);
     void onMessage (std::shared_ptr <protocol::TMHaveTransactionSet> const& m);
     void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
+    void onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
     void onMessage (std::shared_ptr <protocol::TMReportState> const& m);
     void onMessage (std::shared_ptr <protocol::TMDFSReportState> const& m);
@@ -475,6 +477,10 @@ private:
     void
     checkValidation (STValidation::pointer val,
         bool isTrusted, std::shared_ptr<protocol::TMValidation> const& packet);
+
+    void
+    checkReport (STPerformanceReport::pointer report,
+        std::shared_ptr<protocol::TMPerformanceReport> const& packet);
 
     void
     getLedger (std::shared_ptr<protocol::TMGetLedger> const&packet);

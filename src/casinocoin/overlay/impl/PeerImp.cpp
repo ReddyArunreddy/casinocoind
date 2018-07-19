@@ -1650,6 +1650,43 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 }
 
 void
+PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
+{
+    JLOG(p_journal_.info()) << "PerformanceReport: received";
+    if (sanity_.load() == Sanity::insane)
+        return;
+
+    SerialIter sit (makeSlice(m->report()));
+
+    try
+    {
+        auto sreport = std::make_shared<STPerformanceReport const>(sit);
+
+        if (! app_.getHashRouter ().addSuppressionPeer (
+            sha512Half(makeSlice(m->report())), id_))
+        {
+            JLOG(p_journal_.trace()) << "PerformanceReport: duplicate";
+            return;
+        }
+
+        std::weak_ptr<PeerImp> weak = shared_from_this();
+        app_.getJobQueue ().addJob (
+            jtPERFORMANCE_REPORT,
+            "recvPerformanceReport->checkReport",
+            [weak, sreport, m] (Job&)
+            {
+                if (auto peer = weak.lock())
+                    peer->checkReport(sreport, m);
+            });
+    }
+    catch (std::exception const&)
+    {
+        JLOG(p_journal_.warn()) << "PerformanceReport invalid: " <<
+            strHex(m->report ());
+    }
+}
+
+void
 PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
@@ -2036,6 +2073,33 @@ PeerImp::checkValidation (STValidation::pointer val,
     {
         JLOG(p_journal_.trace()) <<
             "Exception processing validation";
+        charge (Resource::feeInvalidRequest);
+    }
+}
+
+void
+PeerImp::checkReport (STPerformanceReport::pointer report,
+                      std::shared_ptr<protocol::TMPerformanceReport> const& packet)
+{
+    try
+    {
+        uint256 signingHash = report->getSigningHash();
+        if (! cluster() && !report->isValid (signingHash))
+        {
+            JLOG(p_journal_.warn()) <<
+                "PerformanceReport is invalid";
+            charge (Resource::feeInvalidRequest);
+            return;
+        }
+
+        if (app_.getOPs ().recvPerformanceReport(
+                report, std::to_string(id())))
+            overlay_.relay(*packet, signingHash);
+    }
+    catch (std::exception const&)
+    {
+        JLOG(p_journal_.trace()) <<
+            "Exception processing performance report";
         charge (Resource::feeInvalidRequest);
     }
 }

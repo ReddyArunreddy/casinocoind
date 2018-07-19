@@ -193,11 +193,18 @@ public:
     send (protocol::TMValidation& m) override;
 
     void
+    send (protocol::TMPerformanceReport& m) override;
+
+    void
     relay (protocol::TMProposeSet& m,
         uint256 const& uid) override;
 
     void
     relay (protocol::TMValidation& m,
+        uint256 const& uid) override;
+
+    void
+    relay (protocol::TMPerformanceReport& m,
         uint256 const& uid) override;
 
     TMDFSReportStateData&

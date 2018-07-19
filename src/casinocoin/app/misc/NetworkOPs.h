@@ -28,6 +28,7 @@
 
 #include <casinocoin/core/JobQueue.h>
 #include <casinocoin/protocol/STValidation.h>
+#include <casinocoin/protocol/STPerformanceReport.h>
 #include <casinocoin/app/ledger/Ledger.h>
 #include <casinocoin/app/consensus/CCLCxPeerPos.h>
 #include <casinocoin/ledger/ReadView.h>
@@ -249,6 +250,8 @@ public:
     virtual void clearLedgerFetch () = 0;
     virtual Json::Value getLedgerFetchInfo () = 0;
 
+    virtual bool recvPerformanceReport (STValidation::ref val,
+        std::string const& source) = 0;
     /** Accepts the current transaction tree, return the new ledger's sequence
 
         This API is only used via RPC with the server in STANDALONE mode and
@@ -300,6 +303,7 @@ public:
         std::shared_ptr<ReadView const> const& lpCurrent,
         std::shared_ptr<STTx const> const& stTxn, TER terResult) = 0;
     virtual void pubValidation (STValidation::ref val) = 0;
+    virtual void pubPerformanceReport (STPerformanceReport::ref report) = 0;
 };
 
 //------------------------------------------------------------------------------
