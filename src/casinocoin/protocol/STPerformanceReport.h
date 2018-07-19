@@ -34,9 +34,6 @@
 
 namespace casinocoin {
 
-// Validation flags
-const std::uint32_t vfFullyCanonicalSig    = 0x80000000; // signature is fully canonical
-
 // jrojek: @ajochems: Adjust to our needs
 class STPerformanceReport final
     : public STObject
@@ -48,20 +45,13 @@ public:
     using pointer = std::shared_ptr<STPerformanceReport>;
     using ref     = const std::shared_ptr<STPerformanceReport>&;
 
-    enum
-    {
-        kFullFlag = 0x1
-    };
-
     // These throw if the object is not valid
     STPerformanceReport (SerialIter & sit, bool checkSignature = true);
 
-    // Does not sign the validation
+    // Does not sign the report
     STPerformanceReport (
-        uint256 const& ledgerHash,
-        NetClock::time_point signTime,
-        PublicKey const& raPub,
-        bool isFull);
+            NetClock::time_point signTime,
+            PublicKey const& publicKey);
 
     STBase*
     copy (std::size_t n, void* buf) const override
@@ -75,7 +65,6 @@ public:
         return emplace(n, buf, std::move(*this));
     }
 
-    uint256         getLedgerHash ()     const;
     NetClock::time_point getSignTime ()  const;
     NetClock::time_point getSeenTime ()  const;
     std::uint32_t   getFlags ()          const;
@@ -85,18 +74,9 @@ public:
         return mNodeID;
     }
     bool            isValid ()           const;
-    bool            isFull ()            const;
-    bool            isTrusted ()         const
-    {
-        return mTrusted;
-    }
     uint256         getSigningHash ()    const;
     bool            isValid (uint256 const& ) const;
 
-    void            setTrusted ()
-    {
-        mTrusted = true;
-    }
     void            setSeen (NetClock::time_point s)
     {
         mSeen = s;
@@ -107,28 +87,12 @@ public:
     // Signs the validation and returns the signing hash
     uint256 sign (SecretKey const& secretKey);
 
-    // The validation this replaced
-    uint256 const& getPreviousHash ()
-    {
-        return mPreviousHash;
-    }
-    bool isPreviousHash (uint256 const& h) const
-    {
-        return mPreviousHash == h;
-    }
-    void setPreviousHash (uint256 const& h)
-    {
-        mPreviousHash = h;
-    }
-
 private:
     static SOTemplate const& getFormat ();
 
     void setNode ();
 
-    uint256 mPreviousHash;
     NodeID mNodeID;
-    bool mTrusted = false;
     NetClock::time_point mSeen = {};
 };
 

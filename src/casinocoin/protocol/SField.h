@@ -87,6 +87,7 @@ enum SerializedTypeID
     STI_LEDGERENTRY = 10002,
     STI_VALIDATION  = 10003,
     STI_METADATA    = 10004,
+    STI_PERFORMANCE_REPORT = 10005,
 };
 
 // constexpr
@@ -337,6 +338,7 @@ extern SField const sfLedgerEntry;
 extern SField const sfTransaction;
 extern SField const sfValidation;
 extern SField const sfMetadata;
+extern SField const sfPerformanceReport;
 
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;

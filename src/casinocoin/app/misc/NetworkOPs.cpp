@@ -2152,10 +2152,12 @@ bool NetworkOPsImp::recvValidation (
 bool NetworkOPsImp::recvPerformanceReport (
     STPerformanceReport::ref report, std::string const& source)
 {
-    JLOG(m_journal.debug()) << "recvPerformanceReport " << report->getLedgerHash ()
+    JLOG(m_journal.debug()) << "recvPerformanceReport " << to_string(report->getSignTime())
                           << " from " << source;
     pubPerformanceReport (report);
-    return app_.getCRN().
+    return true;
+    // jrojek TODO
+//    return app_.getCRNReports().addReport(report, source);
 }
 
 Json::Value NetworkOPsImp::getConsensusInfo ()

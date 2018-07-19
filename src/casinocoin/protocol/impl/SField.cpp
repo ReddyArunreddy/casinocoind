@@ -83,6 +83,7 @@ SField const sfValidation  = make::one(&sfValidation,  STI_VALIDATION,  257, "Va
 SField const sfMetadata    = make::one(&sfMetadata,    STI_METADATA,    257, "Metadata");
 SField const sfHash        = make::one(&sfHash,        STI_HASH256,     257, "hash");
 SField const sfIndex       = make::one(&sfIndex,       STI_HASH256,     258, "index");
+SField const sfPerformanceReport  = make::one(&sfPerformanceReport,  STI_PERFORMANCE_REPORT,  257, "PerformanceReport");
 
 // 8-bit integers
 SF_U8 const sfCloseResolution   = make::one<SF_U8::type>(&sfCloseResolution,   STI_UINT8, 1, "CloseResolution");

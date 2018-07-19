@@ -1660,7 +1660,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
 
     try
     {
-        auto sreport = std::make_shared<STPerformanceReport const>(sit);
+        auto sreport = std::make_shared<STPerformanceReport>(sit);
 
         if (! app_.getHashRouter ().addSuppressionPeer (
             sha512Half(makeSlice(m->report())), id_))

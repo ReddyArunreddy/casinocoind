@@ -250,7 +250,7 @@ public:
     virtual void clearLedgerFetch () = 0;
     virtual Json::Value getLedgerFetchInfo () = 0;
 
-    virtual bool recvPerformanceReport (STValidation::ref val,
+    virtual bool recvPerformanceReport (STPerformanceReport::ref val,
         std::string const& source) = 0;
     /** Accepts the current transaction tree, return the new ledger's sequence
 

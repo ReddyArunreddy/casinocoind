@@ -30,6 +30,7 @@
 #include <casinocoin/core/ConfigSections.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
 #include <casinocoin/protocol/Protocol.h>
+#include <casinocoin/protocol/STPerformanceReport.h>
 
 namespace casinocoin {
 
@@ -60,13 +61,12 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual protocol::TMReportState
-    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
-                   Application& app) = 0;
+    virtual STPerformanceReport::ref
+    prepareReport (
+        LedgerIndex const& lastClosedLedgerSeq,
+        Application &app) = 0;
 
-    virtual protocol::TMReportState const& getPreparedReport() const = 0;
-
-    virtual void broadcast (Application &app) = 0;
+    virtual void broadcast (STPerformanceReport::ref report, Application &app) = 0;
     /**
      * ---------------
      * inbound methods

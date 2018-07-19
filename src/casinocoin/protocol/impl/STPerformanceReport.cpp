@@ -42,29 +42,23 @@ STPerformanceReport::STPerformanceReport (SerialIter& sit, bool checkSignature)
     if  (checkSignature && !isValid ())
     {
         JLOG (debugLog().error())
-            << "Invalid validation" << getJson (0);
-        Throw<std::runtime_error> ("Invalid validation");
+            << "Invalid performance report" << getJson (0);
+        Throw<std::runtime_error> ("Invalid performance report");
     }
 }
 
 STPerformanceReport::STPerformanceReport (
-        uint256 const& ledgerHash,
         NetClock::time_point signTime,
-        PublicKey const& publicKey,
-        bool isFull)
-    : STObject (getFormat (), sfValidation)
+        PublicKey const& publicKey)
+    : STObject (getFormat (), sfPerformanceReport)
     , mSeen (signTime)
 {
     // Does not sign
-    setFieldH256 (sfLedgerHash, ledgerHash);
     setFieldU32 (sfSigningTime, signTime.time_since_epoch().count());
 
     setFieldVL (sfSigningPubKey, publicKey.slice());
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
-
-    if (isFull)
-        setFlag (kFullFlag);
 }
 
 uint256 STPerformanceReport::sign (SecretKey const& secretKey)
@@ -80,11 +74,6 @@ uint256 STPerformanceReport::sign (SecretKey const& secretKey)
 uint256 STPerformanceReport::getSigningHash () const
 {
     return STObject::getSigningHash (HashPrefix::performanceReport);
-}
-
-uint256 STPerformanceReport::getLedgerHash () const
-{
-    return getFieldH256 (sfLedgerHash);
 }
 
 NetClock::time_point
@@ -120,7 +109,7 @@ bool STPerformanceReport::isValid (uint256 const& signingHash) const
     catch (std::exception const&)
     {
         JLOG (debugLog().error())
-            << "Exception validating validation";
+            << "Exception validating performance report";
         return false;
     }
 }
@@ -128,11 +117,6 @@ bool STPerformanceReport::isValid (uint256 const& signingHash) const
 PublicKey STPerformanceReport::getSignerPublic () const
 {
     return PublicKey(makeSlice (getFieldVL (sfSigningPubKey)));
-}
-
-bool STPerformanceReport::isFull () const
-{
-    return (getFlags () & kFullFlag) != 0;
 }
 
 Blob STPerformanceReport::getSignature () const
@@ -156,19 +140,11 @@ SOTemplate const& STPerformanceReport::getFormat ()
         FormatHolder ()
         {
             format.push_back (SOElement (sfFlags,               SOE_REQUIRED));
-            format.push_back (SOElement (sfLedgerHash,          SOE_REQUIRED));
             format.push_back (SOElement (sfSigningTime,         SOE_REQUIRED));
             format.push_back (SOElement (sfSigningPubKey,       SOE_REQUIRED));
             format.push_back (SOElement (sfLedgerSequence,      SOE_OPTIONAL));
-            format.push_back (SOElement (sfCloseTime,           SOE_OPTIONAL));
-            format.push_back (SOElement (sfLoadFee,             SOE_OPTIONAL));
-            format.push_back (SOElement (sfAmendments,          SOE_OPTIONAL));
-            format.push_back (SOElement (sfBaseFee,             SOE_OPTIONAL));
-            format.push_back (SOElement (sfReserveBase,         SOE_OPTIONAL));
-            format.push_back (SOElement (sfReserveIncrement,    SOE_OPTIONAL));
             format.push_back (SOElement (sfSignature,           SOE_OPTIONAL));
             format.push_back (SOElement (sfCRNs,                SOE_OPTIONAL));
-            format.push_back (SOElement (sfCRN_FeeDistributed,  SOE_OPTIONAL));
         }
     };
 
