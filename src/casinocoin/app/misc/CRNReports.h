@@ -23,8 +23,8 @@
 */
 //==============================================================================
 
-#ifndef ANGULAR_APP_MISC_CRNReportS_H_INCLUDED
-#define ANGULAR_APP_MISC_CRNReportS_H_INCLUDED
+#ifndef CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED
+#define CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED
 
 #include <casinocoin/app/main/Application.h>
 #include <casinocoin/protocol/Protocol.h>
@@ -62,4 +62,4 @@ make_CRNReports(Application& app);
 
 } // casinocoin
 
-#endif
+#endif // CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED

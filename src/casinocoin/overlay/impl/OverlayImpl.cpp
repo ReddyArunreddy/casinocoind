@@ -163,7 +163,6 @@ OverlayImpl::OverlayImpl (
     , m_resolver (resolver)
     , next_id_(1)
     , timer_count_(0)
-    , dfsCrawlReportData_(*this, journal_)
 {
     beast::PropertyStream::Source::add (m_peerFinder.get());
 }

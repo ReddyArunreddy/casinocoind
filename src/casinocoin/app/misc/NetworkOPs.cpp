@@ -38,6 +38,7 @@
 #include <casinocoin/app/ledger/TransactionMaster.h>
 #include <casinocoin/app/main/LoadManager.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNReports.h>
 #include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
