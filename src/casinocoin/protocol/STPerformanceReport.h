@@ -83,9 +83,6 @@ public:
     Blob    getSerialized ()             const;
     Blob    getSignature ()              const;
 
-    // Signs the validation and returns the signing hash
-    uint256 sign (SecretKey const& secretKey);
-
 private:
     static SOTemplate const& getFormat ();
 
