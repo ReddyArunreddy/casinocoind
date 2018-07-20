@@ -49,7 +49,10 @@ STPerformanceReport::STPerformanceReport (SerialIter& sit, bool checkSignature)
 
 STPerformanceReport::STPerformanceReport (
         NetClock::time_point signTime,
-        PublicKey const& publicKey)
+        PublicKey const& publicKey,
+        Blob const& domain,
+        Blob const& signature
+        )
     : STObject (getFormat (), sfPerformanceReport)
     , mSeen (signTime)
 {
@@ -57,6 +60,8 @@ STPerformanceReport::STPerformanceReport (
     setFieldU32 (sfSigningTime, signTime.time_since_epoch().count());
 
     setFieldVL (sfCRN_PublicKey, publicKey.slice());
+    setFieldVL (sfSignature, signature);
+    setFieldVL (sfCRN_DomainName, domain);
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
 }
@@ -128,6 +133,7 @@ SOTemplate const& STPerformanceReport::getFormat ()
             format.push_back (SOElement (sfCRN_PublicKey,           SOE_REQUIRED));
             format.push_back (SOElement (sfSignature,               SOE_REQUIRED));
             format.push_back (SOElement (sfCRN_DomainName,          SOE_REQUIRED));
+            format.push_back (SOElement (sfSigningTime,             SOE_REQUIRED));
             format.push_back (SOElement (sfCRN_LatencyAvg,          SOE_OPTIONAL));
             format.push_back (SOElement (sfFirstLedgerSequence,     SOE_OPTIONAL));
             format.push_back (SOElement (sfLastLedgerSequence,      SOE_OPTIONAL));
