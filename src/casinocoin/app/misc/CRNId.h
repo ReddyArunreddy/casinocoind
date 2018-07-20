@@ -101,9 +101,29 @@ public:
         return domain_;
     }
 
+    Blob domainBlob() const
+    {
+        auto domainStrIter = domain_.begin();
+        Blob domainBlob;
+        while (domainStrIter != domain_.end())
+            domainBlob.push_back(*domainStrIter++);
+
+        return domainBlob;
+    }
+
     std::string const& signature() const
     {
         return signature_;
+    }
+
+    Blob signatureBlob() const
+    {
+        auto signatureStrIter = signature_.begin();
+        Blob signatureBlob;
+        while (signatureStrIter != signature_.end())
+            signatureBlob.push_back(*signatureStrIter++);
+
+        return signatureBlob;
     }
 
     static bool activated(PublicKey const& pubKey,

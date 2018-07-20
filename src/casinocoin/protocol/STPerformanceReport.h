@@ -51,7 +51,9 @@ public:
     // Does not sign the report
     STPerformanceReport (
             NetClock::time_point signTime,
-            PublicKey const& publicKey);
+            PublicKey const& publicKey,
+            Blob const& domain,
+            Blob const& signature);
 
     STBase*
     copy (std::size_t n, void* buf) const override
