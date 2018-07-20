@@ -258,6 +258,9 @@ public:
     bool recvValidation (
         STValidation::ref val, std::string const& source) override;
 
+    bool recvPerformanceReport (
+        STPerformanceReport::ref report, std::string const& source) override;
+
     std::shared_ptr<SHAMap> getTXMap (uint256 const& hash);
     bool hasTXSet (
         const std::shared_ptr<Peer>& peer, uint256 const& set,
@@ -388,6 +391,8 @@ public:
         std::shared_ptr<STTx const> const& stTxn, TER terResult) override;
     void pubValidation (
         STValidation::ref val) override;
+    void pubPerformanceReport (
+        STPerformanceReport::ref report) override;
 
     //--------------------------------------------------------------------------
     //
@@ -434,6 +439,9 @@ public:
     bool subPeerStatus (InfoSub::ref ispListener) override;
     bool unsubPeerStatus (std::uint64_t uListener) override;
     void pubPeerStatus (std::function<Json::Value(void)> const&) override;
+
+    bool subPerformanceReports (InfoSub::ref ispListener) override;
+    bool unsubPerformanceReports (std::uint64_t uListener) override;
 
     InfoSub::pointer findRpcSub (std::string const& strUrl) override;
     InfoSub::pointer addRpcSub (
@@ -522,6 +530,7 @@ private:
     SubMapType mSubRTTransactions;    // All proposed and accepted transactions.
     SubMapType mSubValidations;       // Received validations.
     SubMapType mSubPeerStatus;        // peer status changes
+    SubMapType mSubPerformanceReports;// reveiced performance reports
 
     ServerFeeSummary mLastFeeSummary;
 
@@ -1778,6 +1787,33 @@ void NetworkOPsImp::pubValidation (STValidation::ref val)
     }
 }
 
+void NetworkOPsImp::pubPerformanceReport(STPerformanceReport::ref report)
+{
+    ScopedLockType sl (mSubLock);
+
+    if (!mSubPerformanceReports.empty ())
+    {
+        Json::Value jvObj (Json::objectValue);
+
+        jvObj [jss::type]                  = "performance_reportReceived";
+        jvObj [jss::signature]             = strHex (report->getSignature ());
+
+        // jrojek: @ajochems: Fill that with content
+        for (auto i = mSubPerformanceReports.begin (); i != mSubPerformanceReports.end (); )
+        {
+            if (auto p = i->second.lock())
+            {
+                p->send (jvObj, true);
+                ++i;
+            }
+            else
+            {
+                i = mSubPerformanceReports.erase (i);
+            }
+        }
+    }
+}
+
 void NetworkOPsImp::pubPeerStatus (
     std::function<Json::Value(void)> const& func)
 {
@@ -2111,6 +2147,17 @@ bool NetworkOPsImp::recvValidation (
                           << " from " << source;
     pubValidation (val);
     return app_.getValidations ().addValidation (val, source);
+}
+
+bool NetworkOPsImp::recvPerformanceReport (
+    STPerformanceReport::ref report, std::string const& source)
+{
+    JLOG(m_journal.debug()) << "recvPerformanceReport " << to_string(report->getSignTime())
+                          << " from " << source;
+    pubPerformanceReport (report);
+    return true;
+    // jrojek TODO
+//    return app_.getCRNReports().addReport(report, source);
 }
 
 Json::Value NetworkOPsImp::getConsensusInfo ()
@@ -2914,6 +2961,20 @@ bool NetworkOPsImp::unsubPeerStatus (std::uint64_t uSeq)
 {
     ScopedLockType sl (mSubLock);
     return mSubPeerStatus.erase (uSeq);
+}
+
+// <-- bool: true=added, false=already there
+bool NetworkOPsImp::subPerformanceReports (InfoSub::ref isrListener)
+{
+    ScopedLockType sl (mSubLock);
+    return mSubPerformanceReports.emplace (isrListener->getSeq (), isrListener).second;
+}
+
+// <-- bool: true=erased, false=was not there
+bool NetworkOPsImp::unsubPerformanceReports (std::uint64_t uSeq)
+{
+    ScopedLockType sl (mSubLock);
+    return mSubPerformanceReports.erase (uSeq);
 }
 
 InfoSub::pointer NetworkOPsImp::findRpcSub (std::string const& strUrl)

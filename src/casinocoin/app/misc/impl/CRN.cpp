@@ -39,6 +39,8 @@
 
 namespace casinocoin {
 
+const CRN::EligibilityMap CRN::eligibilityMapNone = CRN::EligibilityMap();
+
 CRN::CRN(const PublicKey &pubKey,
          const std::string &domain,
          const std::string &domainSignature,
@@ -95,6 +97,19 @@ bool CRN::activated() const
     bool crnActivated = false;
     JLOG(j_.info()) << "CRN Activated: " << crnActivated;
     return crnActivated;
+}
+
+STPerformanceReport::ref
+CRN::prepareReport(
+    LedgerIndex const& lastClosedLedgerSeq,
+    Application &app)
+{
+    return performance().prepareReport(lastClosedLedgerSeq, app);
+}
+
+void CRN::broadcast(STPerformanceReport::ref report, Application &app)
+{
+    performance().broadcast(report, app);
 }
 
 std::unique_ptr<CRN> make_CRN(Config &conf,

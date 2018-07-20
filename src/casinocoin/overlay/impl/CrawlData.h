@@ -4,6 +4,7 @@
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/core/DeadlineTimer.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
+#include <casinocoin/app/misc/CRN.h>
 
 namespace casinocoin {
 class OverlayImpl;
@@ -25,11 +26,11 @@ public:
     , FORCE_CONCLUDED = 2   // force concluded. crawl did not finish on time but had to report state before 'flag' ledger
     };
 
-    void conclude(bool forceConcluded = false);
-
+    void start();
+    void conclude(CRN::EligibilityMap const& eligibilityMap, bool forceConcluded = false);
     bool concluded() const;
 
-    void start();
+    CRN::EligibilityMap const& eligibilityMap() const;
 
     void setRecipient(std::string const& recipient);
     std::string const& getRecipient() const;
@@ -41,8 +42,6 @@ public:
     void startResponseTimer(std::chrono::milliseconds timeout);
     void cancelResponseTimer();
 
-    bool isValid() const;
-
 private:
     void onDeadlineTimer (DeadlineTimer& timer) override;
     std::string lastReqRecipient_;
@@ -50,6 +49,7 @@ private:
     DeadlineTimer ackTimer_;
     DeadlineTimer responseTimer_;
     State state_;
+    CRN::EligibilityMap eligibilityMap_;
 
     std::mutex mutex_;
     OverlayImpl* overlay_;

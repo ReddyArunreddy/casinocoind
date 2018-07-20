@@ -939,6 +939,24 @@ OverlayImpl::send (protocol::TMValidation& m)
     app_.getOPs().pubValidation (val);
 }
 
+void OverlayImpl::send(protocol::TMPerformanceReport &m)
+{
+//    if (setup_.expire)
+//        m.set_hops(0);
+    auto const sm = std::make_shared<Message>(
+        m, protocol::mtPERFORMANCE_REPORT);
+    for_each([&](std::shared_ptr<PeerImp>&& p)
+    {
+        if (! m.has_hops() || p->hopsAware())
+            p->send(sm);
+    });
+
+    SerialIter sit (m.report().data(), m.report().size());
+    auto report = std::make_shared <
+        STPerformanceReport> (std::ref (sit), false);
+    app_.getOPs().pubPerformanceReport (report);
+}
+
 void
 OverlayImpl::relay (protocol::TMProposeSet& m,
     uint256 const& uid)
@@ -970,6 +988,26 @@ OverlayImpl::relay (protocol::TMValidation& m,
         return;
     auto const sm = std::make_shared<Message>(
         m, protocol::mtVALIDATION);
+    for_each([&](std::shared_ptr<PeerImp>&& p)
+    {
+        if (toSkip->find(p->id()) != toSkip->end())
+            return;
+        if (! m.has_hops() || p->hopsAware())
+            p->send(sm);
+    });
+}
+
+void
+OverlayImpl::relay(protocol::TMPerformanceReport &m,
+    const uint256 &uid)
+{
+//    if (m.has_hops() && m.hops() >= someBigValueIfRequired)
+//        return;
+    auto const toSkip = app_.getHashRouter().shouldRelay(uid);
+    if (! toSkip)
+        return;
+    auto const sm = std::make_shared<Message>(
+        m, protocol::mtPERFORMANCE_REPORT);
     for_each([&](std::shared_ptr<PeerImp>&& p)
     {
         if (toSkip->find(p->id()) != toSkip->end())

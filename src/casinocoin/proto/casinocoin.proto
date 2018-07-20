@@ -17,6 +17,7 @@ enum MessageType
     mtPROPOSE_LEDGER        = 33;
     mtSTATUS_CHANGE         = 34;
     mtHAVE_SET              = 35;
+    mtPERFORMANCE_REPORT    = 40;
     mtVALIDATION            = 41;
     mtGET_OBJECTS           = 42;
     mtREPORT_STATE          = 43;
@@ -29,7 +30,6 @@ enum MessageType
     // <available>          = 20;
     // <available>          = 21;
     // <available>          = 22;
-    // <available>          = 40;
 }
 
 // token, iterations, target, challenge = issue demand for proof of work
@@ -184,6 +184,11 @@ message TMStatusChange
     optional uint32 lastSeq             = 8;
 }
 
+message TMPerformanceReport
+{
+    required bytes report           = 1;    // in STPerformanceReport signed form
+    optional uint32 hops            = 2;    // Number of hops traveled
+}
 message TMReportState
 {
     optional NodeStatus currStatus      = 1;
