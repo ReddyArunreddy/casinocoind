@@ -69,13 +69,12 @@ public:
     NetClock::time_point getSeenTime ()  const;
     std::uint32_t   getFlags ()          const;
     PublicKey       getSignerPublic ()   const;
+    uint256         getSigningHash ()    const;
     NodeID          getNodeID ()         const
     {
         return mNodeID;
     }
     bool            isValid ()           const;
-    uint256         getSigningHash ()    const;
-    bool            isValid (uint256 const& ) const;
 
     void            setSeen (NetClock::time_point s)
     {
@@ -83,9 +82,6 @@ public:
     }
     Blob    getSerialized ()             const;
     Blob    getSignature ()              const;
-
-    // Signs the validation and returns the signing hash
-    uint256 sign (SecretKey const& secretKey);
 
 private:
     static SOTemplate const& getFormat ();

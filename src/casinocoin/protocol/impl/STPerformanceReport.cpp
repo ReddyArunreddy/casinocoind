@@ -33,10 +33,10 @@
 namespace casinocoin {
 
 STPerformanceReport::STPerformanceReport (SerialIter& sit, bool checkSignature)
-    : STObject (getFormat (), sit, sfValidation)
+    : STObject (getFormat (), sit, sfPerformanceReport)
 {
     mNodeID = calcNodeID(
-        PublicKey(makeSlice (getFieldVL (sfSigningPubKey))));
+        PublicKey(makeSlice (getFieldVL (sfCRN_PublicKey))));
     assert (mNodeID.isNonZero ());
 
     if  (checkSignature && !isValid ())
@@ -56,24 +56,9 @@ STPerformanceReport::STPerformanceReport (
     // Does not sign
     setFieldU32 (sfSigningTime, signTime.time_since_epoch().count());
 
-    setFieldVL (sfSigningPubKey, publicKey.slice());
+    setFieldVL (sfCRN_PublicKey, publicKey.slice());
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
-}
-
-uint256 STPerformanceReport::sign (SecretKey const& secretKey)
-{
-    setFlag (vfFullyCanonicalSig);
-
-    auto const signingHash = getSigningHash();
-    setFieldVL (sfSignature,
-        signDigest (getSignerPublic(), secretKey, signingHash));
-    return signingHash;
-}
-
-uint256 STPerformanceReport::getSigningHash () const
-{
-    return STObject::getSigningHash (HashPrefix::performanceReport);
 }
 
 NetClock::time_point
@@ -94,15 +79,10 @@ std::uint32_t STPerformanceReport::getFlags () const
 
 bool STPerformanceReport::isValid () const
 {
-    return isValid (getSigningHash ());
-}
-
-bool STPerformanceReport::isValid (uint256 const& signingHash) const
-{
     try
     {
-        return verifyDigest (getSignerPublic(),
-            signingHash,
+        return casinocoin::verify(getSignerPublic(),
+            makeSlice(getFieldVL(sfCRN_DomainName)),
             makeSlice(getFieldVL (sfSignature)),
             getFlags () & vfFullyCanonicalSig);
     }
@@ -116,7 +96,12 @@ bool STPerformanceReport::isValid (uint256 const& signingHash) const
 
 PublicKey STPerformanceReport::getSignerPublic () const
 {
-    return PublicKey(makeSlice (getFieldVL (sfSigningPubKey)));
+    return PublicKey(makeSlice (getFieldVL (sfCRN_PublicKey)));
+}
+
+uint256 STPerformanceReport::getSigningHash () const
+{
+    return STObject::getSigningHash (HashPrefix::performanceReport);
 }
 
 Blob STPerformanceReport::getSignature () const
@@ -139,12 +124,15 @@ SOTemplate const& STPerformanceReport::getFormat ()
 
         FormatHolder ()
         {
-            format.push_back (SOElement (sfFlags,               SOE_REQUIRED));
-            format.push_back (SOElement (sfSigningTime,         SOE_REQUIRED));
-            format.push_back (SOElement (sfSigningPubKey,       SOE_REQUIRED));
-            format.push_back (SOElement (sfLedgerSequence,      SOE_OPTIONAL));
-            format.push_back (SOElement (sfSignature,           SOE_OPTIONAL));
-            format.push_back (SOElement (sfCRNs,                SOE_OPTIONAL));
+            format.push_back (SOElement (sfFlags,                   SOE_REQUIRED));
+            format.push_back (SOElement (sfCRN_PublicKey,           SOE_REQUIRED));
+            format.push_back (SOElement (sfSignature,               SOE_REQUIRED));
+            format.push_back (SOElement (sfCRN_DomainName,          SOE_REQUIRED));
+            format.push_back (SOElement (sfCRN_LatencyAvg,          SOE_OPTIONAL));
+            format.push_back (SOElement (sfFirstLedgerSequence,     SOE_OPTIONAL));
+            format.push_back (SOElement (sfLastLedgerSequence,      SOE_OPTIONAL));
+            format.push_back (SOElement (sfStatusMode,              SOE_OPTIONAL));
+            format.push_back (SOElement (sfCRNPerformance,          SOE_OPTIONAL));
         }
     };
 

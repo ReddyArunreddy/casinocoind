@@ -61,7 +61,7 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual STPerformanceReport::ref
+    virtual STPerformanceReport::pointer
     prepareReport (
         LedgerIndex const& lastClosedLedgerSeq,
         Application &app) = 0;

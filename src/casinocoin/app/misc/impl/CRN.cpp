@@ -99,7 +99,7 @@ bool CRN::activated() const
     return crnActivated;
 }
 
-STPerformanceReport::ref
+STPerformanceReport::pointer
 CRN::prepareReport(
     LedgerIndex const& lastClosedLedgerSeq,
     Application &app)
