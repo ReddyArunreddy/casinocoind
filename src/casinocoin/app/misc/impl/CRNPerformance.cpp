@@ -52,7 +52,7 @@ public:
     StatusAccounting& accounting() override;
     Json::Value json () const override;
 
-    STPerformanceReport::ref
+    STPerformanceReport::pointer
     prepareReport (
         LedgerIndex const& lastClosedLedgerSeq,
         Application &app) override;
@@ -125,7 +125,7 @@ Json::Value CRNPerformanceImpl::json() const
     return ret;
 }
 
-STPerformanceReport::ref
+STPerformanceReport::pointer
 CRNPerformanceImpl::prepareReport (
     LedgerIndex const& lastClosedLedgerSeq,
     Application &app)

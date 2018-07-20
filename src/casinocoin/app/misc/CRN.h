@@ -69,7 +69,7 @@ public:
 
     bool activated() const;
 
-    STPerformanceReport::ref
+    STPerformanceReport::pointer
     prepareReport (
         LedgerIndex const& lastClosedLedgerSeq,
         Application& app);

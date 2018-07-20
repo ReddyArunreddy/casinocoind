@@ -2083,23 +2083,22 @@ PeerImp::checkReport (STPerformanceReport::pointer report,
 {
     try
     {
-        uint256 signingHash = report->getSigningHash();
-        if (! cluster() && !report->isValid (signingHash))
+        if (! cluster() && !report->isValid ())
         {
             JLOG(p_journal_.warn()) <<
-                "PerformanceReport is invalid";
+                "received PerformanceReport is invalid";
             charge (Resource::feeInvalidRequest);
             return;
         }
 
         if (app_.getOPs ().recvPerformanceReport(
                 report, std::to_string(id())))
-            overlay_.relay(*packet, signingHash);
+            overlay_.relay(*packet, report->getSigningHash());
     }
     catch (std::exception const&)
     {
         JLOG(p_journal_.trace()) <<
-            "Exception processing performance report";
+            "Exception processing received performance report";
         charge (Resource::feeInvalidRequest);
     }
 }
