@@ -43,6 +43,7 @@
 #include <casinocoin/app/misc/AmendmentTable.h>
 #include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNReports.h>
 #include <casinocoin/app/misc/CRNRound.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -309,6 +310,7 @@ public:
     std::unique_ptr <ServerHandler> serverHandler_;
     std::unique_ptr <AmendmentTable> m_amendmentTable;
     std::unique_ptr <CRN> m_crn;
+    std::unique_ptr <CRNReports> m_crnReports;
     std::unique_ptr <CRNRound> m_crnRound;
     std::unique_ptr <LoadFeeTrack> mFeeTrack;
     std::unique_ptr <HashRouter> mHashRouter;
@@ -414,6 +416,9 @@ public:
 
     CRN&
     getCRN() override { assert(m_crn);return *m_crn; }
+
+    CRNReports&
+    getCRNReports () override { return *m_crnReports; }
 
     CRNRound&
     getCRNRound() override { return *m_crnRound; }
@@ -667,6 +672,7 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
         *m_jobQueue, *m_networkOPs, *m_resourceManager, *m_collectorManager))
 
     , m_crn (nullptr)
+    , m_crnReports (make_CRNReports (*this))
     , m_crnRound(make_CRNRound(MAJORITY_FRACTION, logs_->journal("CRNRound")))
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
@@ -1681,6 +1687,7 @@ void ApplicationImp::onStop()
     }
 
     mValidations->flush ();
+    m_crnReports->flush ();
 
     // stop the relaynode refresh cycle
     crnListUpdater_->stop ();

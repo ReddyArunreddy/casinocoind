@@ -71,6 +71,7 @@ public:
     NetClock::time_point getSeenTime ()  const;
     std::uint32_t   getFlags ()          const;
     PublicKey       getSignerPublic ()   const;
+    std::uint32_t   getLastLedgerIndex() const;
     uint256         getSigningHash ()    const;
     NodeID          getNodeID ()         const
     {

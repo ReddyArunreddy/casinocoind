@@ -104,6 +104,11 @@ PublicKey STPerformanceReport::getSignerPublic () const
     return PublicKey(makeSlice (getFieldVL (sfCRN_PublicKey)));
 }
 
+uint32_t STPerformanceReport::getLastLedgerIndex() const
+{
+    return getFieldU32 (sfLastLedgerSequence);
+}
+
 uint256 STPerformanceReport::getSigningHash () const
 {
     return STObject::getSigningHash (HashPrefix::performanceReport);

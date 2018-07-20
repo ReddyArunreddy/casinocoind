@@ -2155,9 +2155,7 @@ bool NetworkOPsImp::recvPerformanceReport (
     JLOG(m_journal.debug()) << "recvPerformanceReport " << to_string(report->getSignTime())
                           << " from " << source;
     pubPerformanceReport (report);
-    return true;
-    // jrojek TODO
-//    return app_.getCRNReports().addReport(report, source);
+    return app_.getCRNReports().addReport(report, source);
 }
 
 Json::Value NetworkOPsImp::getConsensusInfo ()

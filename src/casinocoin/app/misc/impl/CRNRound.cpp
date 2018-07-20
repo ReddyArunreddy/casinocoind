@@ -153,7 +153,7 @@ public:
         std::shared_ptr<SHAMap> const& initialPosition) override;
 
     void
-    updatePosition(CRN::EligibilityMap const& currentPosition) override;
+    updatePosition(std::list<STPerformanceReport::pointer> const& reports) override;
 
 protected:
     std::mutex mutex_;
@@ -317,16 +317,15 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
     lastVote_ = std::move(crnVote);
 }
 
-void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
+void CRNRoundImpl::updatePosition(std::list<STPerformanceReport::pointer> const& reports)
 {
-    // call from outside to update our position
-    std::lock_guard <std::mutex> sl (mutex_);
+    eligibilityMap_.clear();
+    for (STPerformanceReport::ref report : reports)
+    {
 
-    eligibilityMap_ = currentPosition;
+    }
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
-    for ( auto const& candidate : eligibilityMap_)
-        JLOG (j_.debug()) << "CRNRoundImpl::updatePosition " << toBase58(TOKEN_NODE_PUBLIC, candidate.first) << " voted " << candidate.second;
 }
 
 std::unique_ptr<CRNRound> make_CRNRound(int majorityFraction, beast::Journal journal)
