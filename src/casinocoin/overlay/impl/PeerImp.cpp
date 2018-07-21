@@ -104,7 +104,6 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
     , crn_(nullptr)
-    , dfsReportState_(app, overlay, *this, journal_)
 {
 }
 
@@ -369,11 +368,6 @@ PeerImp::json()
     }
 
     return ret;
-}
-
-TMDFSReportState &PeerImp::dfsReportState()
-{
-    return dfsReportState_;
 }
 
 //------------------------------------------------------------------------------
@@ -1845,37 +1839,6 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
     crn_->onOverlayMessage(m);
 
-}
-
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
-{
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportState.";
-    if (!m->has_startledger())
-    {
-        JLOG(journal_.error()) << "PeerImp::onMessage() old protocol version. Please update to most recent one";
-        return;
-    }
-
-    if (m->type() == protocol::TMDFSReportState::rtREQ)
-    {
-        protocol::TMDFSReportStateAck ack;
-        ack.set_dfsroot(m->dfs(0));
-        ack.set_startledger(m->startledger());
-        send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
-
-        dfsReportState_.evaluateRequest(m);
-    }
-    else if (m->type() == protocol::TMDFSReportState::rtRESP)
-    {
-        dfsReportState_.evaluateResponse(m);
-    }
-}
-
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
-{
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportStateAck.";
-
-    dfsReportState_.evaluateAck(m);
 }
 
 //--------------------------------------------------------------------------

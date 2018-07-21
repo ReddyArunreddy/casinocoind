@@ -163,7 +163,6 @@ OverlayImpl::OverlayImpl (
     , m_resolver (resolver)
     , next_id_(1)
     , timer_count_(0)
-    , dfsCrawlReportData_(*this, journal_)
 {
     beast::PropertyStream::Source::add (m_peerFinder.get());
 }
@@ -1015,31 +1014,6 @@ OverlayImpl::relay(protocol::TMPerformanceReport &m,
         if (! m.has_hops() || p->hopsAware())
             p->send(sm);
     });
-}
-
-TMDFSReportStateData &OverlayImpl::getDFSReportStateData()
-{
-    return dfsCrawlReportData_;
-}
-
-void OverlayImpl::startDFSReportStateCrawl(LedgerIndex const& startLedger)
-{
-    JLOG(journal_.info()) << "CRN OverlayImpl::startDFSReportStateCrawl";
-    Overlay::PeerSequence sanePeers = getSanePeers();
-    if (sanePeers.size() > 0)
-    {
-        sanePeers[0]->dfsReportState().start(startLedger);
-    }
-}
-
-void OverlayImpl::forceStopDFSReportStateCrawl(LedgerIndex const& startLedger)
-{
-    JLOG(journal_.info()) << "CRN OverlayImpl::forceStopDFSReportStateCrawl";
-    Overlay::PeerSequence sanePeers = getSanePeers();
-    if (sanePeers.size() > 0)
-    {
-        sanePeers[0]->dfsReportState().forceConclude(startLedger);
-    }
 }
 
 //------------------------------------------------------------------------------

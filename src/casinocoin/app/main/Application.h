@@ -81,6 +81,7 @@ class DatabaseCon;
 class SHAMapStore;
 
 class CRN;
+class CRNReports;
 class CRNList;
 class CRNListUpdater;
 class CRNRound;
@@ -146,6 +147,7 @@ public:
     virtual ManifestCache&          publisherManifests () = 0;
     virtual Cluster&                cluster () = 0;
     virtual Validations&            getValidations () = 0;
+    virtual CRNReports&             getCRNReports () = 0;
     virtual NodeStore::Database&    getNodeStore () = 0;
     virtual InboundLedgers&         getInboundLedgers () = 0;
     virtual InboundTransactions&    getInboundTransactions () = 0;

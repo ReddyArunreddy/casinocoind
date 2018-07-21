@@ -32,7 +32,6 @@
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
 #include <casinocoin/overlay/impl/OverlayImpl.h>
-#include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/resource/Fees.h>
 #include <casinocoin/core/Config.h>
 #include <casinocoin/core/Job.h>
@@ -167,8 +166,6 @@ private:
     std::unique_ptr <LoadEvent> load_event_;
     bool hopsAware_ = false;
     std::unique_ptr<CRN> crn_;
-    TMDFSReportState dfsReportState_;
-
 
     friend class OverlayImpl;
 
@@ -296,9 +293,6 @@ public:
 
     Json::Value
     json() override;
-
-    TMDFSReportState&
-    dfsReportState() override;
 
     //
     // Ledger
@@ -443,8 +437,6 @@ public:
     void onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
     void onMessage (std::shared_ptr <protocol::TMReportState> const& m);
-    void onMessage (std::shared_ptr <protocol::TMDFSReportState> const& m);
-    void onMessage (std::shared_ptr <protocol::TMDFSReportStateAck> const& m);
 
 private:
     State state() const
@@ -528,7 +520,6 @@ PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& s
     , response_(std::move(response))
     , headers_(response_.fields)
     , crn_(nullptr)
-    , dfsReportState_(app, overlay, *this, journal_)
 {
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));

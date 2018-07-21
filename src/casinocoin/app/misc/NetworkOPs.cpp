@@ -38,6 +38,7 @@
 #include <casinocoin/app/ledger/TransactionMaster.h>
 #include <casinocoin/app/main/LoadManager.h>
 #include <casinocoin/app/misc/CRN.h>
+#include <casinocoin/app/misc/CRNReports.h>
 #include <casinocoin/app/misc/CRNList.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -2155,9 +2156,7 @@ bool NetworkOPsImp::recvPerformanceReport (
     JLOG(m_journal.debug()) << "recvPerformanceReport " << to_string(report->getSignTime())
                           << " from " << source;
     pubPerformanceReport (report);
-    return true;
-    // jrojek TODO
-//    return app_.getCRNReports().addReport(report, source);
+    return app_.getCRNReports().addReport(report, source);
 }
 
 Json::Value NetworkOPsImp::getConsensusInfo ()

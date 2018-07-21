@@ -32,6 +32,7 @@
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/misc/AmendmentTable.h>
 #include <casinocoin/app/misc/CRNRound.h>
+#include <casinocoin/app/misc/CRNReports.h>
 #include <casinocoin/app/misc/CRN.h>
 #include <casinocoin/app/misc/HashRouter.h>
 #include <casinocoin/app/misc/LoadFeeTrack.h>
@@ -43,7 +44,6 @@
 #include <casinocoin/beast/core/LexicalCast.h>
 #include <casinocoin/consensus/LedgerTiming.h>
 #include <casinocoin/overlay/Overlay.h>
-#include <casinocoin/overlay/impl/TMDFSReportState.h>
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/protocol/Feature.h>
 #include <casinocoin/protocol/digest.h>
@@ -325,9 +325,8 @@ CCLConsensus::onClose(
     //        {
     if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset() + 5) % CRNPerformance::getReportingPeriod()) == 0)
     {
-        // jrojek TODO
         auto report = app_.getCRN().prepareReport(prevLedger->info().seq, app_);
-//        app_.getCRNReports().addReport(report, "local");
+        app_.getCRNReports().addReport(report, "local");
         app_.getCRN().broadcast(report, app_);
     }
     //        }
@@ -882,10 +881,12 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
 
     if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
     {
-        TMDFSReportStateData& data = app_.overlay().getDFSReportStateData();
-        TMDFSReportStateData::CrawlInstance crawlInstance {toBase58(TOKEN_NODE_PUBLIC, app_.nodeIdentity().first), (ledger.seq() + 1 - CRNPerformance::getReportingStartOffset())};
-        app_.getCRNRound().updatePosition(data.getEligibilityMap(crawlInstance));
+        std::list<STPerformanceReport::pointer> reports = app_.getCRNReports().getCurrentReports();
+
+        app_.getCRNRound().updatePosition(reports);
         app_.getCRNRound().doValidation(ledger.ledger_, *v);
+
+        app_.getCRNReports().flush();
     }
 
     auto const signingHash = v->sign(valSecret_);
