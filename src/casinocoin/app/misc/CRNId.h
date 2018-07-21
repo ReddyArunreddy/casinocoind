@@ -103,9 +103,10 @@ public:
 
     Blob domainBlob() const
     {
-        auto domainStrIter = domain_.begin();
+        std::string domainHex = strHex(domain_);
+        auto domainStrIter = domainHex.begin();
         Blob domainBlob;
-        while (domainStrIter != domain_.end())
+        while (domainStrIter != domainHex.end())
             domainBlob.push_back(*domainStrIter++);
 
         return domainBlob;
@@ -118,12 +119,10 @@ public:
 
     Blob signatureBlob() const
     {
-        auto signatureStrIter = signature_.begin();
-        Blob signatureBlob;
-        while (signatureStrIter != signature_.end())
-            signatureBlob.push_back(*signatureStrIter++);
-
-        return signatureBlob;
+        std::pair<Blob, bool> result = strUnHex(signature_);
+        if (result.second)
+            return result.first;
+        return Blob();
     }
 
     static bool activated(PublicKey const& pubKey,

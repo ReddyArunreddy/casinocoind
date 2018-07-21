@@ -62,6 +62,7 @@ STPerformanceReport::STPerformanceReport (
     setFieldVL (sfCRN_PublicKey, publicKey.slice());
     setFieldVL (sfSignature, signature);
     setFieldVL (sfCRN_DomainName, domain);
+
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
 }
@@ -88,8 +89,7 @@ bool STPerformanceReport::isValid () const
     {
         return casinocoin::verify(getSignerPublic(),
             makeSlice(getFieldVL(sfCRN_DomainName)),
-            makeSlice(getFieldVL (sfSignature)),
-            getFlags () & vfFullyCanonicalSig);
+            makeSlice(getFieldVL(sfSignature)));
     }
     catch (std::exception const&)
     {
@@ -163,6 +163,6 @@ SOTemplate const& STPerformanceReport::getFormat ()
 std::uint32_t STPerformanceReport::getLatency() const
 {
     return getFieldU32 (sfCRN_LatencyAvg);
-} 
+}
 
 } // casinocoin

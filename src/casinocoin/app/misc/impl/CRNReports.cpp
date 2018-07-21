@@ -128,7 +128,7 @@ private:
         }
 
         JLOG (j_.debug()) <<
-            "Val for " << lastLedgerIndex <<
+            "Performance report for " << lastLedgerIndex <<
             " from " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey) <<
             " added " << (isListed ? "confirmedListed/" : "UNconfirmedNOTListed/") <<
             (isCurrent ? "current" : "stale");
