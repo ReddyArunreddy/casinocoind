@@ -1796,8 +1796,13 @@ void NetworkOPsImp::pubPerformanceReport(STPerformanceReport::ref report)
     {
         Json::Value jvObj (Json::objectValue);
 
-        jvObj [jss::type]                  = "performance_reportReceived";
-        jvObj [jss::signature]             = strHex (report->getSignature ());
+        jvObj [jss::type]             = "performance_reportReceived";
+        jvObj [jss::signature]        = strHex (report->getSignature ());
+        jvObj [jss::crn_public_key]   = toBase58(TokenType::TOKEN_NODE_PUBLIC, report->getSignerPublic());
+        jvObj [jss::crn_domain_name]  = report->getDomainName();
+        jvObj [jss::crn_latency]      = report->getFieldU32(sfCRN_LatencyAvg);
+        jvObj [jss::crn_first_ledger] = report->getFieldU32(sfFirstLedgerSequence);
+        jvObj [jss::crn_last_ledger]  = report->getFieldU32(sfLastLedgerSequence);
 
         // jrojek: @ajochems: Fill that with content
         for (auto i = mSubPerformanceReports.begin (); i != mSubPerformanceReports.end (); )

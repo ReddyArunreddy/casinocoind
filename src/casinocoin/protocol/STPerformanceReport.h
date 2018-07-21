@@ -83,8 +83,10 @@ public:
     {
         mSeen = s;
     }
-    Blob    getSerialized ()             const;
-    Blob    getSignature ()              const;
+    Blob          getSerialized ()       const;
+    Blob          getSignature ()        const;
+    std::string   getDomainName ()       const;
+    std::uint32_t getLatency ()          const;
 
 private:
     static SOTemplate const& getFormat ();

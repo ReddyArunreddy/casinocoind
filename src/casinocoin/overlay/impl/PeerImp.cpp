@@ -1650,10 +1650,12 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
     if (sanity_.load() == Sanity::insane)
         return;
 
+    JLOG(p_journal_.trace()) << "PerformanceReport: serialize report";
     SerialIter sit (makeSlice(m->report()));
 
     try
     {
+        JLOG(p_journal_.trace()) << "PerformanceReport: create STPerformanceReport";
         auto sreport = std::make_shared<STPerformanceReport>(sit);
 
         if (! app_.getHashRouter ().addSuppressionPeer (
@@ -1662,7 +1664,7 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
             JLOG(p_journal_.trace()) << "PerformanceReport: duplicate";
             return;
         }
-
+        JLOG(p_journal_.trace()) << "PerformanceReport: add  checkReport job";
         std::weak_ptr<PeerImp> weak = shared_from_this();
         app_.getJobQueue ().addJob (
             jtPERFORMANCE_REPORT,

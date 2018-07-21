@@ -73,7 +73,7 @@ public:
 
 };
 
-std::unique_ptr<CRNRound> make_CRNRound (int majorityFraction, beast::Journal journal);
+std::unique_ptr<CRNRound> make_CRNRound (Application& app, int majorityFraction, beast::Journal journal);
 
 }  // casinocoin
 

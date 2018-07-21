@@ -149,10 +149,12 @@ JSS ( crn_activated );              // out: CRN
 JSS ( crn_fee_distributed );        // out: CRNInfo
 JSS ( crns );                       // out: CRNInfo
 JSS ( crn_fee_txs );                // out: CRNInfo
+JSS ( crn_first_ledger );           // out: CRNInfo
 JSS ( crn_last_ledger );            // out: CRNInfo
 JSS ( crn_update_sites );           // out: CRNInfo
 JSS ( crn_nodes );                  // out: CRNInfo
 JSS ( crn_rounds );                 // out: CRNInfo
+JSS ( crn_latency );                // out: CRNInfo
 JSS ( currency );                   // in: paths/PathRequest, STAmount
                                     // out: paths/Node, STPathSet, STAmount
 JSS ( current );                    // out: OwnerInfo

@@ -114,6 +114,14 @@ uint256 STPerformanceReport::getSigningHash () const
     return STObject::getSigningHash (HashPrefix::performanceReport);
 }
 
+std::string STPerformanceReport::getDomainName () const
+{
+    // Slice domainSlice = makeSlice(getFieldVL(sfCRN_DomainName));
+    // std::string strFromBlob(domainSlice.data(), domainSlice.size());
+    // return strFromBlob;
+    return strHex( getFieldVL(sfCRN_DomainName));
+}
+
 Blob STPerformanceReport::getSignature () const
 {
     return getFieldVL (sfSignature);
@@ -151,5 +159,10 @@ SOTemplate const& STPerformanceReport::getFormat ()
 
     return holder.format;
 }
+
+std::uint32_t STPerformanceReport::getLatency() const
+{
+    return getFieldU32 (sfCRN_LatencyAvg);
+} 
 
 } // casinocoin

@@ -673,7 +673,7 @@ ApplicationImp::ApplicationImp(std::unique_ptr<Config> config, std::unique_ptr<L
 
     , m_crn (nullptr)
     , m_crnReports (make_CRNReports (*this))
-    , m_crnRound(make_CRNRound(MAJORITY_FRACTION, logs_->journal("CRNRound")))
+    , m_crnRound(make_CRNRound(*this, MAJORITY_FRACTION, logs_->journal("CRNRound")))
 
     , mFeeTrack (std::make_unique<LoadFeeTrack>(logs_->journal("LoadManager")))
 
