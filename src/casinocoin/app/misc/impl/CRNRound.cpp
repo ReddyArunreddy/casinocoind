@@ -339,8 +339,8 @@ void CRNRoundImpl::updatePosition(std::list<STPerformanceReport::pointer> const&
            {
                eligible &= casinocoin::verify(
                    *pk,
-                   makeSlice(report->getDomainName()),
-                   makeSlice(report->getSignature())
+                   makeSlice(report->getFieldVL(sfCRN_DomainName)),
+                   makeSlice(report->getFieldVL(sfSignature))
                );
            }
            else

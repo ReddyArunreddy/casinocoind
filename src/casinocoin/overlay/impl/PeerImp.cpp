@@ -1675,10 +1675,11 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
                     peer->checkReport(sreport, m);
             });
     }
-    catch (std::exception const&)
+    catch (std::exception const& e)
     {
-        JLOG(p_journal_.warn()) << "PerformanceReport invalid: " <<
-            strHex(m->report ());
+        JLOG(p_journal_.warn()) << "PerformanceReport invalid."
+                                << " what: " << e.what()
+                                << " report: " << strHex(m->report ());
     }
 }
 
@@ -2062,7 +2063,7 @@ PeerImp::checkReport (STPerformanceReport::pointer report,
     }
     catch (std::exception const&)
     {
-        JLOG(p_journal_.trace()) <<
+        JLOG(p_journal_.info()) <<
             "Exception processing received performance report";
         charge (Resource::feeInvalidRequest);
     }

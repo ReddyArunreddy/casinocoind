@@ -137,12 +137,21 @@ CRNPerformanceImpl::prepareReport (
 
 
     auto signTime = app.timeKeeper().closeTime();
-    std::shared_ptr<STPerformanceReport> report = std::make_shared<STPerformanceReport>(
-                                                    signTime,
-                                                    id.publicKey(),
-                                                    id.domainBlob(),
-                                                    id.signatureBlob());
-
+    std::shared_ptr<STPerformanceReport> report;
+    try
+    {
+        report = std::make_shared<STPerformanceReport>(
+                                                      signTime,
+                                                      id.publicKey(),
+                                                      id.domainBlob(),
+                                                      id.signatureBlob());
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.info()) << "CRNPerformanceImpl::prepareReport exception creating performance report"
+                                << e.what();
+        return nullptr;
+    }
     STArray performanceArray (sfCRNPerformance);
     for (uint32_t i = 0; i < 5; i++)
     {

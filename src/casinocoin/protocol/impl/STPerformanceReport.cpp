@@ -29,6 +29,7 @@
 #include <casinocoin/basics/contract.h>
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/json/to_string.h>
+#include <casinocoin/basics/StringUtilities.h>
 
 namespace casinocoin {
 
@@ -62,6 +63,7 @@ STPerformanceReport::STPerformanceReport (
     setFieldVL (sfCRN_PublicKey, publicKey.slice());
     setFieldVL (sfSignature, signature);
     setFieldVL (sfCRN_DomainName, domain);
+
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
 }
@@ -88,8 +90,7 @@ bool STPerformanceReport::isValid () const
     {
         return casinocoin::verify(getSignerPublic(),
             makeSlice(getFieldVL(sfCRN_DomainName)),
-            makeSlice(getFieldVL (sfSignature)),
-            getFlags () & vfFullyCanonicalSig);
+            makeSlice(getFieldVL(sfSignature)));
     }
     catch (std::exception const&)
     {
@@ -116,10 +117,10 @@ uint256 STPerformanceReport::getSigningHash () const
 
 std::string STPerformanceReport::getDomainName () const
 {
-    // Slice domainSlice = makeSlice(getFieldVL(sfCRN_DomainName));
-    // std::string strFromBlob(domainSlice.data(), domainSlice.size());
-    // return strFromBlob;
-    return strHex( getFieldVL(sfCRN_DomainName));
+    Blob hexedDomain = getFieldVL(sfCRN_DomainName);
+    std::string hexDomainStr(hexedDomain.begin(), hexedDomain.end());
+    Blob unhexedDomain = strUnHex(hexDomainStr).first;
+    return std::string(unhexedDomain.begin(), unhexedDomain.end());
 }
 
 Blob STPerformanceReport::getSignature () const
@@ -163,6 +164,6 @@ SOTemplate const& STPerformanceReport::getFormat ()
 std::uint32_t STPerformanceReport::getLatency() const
 {
     return getFieldU32 (sfCRN_LatencyAvg);
-} 
+}
 
 } // casinocoin
