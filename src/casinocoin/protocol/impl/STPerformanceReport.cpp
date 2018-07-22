@@ -29,6 +29,7 @@
 #include <casinocoin/basics/contract.h>
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/json/to_string.h>
+#include <casinocoin/basics/StringUtilities.h>
 
 namespace casinocoin {
 
@@ -116,10 +117,10 @@ uint256 STPerformanceReport::getSigningHash () const
 
 std::string STPerformanceReport::getDomainName () const
 {
-    // Slice domainSlice = makeSlice(getFieldVL(sfCRN_DomainName));
-    // std::string strFromBlob(domainSlice.data(), domainSlice.size());
-    // return strFromBlob;
-    return strHex( getFieldVL(sfCRN_DomainName));
+    Blob hexedDomain = getFieldVL(sfCRN_DomainName);
+    std::string hexDomainStr(hexedDomain.begin(), hexedDomain.end());
+    Blob unhexedDomain = strUnHex(hexDomainStr).first;
+    return std::string(unhexedDomain.begin(), unhexedDomain.end());
 }
 
 Blob STPerformanceReport::getSignature () const

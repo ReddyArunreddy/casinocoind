@@ -1804,7 +1804,6 @@ void NetworkOPsImp::pubPerformanceReport(STPerformanceReport::ref report)
         jvObj [jss::crn_first_ledger] = report->getFieldU32(sfFirstLedgerSequence);
         jvObj [jss::crn_last_ledger]  = report->getFieldU32(sfLastLedgerSequence);
 
-        // jrojek: @ajochems: Fill that with content
         for (auto i = mSubPerformanceReports.begin (); i != mSubPerformanceReports.end (); )
         {
             if (auto p = i->second.lock())
