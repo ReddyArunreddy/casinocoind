@@ -99,6 +99,19 @@ bool CRN::activated() const
     return crnActivated;
 }
 
+STPerformanceReport::pointer
+CRN::prepareReport(
+    LedgerIndex const& lastClosedLedgerSeq,
+    Application &app)
+{
+    return performance().prepareReport(lastClosedLedgerSeq, app);
+}
+
+void CRN::broadcast(STPerformanceReport::ref report, Application &app)
+{
+    performance().broadcast(report, app);
+}
+
 std::unique_ptr<CRN> make_CRN(Config &conf,
                               NetworkOPs &networkOps,
                               const LedgerIndex &startupSeq,

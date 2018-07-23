@@ -1,7 +1,7 @@
 //------------------------------------------------------------------------------
 /*
-    This file is part of rippled: https://github.com/ripple/rippled
-    Copyright (c) 2012, 2013 Ripple Labs Inc.
+    This file is part of rippled: https://github.com/casinocoin/casinocoind
+    Copyright (c) 2018 CasinoCoin Foundation
 
     Permission to use, copy, modify, and/or distribute this software for any
     purpose  with  or without fee is hereby granted, provided that the above
@@ -19,29 +19,47 @@
 
 //==============================================================================
 /*
-    2017-06-30  ajochems        Refactored for casinocoin
+    2018-07-20  jrojek          Created
 */
 //==============================================================================
 
-#ifndef CASINOCOIN_PROTOCOL_ST_H_INCLUDED
-#define CASINOCOIN_PROTOCOL_ST_H_INCLUDED
+#ifndef CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED
+#define CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED
 
-#include <casinocoin/protocol/SField.h>
-#include <casinocoin/protocol/STAccount.h>
-#include <casinocoin/protocol/STAmount.h>
-#include <casinocoin/protocol/STArray.h>
-#include <casinocoin/protocol/STBase.h>
-#include <casinocoin/protocol/STBitString.h>
-#include <casinocoin/protocol/STBlob.h>
-#include <casinocoin/protocol/STInteger.h>
-#include <casinocoin/protocol/STLedgerEntry.h>
-#include <casinocoin/protocol/STObject.h>
-#include <casinocoin/protocol/STParsedJSON.h>
-#include <casinocoin/protocol/STPathSet.h>
-#include <casinocoin/protocol/STTx.h>
-#include <casinocoin/protocol/STValidation.h>
+#include <casinocoin/app/main/Application.h>
+#include <casinocoin/protocol/Protocol.h>
 #include <casinocoin/protocol/STPerformanceReport.h>
-#include <casinocoin/protocol/STVector256.h>
-#include <casinocoin/protocol/STVector128.h>
+#include <memory>
+#include <vector>
 
-#endif
+namespace casinocoin {
+
+// nodes reporting and highest node ID reporting
+using CRNReportSet = hash_map<PublicKey, STPerformanceReport::pointer>;
+
+using CRNReportCounter = std::pair<int, NodeID>;
+
+class CRNReports
+{
+public:
+    virtual ~CRNReports() = default;
+
+    virtual bool addReport (STPerformanceReport::ref, std::string const& source) = 0;
+
+    virtual bool current (STPerformanceReport::ref) const = 0;
+
+    virtual std::list <STPerformanceReport::pointer>
+    getCurrentReports () = 0;
+
+    virtual hash_set<PublicKey> getCurrentPublicKeys () = 0;
+
+    virtual void flush () = 0;
+};
+
+extern
+std::unique_ptr<CRNReports>
+make_CRNReports(Application& app);
+
+} // casinocoin
+
+#endif // CASINOCOIN_APP_MISC_CRNREPORTS_H_INCLUDED

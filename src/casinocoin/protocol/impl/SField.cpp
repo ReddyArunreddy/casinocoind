@@ -83,6 +83,7 @@ SField const sfValidation  = make::one(&sfValidation,  STI_VALIDATION,  257, "Va
 SField const sfMetadata    = make::one(&sfMetadata,    STI_METADATA,    257, "Metadata");
 SField const sfHash        = make::one(&sfHash,        STI_HASH256,     257, "hash");
 SField const sfIndex       = make::one(&sfIndex,       STI_HASH256,     258, "index");
+SField const sfPerformanceReport  = make::one(&sfPerformanceReport,  STI_PERFORMANCE_REPORT,  257, "PerformanceReport");
 
 // 8-bit integers
 SF_U8 const sfCloseResolution   = make::one<SF_U8::type>(&sfCloseResolution,   STI_UINT8, 1, "CloseResolution");
@@ -92,11 +93,12 @@ SF_U8 const sfTransactionResult = make::one<SF_U8::type>(&sfTransactionResult, S
 // 8-bit integers (uncommon)
 SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          STI_UINT8, 16, "TickSize");
 SF_U8 const sfCRNEligibility    = make::one<SF_U8::type>(&sfCRNEligibility,    STI_UINT8, 17, "CRNEligible");
+SF_U8 const sfStatusMode        = make::one<SF_U8::type>(&sfStatusMode,        STI_UINT8, 18, "Mode");
 
 // 16-bit integers
-SF_U16 const sfLedgerEntryType = make::one<SF_U16::type>(&sfLedgerEntryType, STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
-SF_U16 const sfTransactionType = make::one<SF_U16::type>(&sfTransactionType, STI_UINT16, 2, "TransactionType");
-SF_U16 const sfSignerWeight    = make::one<SF_U16::type>(&sfSignerWeight,    STI_UINT16, 3, "SignerWeight");
+SF_U16 const sfLedgerEntryType      = make::one<SF_U16::type>(&sfLedgerEntryType,   STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
+SF_U16 const sfTransactionType      = make::one<SF_U16::type>(&sfTransactionType,   STI_UINT16, 2, "TransactionType");
+SF_U16 const sfSignerWeight         = make::one<SF_U16::type>(&sfSignerWeight,      STI_UINT16, 3, "SignerWeight");
 
 // 32-bit integers (common)
 SF_U32 const sfFlags             = make::one<SF_U32::type>(&sfFlags,             STI_UINT32,  2, "Flags");
@@ -143,6 +145,7 @@ SF_U32 const sfCRN_LatencyAvg      = make::one<SF_U32::type>(&sfCRN_LatencyAvg, 
 SF_U32 const sfTimestamp           = make::one<SF_U32::type>(&sfTimestamp,           STI_UINT32, 41, "Timestamp");
 SF_U32 const sfTime                = make::one<SF_U32::type>(&sfTime,                STI_UINT32, 42, "Time");
 SF_U32 const sfTransitions         = make::one<SF_U32::type>(&sfTransitions,         STI_UINT32, 43, "Transitions");
+SF_U32 const sfDuration            = make::one<SF_U32::type>(&sfDuration,            STI_UINT32, 44, "Duration");
 
 // 64-bit integers
 SF_U64 const sfIndexNext     = make::one<SF_U64::type>(&sfIndexNext,     STI_UINT64, 1, "IndexNext");
@@ -264,7 +267,7 @@ SField const sfSigner              = make::one(&sfSigner,              STI_OBJEC
 SField const sfMajority            = make::one(&sfMajority,            STI_OBJECT, 18, "Majority");
 SField const sfKYC                 = make::one(&sfKYC,                 STI_OBJECT, 19, "KYC");
 SField const sfCRN                 = make::one(&sfCRN,                 STI_OBJECT, 20, "CRN");
-SField const sfCRN_ConnectionStat  = make::one(&sfCRN_ConnectionStat,  STI_OBJECT, 21, "ConnStat");
+SField const sfCRNStatus           = make::one(&sfCRNStatus,           STI_OBJECT, 21, "Status");
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -280,6 +283,7 @@ SField const sfMemos           = make::one(&sfMemos,           STI_ARRAY, 9, "Me
 // array of objects (uncommon)
 SField const sfMajorities           = make::one(&sfMajorities,          STI_ARRAY, 16, "Majorities");
 SField const sfCRNs                 = make::one(&sfCRNs,                STI_ARRAY, 17, "CRNs");
+SField const sfCRNPerformance       = make::one(&sfCRNPerformance,      STI_ARRAY, 18, "Performance");
 
 SField::SField (SerializedTypeID tid, int fv, const char* fn,
                 int meta, IsSigning signing)

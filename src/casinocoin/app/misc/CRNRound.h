@@ -62,18 +62,18 @@ public:
 
     /** Update our current voting position with conclusion of last peer network crawl
 
-        @param currentPosition
+        @param reports
     */
     virtual
     void
-    updatePosition(CRN::EligibilityMap const& currentPosition) = 0;
+    updatePosition(std::list<STPerformanceReport::pointer> const& reports) = 0;
 
     // The highest-sequence ledger we have done a CRNRound
     std::atomic <std::uint32_t> mCRNRoundLedgerSeq = {0};
 
 };
 
-std::unique_ptr<CRNRound> make_CRNRound (int majorityFraction, beast::Journal journal);
+std::unique_ptr<CRNRound> make_CRNRound (Application& app, int majorityFraction, beast::Journal journal);
 
 }  // casinocoin
 

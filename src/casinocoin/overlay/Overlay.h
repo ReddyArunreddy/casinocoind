@@ -46,8 +46,6 @@ namespace boost { namespace asio { namespace ssl { class context; } } }
 
 namespace casinocoin {
 
-class TMDFSReportStateData;
-
 /** Manages the set of connected peers. */
 class Overlay
     : public Stoppable
@@ -166,6 +164,11 @@ public:
     void
     send (protocol::TMValidation& m) = 0;
 
+    /** Broadcast performance report. */
+    virtual
+    void
+    send (protocol::TMPerformanceReport& m) = 0;
+
     /** Relay a proposal. */
     virtual
     void
@@ -178,17 +181,11 @@ public:
     relay (protocol::TMValidation& m,
         uint256 const& uid) = 0;
 
-    virtual
-    TMDFSReportStateData&
-    getDFSReportStateData() = 0;
-
+    /** Relay performance report. */
     virtual
     void
-    startDFSReportStateCrawl(LedgerIndex const& startLedger) = 0;
-
-    virtual
-    void
-    forceStopDFSReportStateCrawl(LedgerIndex const& startLedger) = 0;
+    relay (protocol::TMPerformanceReport& m,
+        uint256 const& uid) = 0;
 
     /** Visit every active peer and return a value
         The functor must:

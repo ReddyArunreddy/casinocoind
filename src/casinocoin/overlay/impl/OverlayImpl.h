@@ -30,7 +30,6 @@
 #include <casinocoin/core/Job.h>
 #include <casinocoin/overlay/Overlay.h>
 #include <casinocoin/overlay/impl/TrafficCount.h>
-#include <casinocoin/overlay/impl/TMDFSReportStateData.h>
 #include <casinocoin/server/Handoff.h>
 #include <casinocoin/rpc/ServerHandler.h>
 #include <casinocoin/basics/Resolver.h>
@@ -126,8 +125,6 @@ private:
     std::atomic <Peer::id_t> next_id_;
     int timer_count_;
 
-    TMDFSReportStateData dfsCrawlReportData_;
-
     //--------------------------------------------------------------------------
 
 public:
@@ -193,6 +190,9 @@ public:
     send (protocol::TMValidation& m) override;
 
     void
+    send (protocol::TMPerformanceReport& m) override;
+
+    void
     relay (protocol::TMProposeSet& m,
         uint256 const& uid) override;
 
@@ -200,14 +200,9 @@ public:
     relay (protocol::TMValidation& m,
         uint256 const& uid) override;
 
-    TMDFSReportStateData&
-    getDFSReportStateData() override;
-
     void
-    startDFSReportStateCrawl(LedgerIndex const& startLedger) override;
-
-    void
-    forceStopDFSReportStateCrawl(LedgerIndex const& startLedger) override;
+    relay (protocol::TMPerformanceReport& m,
+        uint256 const& uid) override;
 
     //--------------------------------------------------------------------------
     //

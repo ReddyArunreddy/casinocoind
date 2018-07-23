@@ -138,8 +138,13 @@ private:
 
 class CRNRoundImpl final : public CRNRound
 {
+
+private:
+    Application& app_;
+
 public:
     CRNRoundImpl (
+        Application& app,
         int majorityFraction,
         beast::Journal journal);
 
@@ -153,7 +158,7 @@ public:
         std::shared_ptr<SHAMap> const& initialPosition) override;
 
     void
-    updatePosition(CRN::EligibilityMap const& currentPosition) override;
+    updatePosition(std::list<STPerformanceReport::pointer> const& reports) override;
 
 protected:
     std::mutex mutex_;
@@ -173,8 +178,9 @@ protected:
 
 };
 
-CRNRoundImpl::CRNRoundImpl(int majorityFraction, beast::Journal journal)
-    : majorityFraction_(majorityFraction)
+CRNRoundImpl::CRNRoundImpl(Application& app, int majorityFraction, beast::Journal journal)
+    : app_(app)
+    , majorityFraction_(majorityFraction)
     , j_(journal)
 {
     assert (majorityFraction_ != 0);
@@ -299,16 +305,16 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
                 obj[sfCRN_FeeDistributed] = feeToDistributeST;
                 obj.setFieldArray(sfCRNs, crnArray);
             });
-        
+
         uint256 txID = crnRoundTx.getTransactionID ();
-        
+
         JLOG(j_.warn()) << "CRNRound tx id: " << to_string (txID);
-        
+
         Serializer s;
         crnRoundTx.add (s);
-        
+
         auto tItem = std::make_shared<SHAMapItem> (txID, s.peekData ());
-        
+
         if (!initialPosition->addGiveItem (tItem, true, false))
         {
             JLOG(j_.warn()) << "Ledger already had crn eligibility vote change";
@@ -317,21 +323,67 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
     lastVote_ = std::move(crnVote);
 }
 
-void CRNRoundImpl::updatePosition( CRN::EligibilityMap const& currentPosition)
+void CRNRoundImpl::updatePosition(std::list<STPerformanceReport::pointer> const& reports)
 {
-    // call from outside to update our position
-    std::lock_guard <std::mutex> sl (mutex_);
+    eligibilityMap_.clear();
+    for (STPerformanceReport::ref report : reports)
+    {
+       boost::optional<PublicKey> pk = report->getSignerPublic();
+       bool eligible = true;
 
-    eligibilityMap_ = currentPosition;
+       // check if node is on CRNList
+       if(app_.relaynodes().listed(*pk))
+       {
+           // check if signature is valid
+           if (pk)
+           {
+               eligible &= casinocoin::verify(
+                   *pk,
+                   makeSlice(report->getFieldVL(sfCRN_DomainName)),
+                   makeSlice(report->getFieldVL(sfSignature))
+               );
+           }
+           else
+           {
+               eligible &= false;
+               JLOG(j_.debug()) << "CRNRound - failed to read PubKey or signature of CRN candidate";
+           }
+           if(eligible)
+           {
+               // check if account is funded
+               if (!CRNId::activated(*pk, app_.getLedgerMaster(), j_, app_.config()))
+               {
+                   JLOG(j_.debug()) << "CRNRound - Account " << toBase58(calcAccountID(*pk)) << " assigned to: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " has insufficient funds";
+                   eligible &= false;
+               }
+               // check if latency is acceptable
+               if(report->getLatency() > app_.config().CRN_MAX_LATENCY)
+               {
+                   JLOG(j_.debug()) << "CRNRound - Latency to high: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+                   eligible &= false;
+               }
+           }
+           else
+           {
+               JLOG(j_.debug()) << "CRNRound - Signature is invalid: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+           }
+       }
+       else
+       {
+           JLOG(j_.debug()) << "CRNRound - PublicKey not in CRNList: " << toBase58(TOKEN_NODE_PUBLIC,*pk);
+           eligible &= false;
+       }
+       JLOG(j_.info()) << "CRNRound - PublicKey: " << toBase58(TOKEN_NODE_PUBLIC,*pk) << " Eligible:" << eligible;
+       eligibilityMap_.insert(std::pair<PublicKey, bool>(*pk, eligible));
+
+    }
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
-    for ( auto const& candidate : eligibilityMap_)
-        JLOG (j_.debug()) << "CRNRoundImpl::updatePosition " << toBase58(TOKEN_NODE_PUBLIC, candidate.first) << " voted " << candidate.second;
 }
 
-std::unique_ptr<CRNRound> make_CRNRound(int majorityFraction, beast::Journal journal)
+std::unique_ptr<CRNRound> make_CRNRound(Application& app, int majorityFraction, beast::Journal journal)
 {
-    return std::make_unique<CRNRoundImpl> (majorityFraction, journal);
+    return std::make_unique<CRNRoundImpl> (app, majorityFraction, journal);
 }
 
 

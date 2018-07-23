@@ -30,11 +30,13 @@
 #include <casinocoin/core/ConfigSections.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
 #include <casinocoin/protocol/Protocol.h>
+#include <casinocoin/protocol/STPerformanceReport.h>
 
 namespace casinocoin {
 
 class NetworkOPs;
 class Application;
+
 class CRNId;
 
 class CRNPerformance
@@ -47,10 +49,12 @@ public:
      * info methods
      * ---------------
     */
+    // voting period
     static uint32_t getReportingPeriod() { return 100; }
-    static uint32_t getReportingStartOffset() { return 25; }
-    static uint32_t getReportingConclusionOffset() { return 2; }
-
+    // start reporting offset in ledgers before voting
+    static uint32_t getReportingStartOffset() { return 10; }
+    // ledger-domain period when report is interpreted as 'current'
+    static uint32_t getReportCurrentPeriod() { return getReportingStartOffset() + 2; /* add 2 ledgers for validation and voting */ }
     /** Returns a Json::objectValue. */
     virtual Json::Value json () const = 0;
 
@@ -59,13 +63,12 @@ public:
      * outbound methods
      * ---------------
     */
-    virtual protocol::TMReportState
-    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
-                   Application& app) = 0;
+    virtual STPerformanceReport::pointer
+    prepareReport (
+        LedgerIndex const& lastClosedLedgerSeq,
+        Application &app) = 0;
 
-    virtual protocol::TMReportState const& getPreparedReport() const = 0;
-
-    virtual void broadcast (Application &app) = 0;
+    virtual void broadcast (STPerformanceReport::ref report, Application &app) = 0;
     /**
      * ---------------
      * inbound methods

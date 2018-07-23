@@ -104,7 +104,6 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , request_(std::move(request))
     , headers_(request_.fields)
     , crn_(nullptr)
-    , dfsReportState_(app, overlay, *this, journal_)
 {
 }
 
@@ -369,11 +368,6 @@ PeerImp::json()
     }
 
     return ret;
-}
-
-TMDFSReportState &PeerImp::dfsReportState()
-{
-    return dfsReportState_;
 }
 
 //------------------------------------------------------------------------------
@@ -1650,6 +1644,46 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 }
 
 void
+PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
+{
+    JLOG(p_journal_.info()) << "PerformanceReport: received";
+    if (sanity_.load() == Sanity::insane)
+        return;
+
+    JLOG(p_journal_.trace()) << "PerformanceReport: serialize report";
+    SerialIter sit (makeSlice(m->report()));
+
+    try
+    {
+        JLOG(p_journal_.trace()) << "PerformanceReport: create STPerformanceReport";
+        auto sreport = std::make_shared<STPerformanceReport>(sit);
+
+        if (! app_.getHashRouter ().addSuppressionPeer (
+            sha512Half(makeSlice(m->report())), id_))
+        {
+            JLOG(p_journal_.trace()) << "PerformanceReport: duplicate";
+            return;
+        }
+        JLOG(p_journal_.trace()) << "PerformanceReport: add  checkReport job";
+        std::weak_ptr<PeerImp> weak = shared_from_this();
+        app_.getJobQueue ().addJob (
+            jtPERFORMANCE_REPORT,
+            "recvPerformanceReport->checkReport",
+            [weak, sreport, m] (Job&)
+            {
+                if (auto peer = weak.lock())
+                    peer->checkReport(sreport, m);
+            });
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(p_journal_.warn()) << "PerformanceReport invalid."
+                                << " what: " << e.what()
+                                << " report: " << strHex(m->report ());
+    }
+}
+
+void
 PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
 {
     protocol::TMGetObjectByHash& packet = *m;
@@ -1808,37 +1842,6 @@ void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
 
     crn_->onOverlayMessage(m);
 
-}
-
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportState> &m)
-{
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportState.";
-    if (!m->has_startledger())
-    {
-        JLOG(journal_.error()) << "PeerImp::onMessage() old protocol version. Please update to most recent one";
-        return;
-    }
-
-    if (m->type() == protocol::TMDFSReportState::rtREQ)
-    {
-        protocol::TMDFSReportStateAck ack;
-        ack.set_dfsroot(m->dfs(0));
-        ack.set_startledger(m->startledger());
-        send(std::make_shared<Message>(ack, protocol::mtDFS_REPORT_STATE_ACK));
-
-        dfsReportState_.evaluateRequest(m);
-    }
-    else if (m->type() == protocol::TMDFSReportState::rtRESP)
-    {
-        dfsReportState_.evaluateResponse(m);
-    }
-}
-
-void PeerImp::onMessage(const std::shared_ptr<protocol::TMDFSReportStateAck> &m)
-{
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMDFSReportStateAck.";
-
-    dfsReportState_.evaluateAck(m);
 }
 
 //--------------------------------------------------------------------------
@@ -2036,6 +2039,32 @@ PeerImp::checkValidation (STValidation::pointer val,
     {
         JLOG(p_journal_.trace()) <<
             "Exception processing validation";
+        charge (Resource::feeInvalidRequest);
+    }
+}
+
+void
+PeerImp::checkReport (STPerformanceReport::pointer report,
+                      std::shared_ptr<protocol::TMPerformanceReport> const& packet)
+{
+    try
+    {
+        if (! cluster() && !report->isValid ())
+        {
+            JLOG(p_journal_.warn()) <<
+                "received PerformanceReport is invalid";
+            charge (Resource::feeInvalidRequest);
+            return;
+        }
+
+        if (app_.getOPs ().recvPerformanceReport(
+                report, std::to_string(id())))
+            overlay_.relay(*packet, report->getSigningHash());
+    }
+    catch (std::exception const&)
+    {
+        JLOG(p_journal_.info()) <<
+            "Exception processing received performance report";
         charge (Resource::feeInvalidRequest);
     }
 }

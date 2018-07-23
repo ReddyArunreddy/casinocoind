@@ -87,6 +87,7 @@ enum SerializedTypeID
     STI_LEDGERENTRY = 10002,
     STI_VALIDATION  = 10003,
     STI_METADATA    = 10004,
+    STI_PERFORMANCE_REPORT = 10005,
 };
 
 // constexpr
@@ -337,6 +338,7 @@ extern SField const sfLedgerEntry;
 extern SField const sfTransaction;
 extern SField const sfValidation;
 extern SField const sfMetadata;
+extern SField const sfPerformanceReport;
 
 // 8-bit integers
 extern SF_U8 const sfCloseResolution;
@@ -344,6 +346,7 @@ extern SF_U8 const sfMethod;
 extern SF_U8 const sfTransactionResult;
 extern SF_U8 const sfTickSize;
 extern SF_U8 const sfCRNEligibility;
+extern SF_U8 const sfStatusMode;
 
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
@@ -379,7 +382,7 @@ extern SF_U32 const sfStampEscrow;
 extern SF_U32 const sfBondAmount;
 extern SF_U32 const sfLoadFee;
 extern SF_U32 const sfOfferSequence;
-extern SF_U32 const sfFirstLedgerSequence;  // Deprecated: do not use
+extern SF_U32 const sfFirstLedgerSequence;  // CRN performance report
 extern SF_U32 const sfLastLedgerSequence;
 extern SF_U32 const sfTransactionIndex;
 extern SF_U32 const sfOperationLimit;
@@ -395,6 +398,7 @@ extern SF_U32 const sfSignerListID;
 extern SF_U32 const sfSettleDelay;
 extern SF_U32 const sfCRN_LatencyAvg;
 extern SF_U32 const sfTransitions;
+extern SF_U32 const sfDuration;
 
 // 64-bit integers
 extern SF_U64 const sfIndexNext;
@@ -515,7 +519,7 @@ extern SField const sfMajority;
 extern SField const sfKYC;
 // stands for Community Relay Node
 extern SField const sfCRN;
-extern SField const sfCRN_ConnectionStat;
+extern SField const sfCRNStatus;
 
 // array of objects
 // ARRAY/1 is reserved for end of array
@@ -529,6 +533,7 @@ extern SField const sfAffectedNodes;
 extern SField const sfMemos;
 extern SField const sfMajorities;
 extern SField const sfCRNs;
+extern SField const sfCRNPerformance;
 
 //------------------------------------------------------------------------------
 

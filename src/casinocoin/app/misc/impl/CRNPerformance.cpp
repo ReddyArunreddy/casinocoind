@@ -52,14 +52,12 @@ public:
     StatusAccounting& accounting() override;
     Json::Value json () const override;
 
-    protocol::TMReportState
-    prepareReport (LedgerIndex const& lastClosedLedgerSeq,
-                   Application& app) override;
+    STPerformanceReport::pointer
+    prepareReport (
+        LedgerIndex const& lastClosedLedgerSeq,
+        Application &app) override;
 
-    protocol::TMReportState const& getPreparedReport() const override;
-
-
-    void broadcast (Application &app) override;
+    void broadcast (STPerformanceReport::ref report, Application &app) override;
 
     bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) override;
 
@@ -73,10 +71,8 @@ protected:
     std::array<StatusAccounting::Counters,5> lastSnapshot_;
     std::array<StatusAccounting::Counters, 5> peerSelfAccounting_;
     uint32_t latency_;
-    protocol::TMReportState preparedReport_;
 
 private:
-    void initializePerformanceReport();
 
     std::array<StatusAccounting::Counters,5>
     mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
@@ -95,7 +91,6 @@ CRNPerformanceImpl::CRNPerformanceImpl(
     , j_(journal)
     , accounting_(j_)
 {
-    initializePerformanceReport();
 }
 
 CRNPerformance::StatusAccounting &CRNPerformanceImpl::accounting()
@@ -130,51 +125,55 @@ Json::Value CRNPerformanceImpl::json() const
     return ret;
 }
 
-protocol::TMReportState
+STPerformanceReport::pointer
 CRNPerformanceImpl::prepareReport (
-        LedgerIndex const& lastClosedLedgerSeq, Application &app)
+    LedgerIndex const& lastClosedLedgerSeq,
+    Application &app)
 {
     std::lock_guard<std::mutex> sl(recentLock_);
     protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
     std::array<StatusAccounting::Counters, 5> counters =
             mapServerAccountingToPeerAccounting(networkOps.getServerAccountingInfo());
 
-    preparedReport_.clear_status();
-    preparedReport_.clear_currstatus();
-    preparedReport_.clear_ledgerseqbegin();
-    preparedReport_.clear_ledgerseqend();
-    preparedReport_.clear_crnpubkey();
-    preparedReport_.clear_domain();
-    preparedReport_.clear_signature();
-    preparedReport_.clear_latency();
-    preparedReport_.clear_activated();
 
-    // ajochems: no connection status reporting for now
-    // jrojek:  we need to report state for peer crawling procedure, but we can strip down
-    //          message to minimum when broadcasting ;)
-     for (uint32_t i = 0; i < 5; i++)
-     {
-         StatusAccounting::Counters counterToReport;
-         counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
-         counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
+    auto signTime = app.timeKeeper().closeTime();
+    std::shared_ptr<STPerformanceReport> report;
+    try
+    {
+        report = std::make_shared<STPerformanceReport>(
+                                                      signTime,
+                                                      id.publicKey(),
+                                                      id.domainBlob(),
+                                                      id.signatureBlob());
+    }
+    catch (std::exception const& e)
+    {
+        JLOG(j_.info()) << "CRNPerformanceImpl::prepareReport exception creating performance report"
+                                << e.what();
+        return nullptr;
+    }
+    STArray performanceArray (sfCRNPerformance);
+    for (uint32_t i = 0; i < 5; i++)
+    {
+        StatusAccounting::Counters counterToReport;
+        counterToReport.dur = std::chrono::duration_cast<std::chrono::seconds>(counters[i].dur - lastSnapshot_[i].dur);
+        counterToReport.transitions = counters[i].transitions - lastSnapshot_[i].transitions;
 
-         lastSnapshot_[i].dur = counters[i].dur;
-         lastSnapshot_[i].transitions = counters[i].transitions;
+        lastSnapshot_[i].dur = counters[i].dur;
+        lastSnapshot_[i].transitions = counters[i].transitions;
 
-         protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
-         newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
-         newStatus->set_duration(counterToReport.dur.count());
-         newStatus->set_transitions(counterToReport.transitions);
-     }
-    preparedReport_.set_currstatus(currentStatus);
-    preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
-    preparedReport_.set_ledgerseqend(lastClosedLedgerSeq);
+        performanceArray.push_back (STObject (sfCRNStatus));
+        auto& entry = performanceArray.back ();
+        entry.emplace_back (STUInt8 (sfStatusMode, i));
+        entry.emplace_back (STUInt32 (sfTransitions, counterToReport.transitions));
+        entry.emplace_back (STUInt32(sfDuration, counterToReport.dur.count()));
+    }
 
-    auto const pk = id.publicKey().slice();
-    preparedReport_.set_crnpubkey(pk.data(), pk.size());
-    preparedReport_.set_domain(id.domain());
-    preparedReport_.set_activated(id.activated());
-    preparedReport_.set_signature(id.signature());
+    report->setFieldArray (sfCRNPerformance, performanceArray);
+    report->setFieldU8( sfStatusMode, currentStatus - 1);
+    report->setFieldU32( sfFirstLedgerSequence, lastSnapshotSeq_);
+    report->setFieldU32( sfLastLedgerSequence, lastClosedLedgerSeq);
+    lastSnapshotSeq_ = lastClosedLedgerSeq;
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers
     // (since latency reported by Peer is already averaged from last 8 mesaurements
@@ -188,26 +187,20 @@ CRNPerformanceImpl::prepareReport (
         }
     }
     latency_ = myLatency;
-    preparedReport_.set_latency(myLatency);
+    report->setFieldU32( sfCRN_LatencyAvg, latency_);
 
-    lastSnapshotSeq_ = lastClosedLedgerSeq;
-    return preparedReport_;
+    return report;
 
 }
 
-protocol::TMReportState const& CRNPerformanceImpl::getPreparedReport() const
+void CRNPerformanceImpl::broadcast(STPerformanceReport::ref report, Application& app)
 {
     std::lock_guard<std::mutex> sl(recentLock_);
-    return preparedReport_;
-}
-
-void CRNPerformanceImpl::broadcast(Application &app)
-{
-    std::lock_guard<std::mutex> sl(recentLock_);
-    protocol::TMReportState strippedStateReport = preparedReport_;
-    strippedStateReport.clear_status();
-    app.overlay ().foreach (send_always (
-        std::make_shared<Message> (strippedStateReport, protocol::mtREPORT_STATE)));
+    Blob sreport = report->getSerialized();
+    protocol::TMPerformanceReport performanceReport;
+    performanceReport.set_report(&sreport[0], sreport.size());
+    // Send signed report to all of our directly connected peers
+    app.overlay().send(performanceReport);
 }
 
 bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
@@ -249,28 +242,6 @@ std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformanceImpl::ma
         entry.transitions += serverAccounting[i].transitions;
     }
     return ret;
-}
-
-void CRNPerformanceImpl::initializePerformanceReport()
-{
-    for (uint32_t i = 0; i < 5; i++)
-    {
-        protocol::TMReportState::Status* newStatus = preparedReport_.add_status ();
-        newStatus->set_mode(static_cast<protocol::NodeStatus>(i+1));
-        newStatus->set_duration(0);
-        newStatus->set_transitions(0);
-    }
-    protocol::NodeStatus currentStatus = networkOps.getNodeStatus();
-    preparedReport_.set_currstatus(currentStatus);
-    preparedReport_.set_ledgerseqbegin(lastSnapshotSeq_);
-    preparedReport_.set_ledgerseqend(lastSnapshotSeq_);
-
-    auto const pk = id.publicKey().slice();
-    preparedReport_.set_crnpubkey(pk.data(), pk.size());
-    preparedReport_.set_domain(id.domain());
-    preparedReport_.set_signature(id.signature());
-    preparedReport_.set_latency(10000);
-    preparedReport_.set_activated(false);
 }
 
 //-------------------------------------------------------------------------------------

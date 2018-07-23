@@ -31,8 +31,12 @@
 #include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/misc/CRNId.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
+#include <casinocoin/protocol/STPerformanceReport.h>
 
 namespace casinocoin {
+
+class NetworkOPs;
+class Application;
 
 class CRN
 {
@@ -64,6 +68,13 @@ public:
     CRNPerformance& performance() const;
 
     bool activated() const;
+
+    STPerformanceReport::pointer
+    prepareReport (
+        LedgerIndex const& lastClosedLedgerSeq,
+        Application& app);
+
+    void broadcast (STPerformanceReport::ref report, Application& app);
 
     static const EligibilityMap eligibilityMapNone;
 private:
