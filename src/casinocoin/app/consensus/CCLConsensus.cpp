@@ -323,8 +323,9 @@ CCLConsensus::onClose(
     // CRN report their performance in selected periods
     //        if (prevLedger->rules().enabled(featureCRN))
     //        {
-    if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset() + 5) % CRNPerformance::getReportingPeriod()) == 0)
+    if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
     {
+        app_.getCRNReports().flush();
         auto report = app_.getCRN().prepareReport(prevLedger->info().seq, app_);
         app_.getCRNReports().addReport(report, "local");
         app_.getCRN().broadcast(report, app_);
