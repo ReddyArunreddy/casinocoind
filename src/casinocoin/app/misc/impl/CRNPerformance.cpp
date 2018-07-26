@@ -168,11 +168,12 @@ CRNPerformanceImpl::prepareReport (
         entry.emplace_back (STUInt32 (sfTransitions, counterToReport.transitions));
         entry.emplace_back (STUInt32(sfDuration, counterToReport.dur.count()));
     }
-
+    
+    report->setFieldU8 ( sfCRNActivated, (id.activated() ? 1 : 0) );
     report->setFieldArray (sfCRNPerformance, performanceArray);
-    report->setFieldU8( sfStatusMode, currentStatus - 1);
-    report->setFieldU32( sfFirstLedgerSequence, lastSnapshotSeq_);
-    report->setFieldU32( sfLastLedgerSequence, lastClosedLedgerSeq);
+    report->setFieldU8 (sfStatusMode, currentStatus - 1);
+    report->setFieldU32 (sfFirstLedgerSequence, lastSnapshotSeq_);
+    report->setFieldU32 (sfLastLedgerSequence, lastClosedLedgerSeq);
     lastSnapshotSeq_ = lastClosedLedgerSeq;
 
     // jrojek TODO? for now latency reported is the minimum latency to sane peers

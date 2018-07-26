@@ -94,6 +94,7 @@ SF_U8 const sfTransactionResult = make::one<SF_U8::type>(&sfTransactionResult, S
 SF_U8 const sfTickSize          = make::one<SF_U8::type>(&sfTickSize,          STI_UINT8, 16, "TickSize");
 SF_U8 const sfCRNEligibility    = make::one<SF_U8::type>(&sfCRNEligibility,    STI_UINT8, 17, "CRNEligible");
 SF_U8 const sfStatusMode        = make::one<SF_U8::type>(&sfStatusMode,        STI_UINT8, 18, "Mode");
+SF_U8 const sfCRNActivated      = make::one<SF_U8::type>(&sfCRNActivated,      STI_UINT8, 19, "CRNActivated");
 
 // 16-bit integers
 SF_U16 const sfLedgerEntryType      = make::one<SF_U16::type>(&sfLedgerEntryType,   STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);

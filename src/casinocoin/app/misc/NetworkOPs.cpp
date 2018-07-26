@@ -1798,6 +1798,7 @@ void NetworkOPsImp::pubPerformanceReport(STPerformanceReport::ref report)
 
         jvObj [jss::type]             = "performance_reportReceived";
         jvObj [jss::signature]        = strHex (report->getSignature ());
+        jvObj [jss::crn_activated]    = report->getActivated();
         jvObj [jss::crn_public_key]   = toBase58(TokenType::TOKEN_NODE_PUBLIC, report->getSignerPublic());
         jvObj [jss::crn_domain_name]  = report->getDomainName();
         jvObj [jss::crn_latency]      = report->getFieldU32(sfCRN_LatencyAvg);

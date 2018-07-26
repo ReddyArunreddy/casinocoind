@@ -87,6 +87,7 @@ public:
     Blob          getSignature ()        const;
     std::string   getDomainName ()       const;
     std::uint32_t getLatency ()          const;
+    bool          getActivated ()        const;
 
 private:
     static SOTemplate const& getFormat ();

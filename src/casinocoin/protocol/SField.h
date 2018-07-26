@@ -347,6 +347,7 @@ extern SF_U8 const sfTransactionResult;
 extern SF_U8 const sfTickSize;
 extern SF_U8 const sfCRNEligibility;
 extern SF_U8 const sfStatusMode;
+extern SF_U8 const sfCRNActivated;
 
 // 16-bit integers
 extern SF_U16 const sfLedgerEntryType;
