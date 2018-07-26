@@ -31,6 +31,7 @@
 #include <casinocoin/app/main/Application.h>
 #include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/app/misc/CRNList.h>
+#include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/basics/Log.h>
 #include <casinocoin/basics/StringUtilities.h>
 #include <casinocoin/basics/chrono.h>
@@ -144,16 +145,20 @@ private:
         // Because this can be called on untrusted, possibly
         // malicious CRNReports, we do our math in a way
         // that avoids any chance of overflowing or underflowing
-        // the signing time.
+        // the report time.
 
-        auto const now = app_.timeKeeper().closeTime();
-        auto const signTime = report->getSignTime();
+        LedgerIndex const validatedLedgerIndex = app_.getLedgerMaster().getValidLedgerIndex();
+        LedgerIndex const reportFinalLedgerIndex = static_cast<LedgerIndex>(report->getLastLedgerIndex());
+        bool retVal = (validatedLedgerIndex - reportFinalLedgerIndex) < CRNPerformance::getReportCurrentPeriod();
+        JLOG (j_.debug()) << "CRNReportsImp::current() validated ledger: "
+                          << validatedLedgerIndex
+                          << " finalLedgerInReport: "
+                          << reportFinalLedgerIndex
+                          << " max offest: "
+                          << CRNPerformance::getReportingStartOffset()
+                          << " return: " << retVal;
 
-        return
-            (signTime > (now - VALIDATION_VALID_EARLY)) &&
-            (signTime < (now + VALIDATION_VALID_WALL)) &&
-            ((report->getSeenTime() == NetClock::time_point{}) ||
-                (report->getSeenTime() < (now + VALIDATION_VALID_LOCAL)));
+        return retVal;
     }
 
     std::list<STPerformanceReport::pointer> getCurrentReports () override

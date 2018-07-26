@@ -49,10 +49,12 @@ public:
      * info methods
      * ---------------
     */
+    // voting period
     static uint32_t getReportingPeriod() { return 100; }
-    static uint32_t getReportingStartOffset() { return 25; }
-    static uint32_t getReportingConclusionOffset() { return 2; }
-
+    // start reporting offset in ledgers before voting
+    static uint32_t getReportingStartOffset() { return 10; }
+    // ledger-domain period when report is interpreted as 'current'
+    static uint32_t getReportCurrentPeriod() { return getReportingStartOffset() + 2; /* add 2 ledgers for validation and voting */ }
     /** Returns a Json::objectValue. */
     virtual Json::Value json () const = 0;
 
