@@ -139,12 +139,12 @@ Json::Value doCRNInfo (RPC::Context& context)
             STArray crnArray = crnRound->getFieldArray(sfCRNs);
             for ( auto const& crnObject : crnArray)
             {
-                JLOG(context.j.info()) << "CRN: " << crnObject.getJson(0);
+                JLOG(context.j.debug()) << "CRN: " << crnObject.getJson(0);
                 // Format Public Key
                 Blob pkBlob = crnObject.getFieldVL(sfCRN_PublicKey);
                 PublicKey crnPubKey(Slice(pkBlob.data(), pkBlob.size()));
                 AccountID dstAccountID = calcAccountID(crnPubKey);
-                JLOG(context.j.info()) << "CRN PublicKey: " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey);
+                JLOG(context.j.debug()) << "CRN PublicKey: " << toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey);
 
                 auto&& obj = appendObject(array);
                 obj[jss::crn_public_key] = toBase58 (TokenType::TOKEN_NODE_PUBLIC, crnPubKey);
@@ -152,12 +152,13 @@ Json::Value doCRNInfo (RPC::Context& context)
                 obj[jss::crn_fee_distributed] = crnObject.getFieldAmount(sfCRN_FeeDistributed).getText();
 
             }
-            // get all node fee transactions and add them
+            // get the last 10 node fee transactions and add them
             STVector256 crnTxHistory = crnRound->getFieldV256(sfCRNTxHistory);
             auto&& feeTxArray = Json::setArray (jvReply, jss::crn_fee_txs);
-            for ( auto const& historyTx : crnTxHistory)
+            auto txCounter = crnTxHistory.size() - 11;
+            for (unsigned i = txCounter; i++ < (crnTxHistory.size()-1); )
             {
-                feeTxArray.append(to_string(historyTx));
+                feeTxArray.append(to_string(crnTxHistory[i]));                
             }
 
             // check if we are a CRN

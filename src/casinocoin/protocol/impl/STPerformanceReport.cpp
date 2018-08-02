@@ -63,6 +63,7 @@ STPerformanceReport::STPerformanceReport (
     setFieldVL (sfCRN_PublicKey, publicKey.slice());
     setFieldVL (sfSignature, signature);
     setFieldVL (sfCRN_DomainName, domain);
+    setFieldU8 (sfCRNActivated, 0);
 
     mNodeID = calcNodeID(publicKey);
     assert (mNodeID.isNonZero ());
@@ -128,6 +129,11 @@ Blob STPerformanceReport::getSignature () const
     return getFieldVL (sfSignature);
 }
 
+bool STPerformanceReport::getActivated () const
+{
+    return ((getFieldU8(sfCRNActivated) > 0) ? true : false);
+}
+
 Blob STPerformanceReport::getSerialized () const
 {
     Serializer s;
@@ -153,6 +159,7 @@ SOTemplate const& STPerformanceReport::getFormat ()
             format.push_back (SOElement (sfLastLedgerSequence,      SOE_OPTIONAL));
             format.push_back (SOElement (sfStatusMode,              SOE_OPTIONAL));
             format.push_back (SOElement (sfCRNPerformance,          SOE_OPTIONAL));
+            format.push_back (SOElement (sfCRNActivated,            SOE_OPTIONAL));
         }
     };
 
