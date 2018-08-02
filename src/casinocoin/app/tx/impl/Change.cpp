@@ -82,7 +82,7 @@ Change::preflight (PreflightContext const& ctx)
             }
         }
     }
-    JLOG(ctx.j.warn()) << "preflight OK";
+    JLOG(ctx.j.debug()) << "CRN_Round preflight OK";
     return tesSUCCESS;
 }
 
@@ -254,7 +254,7 @@ Change::applyFee()
 
 TER Change::applyCRN_Round()
 {
-    JLOG(j_.warn()) << "applyCRN_Round";
+    JLOG(j_.info()) << "applyCRN_Round";
     auto const keyletCrnRound = keylet::crnRound();
 
     SLE::pointer ledgerCrnRoundObject = view().peek(keyletCrnRound);
@@ -341,7 +341,7 @@ TER Change::applyCRN_Round()
     // here, drops are added back to the pool
     ctx_.redistributeCSC(ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).csc());
 
-    JLOG(j_.warn()) << "Fee have been distributed";
+    JLOG(j_.info()) << "CRN_Round: " << ctx_.tx.getFieldAmount(sfCRN_FeeDistributed).getFullText() << " Fees have been re-distributed";
     return tesSUCCESS;
 }
 
