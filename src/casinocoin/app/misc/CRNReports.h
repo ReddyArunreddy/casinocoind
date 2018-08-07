@@ -37,8 +37,6 @@ namespace casinocoin {
 // nodes reporting and highest node ID reporting
 using CRNReportSet = hash_map<PublicKey, STPerformanceReport::pointer>;
 
-using CRNReportCounter = std::pair<int, NodeID>;
-
 class CRNReports
 {
 public:

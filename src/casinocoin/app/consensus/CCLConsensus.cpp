@@ -360,7 +360,6 @@ CCLConsensus::onClose(
             {
                 if (count >= app_.validators().quorum())
                 {
-                    // jrojek TODO enable check
                     app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
                 }
             }

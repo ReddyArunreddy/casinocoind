@@ -165,7 +165,6 @@ private:
     int no_ping_ = 0;
     std::unique_ptr <LoadEvent> load_event_;
     bool hopsAware_ = false;
-    std::unique_ptr<CRN> crn_;
 
     friend class OverlayImpl;
 
@@ -436,7 +435,6 @@ public:
     void onMessage (std::shared_ptr <protocol::TMValidation> const& m);
     void onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m);
     void onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m);
-    void onMessage (std::shared_ptr <protocol::TMReportState> const& m);
 
 private:
     State state() const
@@ -519,7 +517,6 @@ PeerImp::PeerImp (Application& app, std::unique_ptr<beast::asio::ssl_bundle>&& s
     , slot_ (std::move(slot))
     , response_(std::move(response))
     , headers_(response_.fields)
-    , crn_(nullptr)
 {
     read_buffer_.commit (boost::asio::buffer_copy(read_buffer_.prepare(
         boost::asio::buffer_size(buffers)), buffers));

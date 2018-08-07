@@ -26,61 +26,17 @@
 #include <BeastConfig.h>
 #include <casinocoin/app/ledger/OpenLedger.h>
 #include <casinocoin/app/main/Application.h>
-#include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/overlay/Overlay.h>
 #include <casinocoin/overlay/Message.h>
 #include <casinocoin/overlay/predicates.h>
 #include <casinocoin/app/misc/CRNPerformance.h>
 #include <casinocoin/app/misc/CRNId.h>
 #include <casinocoin/app/misc/Transaction.h>
-#include <boost/format.hpp>
-#include <boost/regex.hpp>
-#include <algorithm>
-#include <mutex>
+
 
 namespace casinocoin {
 
-class CRNPerformanceImpl final
-    : public CRNPerformance
-{
-public:
-    CRNPerformanceImpl (NetworkOPs& networkOps,
-                        LedgerIndex const& startupSeq,
-                        CRNId const& crnId,
-                        beast::Journal journal);
-
-    StatusAccounting& accounting() override;
-    Json::Value json () const override;
-
-    STPerformanceReport::pointer
-    prepareReport (
-        LedgerIndex const& lastClosedLedgerSeq,
-        Application &app) override;
-
-    void broadcast (STPerformanceReport::ref report, Application &app) override;
-
-    bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) override;
-
-protected:
-    NetworkOPs& networkOps;
-    LedgerIndex lastSnapshotSeq_;
-    CRNId const& id;
-    beast::Journal j_;
-
-    StatusAccounting accounting_;
-    std::array<StatusAccounting::Counters,5> lastSnapshot_;
-    std::array<StatusAccounting::Counters, 5> peerSelfAccounting_;
-    uint32_t latency_;
-
-private:
-
-    std::array<StatusAccounting::Counters,5>
-    mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
-
-    std::mutex mutable recentLock_;
-};
-
-CRNPerformanceImpl::CRNPerformanceImpl(
+CRNPerformance::CRNPerformance(
         NetworkOPs& networkOps,
         LedgerIndex const& startupSeq,
         CRNId const& crnId,
@@ -89,44 +45,11 @@ CRNPerformanceImpl::CRNPerformanceImpl(
     , lastSnapshotSeq_(startupSeq)
     , id(crnId)
     , j_(journal)
-    , accounting_(j_)
 {
-}
-
-CRNPerformance::StatusAccounting &CRNPerformanceImpl::accounting()
-{
-    return accounting_;
-}
-
-Json::Value CRNPerformanceImpl::json() const
-{
-    // report this node measurement and self-measurement
-    Json::Value ret = accounting_.json();
-    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-         i <= protocol::nsSHUTTING; ++i)
-    {
-        uint8_t index = i-1;
-        auto& status = ret[StatusAccounting::statuses_[index]];
-        status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
-        status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
-    }
-
-     // report self-measurement only
-//    Json::Value ret;
-//    for (std::underlying_type_t<protocol::NodeStatus> i = protocol::nsCONNECTING;
-//        i <= protocol::nsSHUTTING; ++i)
-//    {
-//        uint8_t index = i-1;
-//        ret[StatusAccounting::statuses_[index]] = Json::objectValue;
-//        auto& status = ret[StatusAccounting::statuses_[index]];
-//        status[jss::self_transitions] = peerSelfAccounting_[index].transitions;
-//        status[jss::self_duration_sec] = std::to_string (peerSelfAccounting_[index].dur.count());
-//    }
-    return ret;
 }
 
 STPerformanceReport::pointer
-CRNPerformanceImpl::prepareReport (
+CRNPerformance::prepareReport (
     LedgerIndex const& lastClosedLedgerSeq,
     Application &app)
 {
@@ -148,10 +71,14 @@ CRNPerformanceImpl::prepareReport (
     }
     catch (std::exception const& e)
     {
-        JLOG(j_.info()) << "CRNPerformanceImpl::prepareReport exception creating performance report"
+        JLOG(j_.info()) << "CRNPerformance::prepareReport exception creating performance report"
                                 << e.what();
         return nullptr;
     }
+
+    report->setFieldU16(sfPort, id.wsPort()); // WS port for peers command reporting and node validation
+    report->setFieldVL(sfPublicKey, app.nodeIdentity().first.slice()); // node public key for peers command
+
     STArray performanceArray (sfCRNPerformance);
     for (uint32_t i = 0; i < 5; i++)
     {
@@ -194,7 +121,7 @@ CRNPerformanceImpl::prepareReport (
 
 }
 
-void CRNPerformanceImpl::broadcast(STPerformanceReport::ref report, Application& app)
+void CRNPerformance::broadcast(STPerformanceReport::ref report, Application& app)
 {
     std::lock_guard<std::mutex> sl(recentLock_);
     Blob sreport = report->getSerialized();
@@ -204,36 +131,7 @@ void CRNPerformanceImpl::broadcast(STPerformanceReport::ref report, Application&
     app.overlay().send(performanceReport);
 }
 
-bool CRNPerformanceImpl::onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m)
-{
-    std::lock_guard<std::mutex> sl(recentLock_);
-//    if (m->status_size() != peerSelfAccounting_.size())
-//    {
-//        JLOG(j_.warn()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: reported statuses count == " << m->status_size()
-//                                << "  != status supported count == " << peerSelfAccounting_.size();
-//        return false;
-//    }
-
-    if (m->has_latency())
-        latency_ = m->latency();
-    else
-        JLOG(j_.debug()) << "CRNPerformanceImpl::onOverlayMessage latency missing in msg";
-
-    for (int i = 0; i < m->status_size(); ++i)
-    {
-        const protocol::TMReportState::Status& singleStatus = m->status(i);
-        uint32_t index = static_cast<uint32_t>(singleStatus.has_mode() ? singleStatus.mode() : 1) - 1;
-        peerSelfAccounting_[index].dur = static_cast<std::chrono::seconds>(singleStatus.has_duration() ? singleStatus.duration() : 0);
-        peerSelfAccounting_[index].transitions = singleStatus.has_transitions() ? singleStatus.transitions() : 888;
-//        JLOG(j_.info()) << "CRNPerformanceImpl::onOverlayMessage TMReportState: spent: " << peerSelfAccounting_[index].dur.count()
-//                                << " with " << StatusAccounting::statuses_[index].c_str() << " status, "
-//                                << "transitioned: " << peerSelfAccounting_[index].transitions << " times"
-//                                << " latency = " << latency_;
-    }
-    return true;
-}
-
-std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformanceImpl::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
+std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformance::mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting)
 {
     std::array<StatusAccounting::Counters, 5> ret;
     for (uint32_t i = 0; i < 5; i++)
@@ -329,21 +227,6 @@ std::array<CRNPerformance::StatusAccounting::Counters, 5> CRNPerformance::Status
         std::chrono::seconds>(std::chrono::system_clock::now() - start);
 
     return counters;
-}
-
-//-------------------------------------------------------------------------------------
-
-
-std::unique_ptr<CRNPerformance> make_CRNPerformance(NetworkOPs& networkOps,
-    LedgerIndex const& startupSeq,
-    CRNId const& crnId,
-    beast::Journal journal)
-{
-    return std::make_unique<CRNPerformanceImpl> (
-                networkOps,
-                startupSeq,
-                crnId,
-                journal);
 }
 
 }

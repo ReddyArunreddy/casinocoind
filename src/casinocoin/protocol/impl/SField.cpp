@@ -100,6 +100,7 @@ SF_U8 const sfCRNActivated      = make::one<SF_U8::type>(&sfCRNActivated,      S
 SF_U16 const sfLedgerEntryType      = make::one<SF_U16::type>(&sfLedgerEntryType,   STI_UINT16, 1, "LedgerEntryType", SField::sMD_Never);
 SF_U16 const sfTransactionType      = make::one<SF_U16::type>(&sfTransactionType,   STI_UINT16, 2, "TransactionType");
 SF_U16 const sfSignerWeight         = make::one<SF_U16::type>(&sfSignerWeight,      STI_UINT16, 3, "SignerWeight");
+SF_U16 const sfPort                 = make::one<SF_U16::type>(&sfPort,              STI_UINT16, 4, "Port");
 
 // 32-bit integers (common)
 SF_U32 const sfFlags             = make::one<SF_U32::type>(&sfFlags,             STI_UINT32,  2, "Flags");

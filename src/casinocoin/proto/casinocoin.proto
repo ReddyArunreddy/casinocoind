@@ -186,51 +186,8 @@ message TMStatusChange
 
 message TMPerformanceReport
 {
-    required bytes report           = 1;    // in STPerformanceReport signed form
+    required bytes report           = 1;    // in STPerformanceReport form
     optional uint32 hops            = 2;    // Number of hops traveled
-}
-message TMReportState
-{
-    optional NodeStatus currStatus      = 1;
-    optional uint32 ledgerSeqBegin      = 2;
-    optional uint32 ledgerSeqEnd        = 3;
-    message Status
-    {
-        optional NodeStatus mode        = 4;
-        optional uint32 transitions     = 5;
-        optional uint32 duration        = 6;
-    }
-    repeated Status status              = 7;
-    optional uint32 latency             = 8;
-    optional bytes crnPubKey            = 9;
-    optional string domain              = 10;
-    optional string signature           = 11;
-    optional bool activated             = 12;
-}
-
-message TMDFSReportState
-{
-    enum reportType {
-        rtREQ  = 0; // we want a reply
-        rtRESP = 1; // this is a reply
-    }
-    required reportType type               = 1;
-
-    message PubKeyReportMap
-    {
-      required string pubKey               = 2;
-      required TMReportState report        = 3;
-    }
-    repeated PubKeyReportMap reports       = 4;
-    repeated string visited                = 5;
-    repeated string dfs                    = 6; 
-    optional uint32 startLedger            = 7;
-}
-
-message TMDFSReportStateAck
-{
-    required string dfsRoot                = 1;
-    optional uint32 startLedger            = 2;	
 }
 
 // Announce to the network our position on a closing ledger

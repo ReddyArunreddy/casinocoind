@@ -59,13 +59,9 @@ public:
         beast::Journal j,
         LedgerMaster& ledgerMaster);
 
-    bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m);
-
     Json::Value json() const;
 
     CRNId const& id() const;
-
-    CRNPerformance& performance() const;
 
     bool activated() const;
 
@@ -79,7 +75,7 @@ public:
     static const EligibilityMap eligibilityMapNone;
 private:
     CRNId id_;
-    std::unique_ptr<CRNPerformance> performance_;
+    CRNPerformance performance_;
     beast::Journal j_;
 };
 

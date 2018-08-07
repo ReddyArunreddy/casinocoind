@@ -29,8 +29,13 @@
 #include <casinocoin/app/ledger/Ledger.h>
 #include <casinocoin/core/ConfigSections.h>
 #include <casinocoin/overlay/impl/ProtocolMessage.h>
+#include <casinocoin/app/misc/NetworkOPs.h>
 #include <casinocoin/protocol/Protocol.h>
 #include <casinocoin/protocol/STPerformanceReport.h>
+#include <boost/format.hpp>
+#include <boost/regex.hpp>
+#include <algorithm>
+#include <mutex>
 
 namespace casinocoin {
 
@@ -42,6 +47,11 @@ class CRNId;
 class CRNPerformance
 {
 public:
+    CRNPerformance (NetworkOPs& networkOps,
+                    LedgerIndex const& startupSeq,
+                    CRNId const& crnId,
+                    beast::Journal journal);
+
     virtual ~CRNPerformance() = default;
 
     /**
@@ -55,27 +65,15 @@ public:
     static uint32_t getReportingStartOffset() { return 10; }
     // ledger-domain period when report is interpreted as 'current'
     static uint32_t getReportCurrentPeriod() { return getReportingStartOffset() + 2; /* add 2 ledgers for validation and voting */ }
-    /** Returns a Json::objectValue. */
-    virtual Json::Value json () const = 0;
 
-    /**
-     * ---------------
-     * outbound methods
-     * ---------------
-    */
-    virtual STPerformanceReport::pointer
+    STPerformanceReport::pointer
     prepareReport (
         LedgerIndex const& lastClosedLedgerSeq,
-        Application &app) = 0;
+        Application &app);
 
-    virtual void broadcast (STPerformanceReport::ref report, Application &app) = 0;
-    /**
-     * ---------------
-     * inbound methods
-     * ---------------
-    */
-    virtual bool onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m) = 0;
+    void broadcast (STPerformanceReport::ref report, Application &app);
 
+    Json::Value json () const;
 
     /**
      * Status accounting records two attributes for each possible node status:
@@ -143,17 +141,24 @@ public:
         static Json::StaticString const dur_;
     };
 
-    virtual StatusAccounting& accounting() = 0;
 
 protected:
+    NetworkOPs& networkOps;
+    LedgerIndex lastSnapshotSeq_;
+    CRNId const& id;
+    beast::Journal j_;
+
+    std::array<StatusAccounting::Counters,5> lastSnapshot_;
+    uint32_t latency_;
+
+private:
+
+    std::array<StatusAccounting::Counters,5>
+    mapServerAccountingToPeerAccounting(std::array<NetworkOPs::StateAccounting::Counters, 5> const& serverAccounting);
+
+    std::mutex mutable recentLock_;
 
 };
-
-std::unique_ptr<CRNPerformance> make_CRNPerformance(
-    NetworkOPs& networkOps,
-    LedgerIndex const& startupSeq,
-    CRNId const& crnId,
-    beast::Journal journal);
 
 }
 

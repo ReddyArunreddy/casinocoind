@@ -125,6 +125,39 @@ public:
         return Blob();
     }
 
+    uint16_t wsPort() const
+    {
+        return wsPort_;
+    }
+
+    bool activated(LedgerMaster& ledgerMaster)
+    {
+        bool activated = false;
+        // get the account id for the CRN
+        boost::optional <AccountID> accountID = calcAccountID(pubKey_);
+        // get the last validated ledger
+        auto const ledger = ledgerMaster.getValidatedLedger();
+        if(ledger)
+        {
+            auto const sleAccepted = ledger->read(keylet::account(*accountID));
+            if (sleAccepted)
+            {
+                STAmount amount = sleAccepted->getFieldAmount (sfBalance);
+                JLOG(j_.info()) << "CRN Account Balance: " << amount.getFullText ();
+                // check if the account balance is >= defined reserve
+                if(amount >= conf_.CRN_RESERVE)
+                {
+                    activated = true;
+                }
+            }
+        }
+        else
+        {
+            JLOG(j_.info()) << "CRN No Validated Ledger for Activated.";
+        }
+        return activated;
+    }
+
     static bool activated(PublicKey const& pubKey,
                           LedgerMaster& ledgerMaster,
                           const beast::Journal& journal,
@@ -161,57 +194,12 @@ public:
         return activated(pubKey_, m_ledgerMaster, j_, conf_);
     }
 
-    bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const
-    {
-        JLOG(j_.debug()) << "CRNId::onMessage TMReportState.";
-
-        PublicKey incomingPubKey;
-        if (m->has_crnpubkey())
-            incomingPubKey= PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
-        else
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState crnPubKey missing in msg";
-
-        if (!(pubKey_ == incomingPubKey))
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState public key mismatch"
-                                    << " incomingPK: " << incomingPubKey
-                                    << " ourPK: " << pubKey_;
-            return false;
-        }
-
-        if (!m->has_domain())
-        {
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState domain missing in msg";
-            return false;
-        }
-        if (domain_ != m->domain())
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState domain mismatch"
-                                    << " incoming domain: " << m->domain()
-                                    << " our domain: " << domain_;
-            return false;
-        }
-
-        if (!m->has_signature())
-        {
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState signature missing in msg";
-            return false;
-        }
-        if (signature_ != m->signature())
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState domain mismatch"
-                                    << " incoming signature: " << m->signature()
-                                    << " our signature: " << signature_;
-            return false;
-        }
-
-        return true;
-    }
 private:
     PublicKey pubKey_;
     AccountID accountId_;
     std::string domain_;
     std::string signature_;
+    uint32_t wsPort_;
     beast::Journal j_;
     Config& conf_;
     LedgerMaster& m_ledgerMaster;

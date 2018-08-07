@@ -50,7 +50,7 @@ CRN::CRN(const PublicKey &pubKey,
          Config &conf,
          LedgerMaster& ledgerMaster)
     : id_(pubKey, domain, domainSignature, j, conf, ledgerMaster)
-    , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    , performance_(networkOps, startupSeq, id_, j)
     , j_(j)
 {
 
@@ -62,18 +62,10 @@ CRN::CRN(Config &conf,
          beast::Journal j,
          LedgerMaster& ledgerMaster)
     : id_(conf, j, ledgerMaster)
-    , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    , performance_(networkOps, startupSeq, id_, j)
     , j_(j)
 {
 
-}
-
-bool CRN::onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m)
-{
-    if (!id_.onOverlayMessage(m) || !performance_->onOverlayMessage(m))
-        return false;
-
-    return true;
 }
 
 Json::Value CRN::json() const
@@ -84,12 +76,6 @@ Json::Value CRN::json() const
 CRNId const& CRN::id() const
 {
     return id_;
-}
-
-CRNPerformance& CRN::performance() const
-{
-    assert(performance_);
-    return *performance_;
 }
 
 bool CRN::activated() const
@@ -104,12 +90,12 @@ CRN::prepareReport(
     LedgerIndex const& lastClosedLedgerSeq,
     Application &app)
 {
-    return performance().prepareReport(lastClosedLedgerSeq, app);
+    return performance_.prepareReport(lastClosedLedgerSeq, app);
 }
 
 void CRN::broadcast(STPerformanceReport::ref report, Application &app)
 {
-    performance().broadcast(report, app);
+    performance_.broadcast(report, app);
 }
 
 std::unique_ptr<CRN> make_CRN(Config &conf,
