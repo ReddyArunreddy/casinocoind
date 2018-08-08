@@ -31,6 +31,7 @@
 #include <casinocoin/core/ConfigSections.h>
 #include <casinocoin/protocol/JsonFields.h>
 #include <casinocoin/protocol/TxFlags.h>
+#include <casinocoin/protocol/Feature.h>
 #include <casinocoin/app/misc/FeeVote.h>
 #include <boost/format.hpp>
 #include <boost/regex.hpp>
@@ -188,6 +189,11 @@ CRNRoundImpl::CRNRoundImpl(Application& app, int majorityFraction, beast::Journa
 
 void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClosedLedger, STObject &baseValidation)
 {
+    if (!lastClosedLedger->rules().enabled(featureCRN))
+    {
+        JLOG(j_.info()) << "CRNRoundImpl::doValidation CRN feature is not enabled. aborting";
+        return;
+    }
     JLOG (j_.info()) <<
         "CRNRoundImpl::doValidation with " << eligibilityMap_.size() << " candidates";
 
@@ -214,6 +220,11 @@ void CRNRoundImpl::doValidation(std::shared_ptr<const ReadView> const& lastClose
 
 void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLedger, const ValidationSet &parentValidations, const std::shared_ptr<SHAMap> &initialPosition)
 {
+    if (!lastClosedLedger->rules().enabled(featureCRN))
+    {
+        JLOG(j_.info()) << "CRNRoundImpl::doVoting CRN feature is not enabled. aborting";
+        return;
+    }
     JLOG(j_.info()) << "CRNRoundImpl::doVoting. validations: " << parentValidations.size()
                     << " voting range: 0 - " << CSCAmount(SYSTEM_CURRENCY_START - static_cast<uint64_t>(lastClosedLedger->info().drops.drops())).drops();
 
@@ -325,6 +336,11 @@ void CRNRoundImpl::doVoting(std::shared_ptr<const ReadView> const& lastClosedLed
 
 void CRNRoundImpl::updatePosition(std::list<STPerformanceReport::pointer> const& reports)
 {
+    if (!app_.getLedgerMaster().getValidatedRules().enabled(featureCRN))
+    {
+        JLOG(j_.info()) << "CRNRoundImpl::updatePosition CRN feature is not enabled. aborting";
+        return;
+    }
     eligibilityMap_.clear();
     for (STPerformanceReport::ref report : reports)
     {
@@ -379,6 +395,11 @@ void CRNRoundImpl::updatePosition(std::list<STPerformanceReport::pointer> const&
     }
     JLOG (j_.info()) <<
         "CRNRoundImpl::updatePosition with " << eligibilityMap_.size() << " candidates";
+    for (auto const& entry : eligibilityMap_)
+    {
+        JLOG(j_.debug()) <<
+            "CRNRoundImpl::updatePosition map entry PubKey: " << toBase58(TOKEN_NODE_PUBLIC,entry.first) << " Eligible:" << entry.second;
+    }
 }
 
 std::unique_ptr<CRNRound> make_CRNRound(Application& app, int majorityFraction, beast::Journal journal)

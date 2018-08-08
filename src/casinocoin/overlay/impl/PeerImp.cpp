@@ -358,6 +358,7 @@ PeerImp::json()
         CRNId crnId(myReport->getSignerPublic(),
                     myReport->getDomainName(),
                     strHex(myReport->getSignature()),
+                    myReport->getWSPort(),
                     journal_,
                     app_.config(),
                     app_.getLedgerMaster()
@@ -1654,9 +1655,12 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
 {
-    JLOG(p_journal_.info()) << "PerformanceReport: received";
     if (sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "PerformanceReport: received from insane peer. dropping";
         return;
+    }
+    JLOG(p_journal_.debug()) << "PerformanceReport: received";
 
     JLOG(p_journal_.trace()) << "PerformanceReport: serialize report";
     SerialIter sit (makeSlice(m->report()));

@@ -44,12 +44,13 @@ const CRN::EligibilityMap CRN::eligibilityMapNone = CRN::EligibilityMap();
 CRN::CRN(const PublicKey &pubKey,
          const std::string &domain,
          const std::string &domainSignature,
+         const uint16_t wsPort,
          NetworkOPs &networkOps,
          const LedgerIndex &startupSeq,
          beast::Journal j,
          Config &conf,
          LedgerMaster& ledgerMaster)
-    : id_(pubKey, domain, domainSignature, j, conf, ledgerMaster)
+    : id_(pubKey, domain, domainSignature, wsPort, j, conf, ledgerMaster)
     , performance_(networkOps, startupSeq, id_, j)
     , j_(j)
 {
@@ -111,11 +112,12 @@ std::unique_ptr<CRN> make_CRN(Config &conf,
                                  ledgerMaster);
 }
 
-std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
-                              const std::string &domain,
-                              const std::string &domainSignature,
+std::unique_ptr<CRN> make_CRN(PublicKey const& pubKey,
+                              std::string const& domain,
+                              std::string const& domainSignature,
+                              uint16_t const& wsPort,
                               NetworkOPs &networkOps,
-                              const LedgerIndex &startupSeq,
+                              LedgerIndex const& startupSeq,
                               beast::Journal j,
                               Config &conf,
                               LedgerMaster& ledgerMaster)
@@ -123,6 +125,7 @@ std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
     return std::make_unique<CRN>(pubKey,
                                  domain,
                                  domainSignature,
+                                 wsPort,
                                  networkOps,
                                  startupSeq,
                                  j,

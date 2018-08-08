@@ -35,6 +35,7 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/protocol/AccountID.h>
 #include <casinocoin/protocol/JsonFields.h>
+#include <casinocoin/rpc/ServerHandler.h>
 #include <casinocoin/app/ledger/LedgerMaster.h>
 
 namespace casinocoin {
@@ -47,13 +48,22 @@ public:
     CRNId(Config& conf,
           beast::Journal j,
           LedgerMaster& ledgerMaster)
-        : j_(j)
+        : wsPort_(0)
+        , j_(j)
         , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
     {
         std::pair <std::string, bool> domainName = conf_.section (SECTION_CRN_CONFIG).find("domain");
         std::pair <std::string, bool> publicKey = conf_.section (SECTION_CRN_CONFIG).find("publickey");
         std::pair <std::string, bool> signature = conf_.section (SECTION_CRN_CONFIG).find("signature");
+        std::vector<Port> configuredPorts = parse_Ports(conf_, std::cerr);
+        auto wsPort = find_if(configuredPorts.begin(), configuredPorts.end(), [](Port const& port)
+        {
+            return ((port.protocol.count("ws") != 0 || port.protocol.count("wss") != 0)
+                && port.ip.to_string() == "0.0.0.0");
+        });
+        if (wsPort != configuredPorts.end())
+            wsPort_ = (*wsPort).port;
         if(domainName.second && publicKey.second && signature.second)
         {
             boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
@@ -70,12 +80,14 @@ public:
     CRNId(PublicKey const& pubKey,
            std::string const& domain,
            std::string const& domainSignature,
+           uint16_t const& wsPort,
            beast::Journal j,
            Config& conf,
            LedgerMaster& ledgerMaster)
         : pubKey_(pubKey)
         , domain_(domain)
         , signature_(domainSignature)
+        , wsPort_(wsPort)
         , j_(j)
         , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
