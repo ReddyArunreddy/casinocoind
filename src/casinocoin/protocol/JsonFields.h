@@ -155,6 +155,7 @@ JSS ( crn_update_sites );           // out: CRNInfo
 JSS ( crn_nodes );                  // out: CRNInfo
 JSS ( crn_rounds );                 // out: CRNInfo
 JSS ( crn_latency );                // out: CRNInfo
+JSS ( crn_ws_port );                // out: Peers/CRN
 JSS ( currency );                   // in: paths/PathRequest, STAmount
                                     // out: paths/Node, STPathSet, STAmount
 JSS ( current );                    // out: OwnerInfo

@@ -1804,7 +1804,7 @@ void NetworkOPsImp::pubPerformanceReport(STPerformanceReport::ref report)
         jvObj [jss::crn_latency]      = report->getFieldU32(sfCRN_LatencyAvg);
         jvObj [jss::crn_first_ledger] = report->getFieldU32(sfFirstLedgerSequence);
         jvObj [jss::crn_last_ledger]  = report->getFieldU32(sfLastLedgerSequence);
-
+        jvObj [jss::crn_ws_port]      = report->getWSPort();
         for (auto i = mSubPerformanceReports.begin (); i != mSubPerformanceReports.end (); )
         {
             if (auto p = i->second.lock())
