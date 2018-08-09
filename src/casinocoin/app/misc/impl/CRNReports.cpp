@@ -149,7 +149,7 @@ private:
 
         LedgerIndex const validatedLedgerIndex = app_.getLedgerMaster().getValidLedgerIndex();
         LedgerIndex const reportFinalLedgerIndex = static_cast<LedgerIndex>(report->getLastLedgerIndex());
-        bool retVal = (validatedLedgerIndex - reportFinalLedgerIndex) < CRNPerformance::getReportCurrentPeriod();
+        bool retVal = (validatedLedgerIndex - reportFinalLedgerIndex) < CRNPerformance::getReportingPeriod();
         JLOG (j_.debug()) << "CRNReportsImp::current() validated ledger: "
                           << validatedLedgerIndex
                           << " finalLedgerInReport: "

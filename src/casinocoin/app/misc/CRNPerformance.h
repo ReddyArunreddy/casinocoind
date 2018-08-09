@@ -63,8 +63,6 @@ public:
     static uint32_t getReportingPeriod() { return 1000; }
     // start reporting offset in ledgers before voting
     static uint32_t getReportingStartOffset() { return 10; }
-    // ledger-domain period when report is interpreted as 'current'
-    static uint32_t getReportCurrentPeriod() { return getReportingStartOffset() + 2; /* add 2 ledgers for validation and voting */ }
 
     STPerformanceReport::pointer
     prepareReport (
