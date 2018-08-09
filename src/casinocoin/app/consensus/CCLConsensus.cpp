@@ -325,7 +325,6 @@ CCLConsensus::onClose(
     {
         if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
         {
-            app_.getCRNReports().flush();
             auto report = app_.getCRN().prepareReport(prevLedger->info().seq, app_);
             app_.getCRNReports().addReport(report, "local");
             app_.getCRN().broadcast(report, app_);
@@ -887,8 +886,6 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
 
             app_.getCRNRound().updatePosition(reports);
             app_.getCRNRound().doValidation(ledger.ledger_, *v);
-
-            app_.getCRNReports().flush();
         }
     }
 

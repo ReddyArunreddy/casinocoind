@@ -60,7 +60,7 @@ public:
      * ---------------
     */
     // voting period
-    static uint32_t getReportingPeriod() { return 50; }
+    static uint32_t getReportingPeriod() { return 1000; }
     // start reporting offset in ledgers before voting
     static uint32_t getReportingStartOffset() { return 10; }
     // ledger-domain period when report is interpreted as 'current'

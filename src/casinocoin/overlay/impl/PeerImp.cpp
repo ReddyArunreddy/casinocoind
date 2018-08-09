@@ -345,6 +345,7 @@ PeerImp::json()
     }
 
     std::list<STPerformanceReport::pointer> currentReports = app_.getCRNReports().getCurrentReports();
+
     auto myReportIter = find_if(currentReports.begin(), currentReports.end(),
         [&](STPerformanceReport::ref report)
         {

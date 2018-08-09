@@ -57,7 +57,6 @@ public:
         std::pair <std::string, bool> publicKey = conf_.section (SECTION_CRN_CONFIG).find("publickey");
         std::pair <std::string, bool> signature = conf_.section (SECTION_CRN_CONFIG).find("signature");
         std::vector<Port> configuredPorts = parse_Ports(conf_, std::cerr);
-        JLOG(j_.info()) << "CRNId::CRNId read " << configuredPorts.size() << " configured ports";
         auto wsPort = find_if(configuredPorts.begin(), configuredPorts.end(), [](Port const& port)
         {
             return ((port.protocol.count("ws") != 0 || port.protocol.count("wss") != 0)
@@ -65,7 +64,6 @@ public:
         });
         if (wsPort != configuredPorts.end())
         {
-            JLOG(j_.info()) << "CRNId::CRNId found WS port " << (*wsPort).port;
             wsPort_ = (*wsPort).port;
         }
         if(domainName.second && publicKey.second && signature.second)
