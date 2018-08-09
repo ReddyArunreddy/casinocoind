@@ -102,6 +102,7 @@ public:
         ret[jss::crn_public_key] = toBase58(TOKEN_NODE_PUBLIC, pubKey_);
         ret[jss::crn_domain_name] = domain_;
         ret[jss::crn_activated] = activated();
+        ret[jss::crn_ws_port] = wsPort_;
         return ret;
     }
 
