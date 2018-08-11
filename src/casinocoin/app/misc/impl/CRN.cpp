@@ -44,13 +44,14 @@ const CRN::EligibilityMap CRN::eligibilityMapNone = CRN::EligibilityMap();
 CRN::CRN(const PublicKey &pubKey,
          const std::string &domain,
          const std::string &domainSignature,
+         const uint16_t wsPort,
          NetworkOPs &networkOps,
          const LedgerIndex &startupSeq,
          beast::Journal j,
          Config &conf,
          LedgerMaster& ledgerMaster)
-    : id_(pubKey, domain, domainSignature, j, conf, ledgerMaster)
-    , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    : id_(pubKey, domain, domainSignature, wsPort, j, conf, ledgerMaster)
+    , performance_(networkOps, startupSeq, id_, j)
     , j_(j)
 {
 
@@ -62,18 +63,10 @@ CRN::CRN(Config &conf,
          beast::Journal j,
          LedgerMaster& ledgerMaster)
     : id_(conf, j, ledgerMaster)
-    , performance_(make_CRNPerformance(networkOps, startupSeq, id_, j))
+    , performance_(networkOps, startupSeq, id_, j)
     , j_(j)
 {
 
-}
-
-bool CRN::onOverlayMessage(std::shared_ptr<protocol::TMReportState> const& m)
-{
-    if (!id_.onOverlayMessage(m) || !performance_->onOverlayMessage(m))
-        return false;
-
-    return true;
 }
 
 Json::Value CRN::json() const
@@ -84,12 +77,6 @@ Json::Value CRN::json() const
 CRNId const& CRN::id() const
 {
     return id_;
-}
-
-CRNPerformance& CRN::performance() const
-{
-    assert(performance_);
-    return *performance_;
 }
 
 bool CRN::activated() const
@@ -104,12 +91,12 @@ CRN::prepareReport(
     LedgerIndex const& lastClosedLedgerSeq,
     Application &app)
 {
-    return performance().prepareReport(lastClosedLedgerSeq, app);
+    return performance_.prepareReport(lastClosedLedgerSeq, app);
 }
 
 void CRN::broadcast(STPerformanceReport::ref report, Application &app)
 {
-    performance().broadcast(report, app);
+    performance_.broadcast(report, app);
 }
 
 std::unique_ptr<CRN> make_CRN(Config &conf,
@@ -125,11 +112,12 @@ std::unique_ptr<CRN> make_CRN(Config &conf,
                                  ledgerMaster);
 }
 
-std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
-                              const std::string &domain,
-                              const std::string &domainSignature,
+std::unique_ptr<CRN> make_CRN(PublicKey const& pubKey,
+                              std::string const& domain,
+                              std::string const& domainSignature,
+                              uint16_t const& wsPort,
                               NetworkOPs &networkOps,
-                              const LedgerIndex &startupSeq,
+                              LedgerIndex const& startupSeq,
                               beast::Journal j,
                               Config &conf,
                               LedgerMaster& ledgerMaster)
@@ -137,6 +125,7 @@ std::unique_ptr<CRN> make_CRN(const PublicKey &pubKey,
     return std::make_unique<CRN>(pubKey,
                                  domain,
                                  domainSignature,
+                                 wsPort,
                                  networkOps,
                                  startupSeq,
                                  j,

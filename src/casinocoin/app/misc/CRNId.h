@@ -35,6 +35,7 @@
 #include <casinocoin/protocol/PublicKey.h>
 #include <casinocoin/protocol/AccountID.h>
 #include <casinocoin/protocol/JsonFields.h>
+#include <casinocoin/rpc/ServerHandler.h>
 #include <casinocoin/app/ledger/LedgerMaster.h>
 
 namespace casinocoin {
@@ -47,13 +48,24 @@ public:
     CRNId(Config& conf,
           beast::Journal j,
           LedgerMaster& ledgerMaster)
-        : j_(j)
+        : wsPort_(0)
+        , j_(j)
         , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
     {
         std::pair <std::string, bool> domainName = conf_.section (SECTION_CRN_CONFIG).find("domain");
         std::pair <std::string, bool> publicKey = conf_.section (SECTION_CRN_CONFIG).find("publickey");
         std::pair <std::string, bool> signature = conf_.section (SECTION_CRN_CONFIG).find("signature");
+        std::vector<Port> configuredPorts = parse_Ports(conf_, std::cerr);
+        auto wsPort = find_if(configuredPorts.begin(), configuredPorts.end(), [](Port const& port)
+        {
+            return ((port.protocol.count("ws") != 0 || port.protocol.count("wss") != 0)
+                && port.ip.to_string() == "0.0.0.0");
+        });
+        if (wsPort != configuredPorts.end())
+        {
+            wsPort_ = (*wsPort).port;
+        }
         if(domainName.second && publicKey.second && signature.second)
         {
             boost::optional<PublicKey> crnPublicKey = parseBase58<PublicKey>(TokenType::TOKEN_NODE_PUBLIC, publicKey.first);
@@ -70,12 +82,14 @@ public:
     CRNId(PublicKey const& pubKey,
            std::string const& domain,
            std::string const& domainSignature,
+           uint16_t const& wsPort,
            beast::Journal j,
            Config& conf,
            LedgerMaster& ledgerMaster)
         : pubKey_(pubKey)
         , domain_(domain)
         , signature_(domainSignature)
+        , wsPort_(wsPort)
         , j_(j)
         , conf_(conf)
         , m_ledgerMaster (ledgerMaster)
@@ -88,6 +102,7 @@ public:
         ret[jss::crn_public_key] = toBase58(TOKEN_NODE_PUBLIC, pubKey_);
         ret[jss::crn_domain_name] = domain_;
         ret[jss::crn_activated] = activated();
+        ret[jss::crn_ws_port] = wsPort_;
         return ret;
     }
 
@@ -123,6 +138,39 @@ public:
         if (result.second)
             return result.first;
         return Blob();
+    }
+
+    uint16_t wsPort() const
+    {
+        return wsPort_;
+    }
+
+    bool activated(LedgerMaster& ledgerMaster)
+    {
+        bool activated = false;
+        // get the account id for the CRN
+        boost::optional <AccountID> accountID = calcAccountID(pubKey_);
+        // get the last validated ledger
+        auto const ledger = ledgerMaster.getValidatedLedger();
+        if(ledger)
+        {
+            auto const sleAccepted = ledger->read(keylet::account(*accountID));
+            if (sleAccepted)
+            {
+                STAmount amount = sleAccepted->getFieldAmount (sfBalance);
+                JLOG(j_.info()) << "CRN Account Balance: " << amount.getFullText ();
+                // check if the account balance is >= defined reserve
+                if(amount >= conf_.CRN_RESERVE)
+                {
+                    activated = true;
+                }
+            }
+        }
+        else
+        {
+            JLOG(j_.info()) << "CRN No Validated Ledger for Activated.";
+        }
+        return activated;
     }
 
     static bool activated(PublicKey const& pubKey,
@@ -161,57 +209,12 @@ public:
         return activated(pubKey_, m_ledgerMaster, j_, conf_);
     }
 
-    bool onOverlayMessage(const std::shared_ptr<protocol::TMReportState> &m) const
-    {
-        JLOG(j_.debug()) << "CRNId::onMessage TMReportState.";
-
-        PublicKey incomingPubKey;
-        if (m->has_crnpubkey())
-            incomingPubKey= PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
-        else
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState crnPubKey missing in msg";
-
-        if (!(pubKey_ == incomingPubKey))
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState public key mismatch"
-                                    << " incomingPK: " << incomingPubKey
-                                    << " ourPK: " << pubKey_;
-            return false;
-        }
-
-        if (!m->has_domain())
-        {
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState domain missing in msg";
-            return false;
-        }
-        if (domain_ != m->domain())
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState domain mismatch"
-                                    << " incoming domain: " << m->domain()
-                                    << " our domain: " << domain_;
-            return false;
-        }
-
-        if (!m->has_signature())
-        {
-            JLOG(j_.debug()) << "CRNId::onOverlayMessage TMReportState signature missing in msg";
-            return false;
-        }
-        if (signature_ != m->signature())
-        {
-            JLOG(j_.warn()) << "CRNId::onMessage TMReportState domain mismatch"
-                                    << " incoming signature: " << m->signature()
-                                    << " our signature: " << signature_;
-            return false;
-        }
-
-        return true;
-    }
 private:
     PublicKey pubKey_;
     AccountID accountId_;
     std::string domain_;
     std::string signature_;
+    uint32_t wsPort_;
     beast::Journal j_;
     Config& conf_;
     LedgerMaster& m_ledgerMaster;

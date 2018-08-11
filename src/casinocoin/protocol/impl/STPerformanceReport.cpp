@@ -36,10 +36,6 @@ namespace casinocoin {
 STPerformanceReport::STPerformanceReport (SerialIter& sit, bool checkSignature)
     : STObject (getFormat (), sit, sfPerformanceReport)
 {
-    mNodeID = calcNodeID(
-        PublicKey(makeSlice (getFieldVL (sfCRN_PublicKey))));
-    assert (mNodeID.isNonZero ());
-
     if  (checkSignature && !isValid ())
     {
         JLOG (debugLog().error())
@@ -64,9 +60,6 @@ STPerformanceReport::STPerformanceReport (
     setFieldVL (sfSignature, signature);
     setFieldVL (sfCRN_DomainName, domain);
     setFieldU8 (sfCRNActivated, 0);
-
-    mNodeID = calcNodeID(publicKey);
-    assert (mNodeID.isNonZero ());
 }
 
 NetClock::time_point
@@ -106,6 +99,13 @@ PublicKey STPerformanceReport::getSignerPublic () const
     return PublicKey(makeSlice (getFieldVL (sfCRN_PublicKey)));
 }
 
+PublicKey STPerformanceReport::getNodePublic () const
+{
+    if (isFieldPresent(sfPublicKey))
+        return PublicKey(makeSlice (getFieldVL (sfPublicKey)));
+    return PublicKey();
+}
+
 uint32_t STPerformanceReport::getLastLedgerIndex() const
 {
     return getFieldU32 (sfLastLedgerSequence);
@@ -134,11 +134,23 @@ bool STPerformanceReport::getActivated () const
     return ((getFieldU8(sfCRNActivated) > 0) ? true : false);
 }
 
+uint16_t STPerformanceReport::getWSPort() const
+{
+    if (isFieldPresent(sfPort))
+        return getFieldU16(sfPort);
+    return 0;
+}
+
 Blob STPerformanceReport::getSerialized () const
 {
     Serializer s;
     add (s);
     return s.peekData ();
+}
+
+std::uint32_t STPerformanceReport::getLatency() const
+{
+    return getFieldU32 (sfCRN_LatencyAvg);
 }
 
 SOTemplate const& STPerformanceReport::getFormat ()
@@ -160,17 +172,14 @@ SOTemplate const& STPerformanceReport::getFormat ()
             format.push_back (SOElement (sfStatusMode,              SOE_OPTIONAL));
             format.push_back (SOElement (sfCRNPerformance,          SOE_OPTIONAL));
             format.push_back (SOElement (sfCRNActivated,            SOE_OPTIONAL));
+            format.push_back (SOElement (sfPublicKey,               SOE_OPTIONAL));
+            format.push_back (SOElement (sfPort,                    SOE_OPTIONAL));
         }
     };
 
     static FormatHolder holder;
 
     return holder.format;
-}
-
-std::uint32_t STPerformanceReport::getLatency() const
-{
-    return getFieldU32 (sfCRN_LatencyAvg);
 }
 
 } // casinocoin

@@ -321,16 +321,15 @@ CCLConsensus::onClose(
     }
 
     // CRN report their performance in selected periods
-    //        if (prevLedger->rules().enabled(featureCRN))
-    //        {
-    if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
+    if (prevLedger->rules().enabled(featureCRN))
     {
-        app_.getCRNReports().flush();
-        auto report = app_.getCRN().prepareReport(prevLedger->info().seq, app_);
-        app_.getCRNReports().addReport(report, "local");
-        app_.getCRN().broadcast(report, app_);
+        if (app_.isCRN() && ((prevLedger->info().seq + CRNPerformance::getReportingStartOffset()) % CRNPerformance::getReportingPeriod()) == 0)
+        {
+            auto report = app_.getCRN().prepareReport(prevLedger->info().seq, app_);
+            app_.getCRNReports().addReport(report, "local");
+            app_.getCRN().broadcast(report, app_);
+        }
     }
-    //        }
 
     // Add pseudo-transactions to the set
     if ((app_.config().standalone() || (proposing && !wrongLCL)))
@@ -354,15 +353,14 @@ CCLConsensus::onClose(
 
             }
         }
-        if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod()) == 0)
+        if (prevLedger->rules().enabled(featureCRN))
         {
-            if (count >= app_.validators().quorum())
+            if ((prevLedger->info().seq % CRNPerformance::getReportingPeriod()) == 0)
             {
-                // jrojek TODO enable check
-                //        if (prevLedger->rules().enabled(featureCRN))
-                //        {
-                app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
-                //        }
+                if (count >= app_.validators().quorum())
+                {
+                    app_.getCRNRound().doVoting(prevLedger, validations, initialSet);
+                }
             }
         }
     }
@@ -880,14 +878,15 @@ CCLConsensus::validate(CCLCxLedger const& ledger, bool proposing)
         app_.getAmendmentTable().doValidation(ledger.ledger_, *v);
     }
 
-    if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
+    if (app_.getLedgerMaster().getValidatedRules().enabled(featureCRN))
     {
-        std::list<STPerformanceReport::pointer> reports = app_.getCRNReports().getCurrentReports();
+        if (((ledger.seq() + 1) % CRNPerformance::getReportingPeriod()) == 0)
+        {
+            std::list<STPerformanceReport::pointer> reports = app_.getCRNReports().getCurrentReports();
 
-        app_.getCRNRound().updatePosition(reports);
-        app_.getCRNRound().doValidation(ledger.ledger_, *v);
-
-        app_.getCRNReports().flush();
+            app_.getCRNRound().updatePosition(reports);
+            app_.getCRNRound().doValidation(ledger.ledger_, *v);
+        }
     }
 
     auto const signingHash = v->sign(valSecret_);

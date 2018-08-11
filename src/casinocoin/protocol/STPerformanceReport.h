@@ -34,7 +34,6 @@
 
 namespace casinocoin {
 
-// jrojek: @ajochems: Adjust to our needs
 class STPerformanceReport final
     : public STObject
     , public CountedObject <STPerformanceReport>
@@ -71,12 +70,10 @@ public:
     NetClock::time_point getSeenTime ()  const;
     std::uint32_t   getFlags ()          const;
     PublicKey       getSignerPublic ()   const;
+    PublicKey       getNodePublic ()     const;
     std::uint32_t   getLastLedgerIndex() const;
     uint256         getSigningHash ()    const;
-    NodeID          getNodeID ()         const
-    {
-        return mNodeID;
-    }
+
     bool            isValid ()           const;
 
     void            setSeen (NetClock::time_point s)
@@ -88,13 +85,13 @@ public:
     std::string   getDomainName ()       const;
     std::uint32_t getLatency ()          const;
     bool          getActivated ()        const;
+    std::uint16_t getWSPort ()           const;
 
 private:
     static SOTemplate const& getFormat ();
 
     void setNode ();
 
-    NodeID mNodeID;
     NetClock::time_point mSeen = {};
 };
 

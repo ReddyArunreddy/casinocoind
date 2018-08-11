@@ -353,6 +353,7 @@ extern SF_U8 const sfCRNActivated;
 extern SF_U16 const sfLedgerEntryType;
 extern SF_U16 const sfTransactionType;
 extern SF_U16 const sfSignerWeight;
+extern SF_U16 const sfPort;
 
 // 32-bit integers (common)
 extern SF_U32 const sfFlags;

@@ -35,6 +35,7 @@
 #include <casinocoin/app/misc/Transaction.h>
 #include <casinocoin/app/misc/Validations.h>
 #include <casinocoin/app/misc/ValidatorList.h>
+#include <casinocoin/app/misc/CRNReports.h>
 #include <casinocoin/app/tx/apply.h>
 #include <casinocoin/basics/random.h>
 #include <casinocoin/basics/StringUtilities.h>
@@ -103,7 +104,6 @@ PeerImp::PeerImp (Application& app, id_t id, endpoint_type remote_endpoint,
     , slot_ (slot)
     , request_(std::move(request))
     , headers_(request_.fields)
-    , crn_(nullptr)
 {
 }
 
@@ -344,12 +344,27 @@ PeerImp::json()
             break;
     }
 
-    if (crn_)
-    {
-        JLOG(journal_.info()) <<
-            "Peer is CRN, reporting more detailed data (PK:" << toBase58(TOKEN_NODE_PUBLIC, crn_->id().publicKey()) << ")";
+    std::list<STPerformanceReport::pointer> currentReports = app_.getCRNReports().getCurrentReports();
 
-        ret[jss::crn] = crn_->json();
+    auto myReportIter = find_if(currentReports.begin(), currentReports.end(),
+        [&](STPerformanceReport::ref report)
+        {
+            return report->getNodePublic() == publicKey_;
+        });
+    if (myReportIter != currentReports.end())
+    {
+        STPerformanceReport::ref myReport = *myReportIter;
+        JLOG(journal_.debug()) <<
+            "Peer is CRN, reporting more detailed data (PK:" << toBase58(TOKEN_NODE_PUBLIC, myReport->getSignerPublic()) << ")";
+        CRNId crnId(myReport->getSignerPublic(),
+                    myReport->getDomainName(),
+                    strHex(myReport->getSignature()),
+                    myReport->getWSPort(),
+                    journal_,
+                    app_.config(),
+                    app_.getLedgerMaster()
+                    );
+        ret[jss::crn] = crnId.json();
     }
 
     if (last_status_.has_newstatus ())
@@ -362,8 +377,11 @@ PeerImp::json()
         }
         else
         {
-            ret[jss::status] =
-                    CRNPerformance::StatusAccounting::statuses_[last_status_.newstatus () - 1];
+            if (sanity_.load () == Sanity::sane)
+            {
+                ret[jss::status] =
+                        CRNPerformance::StatusAccounting::statuses_[last_status_.newstatus () - 1];
+            }
         }
     }
 
@@ -1312,8 +1330,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     if (!last_status_.has_newstatus () || m->has_newstatus ())
     {
         last_status_ = *m;
-        if (crn_)
-            crn_->performance().accounting().mode(m->newstatus());
     }
     else
     {
@@ -1373,12 +1389,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMStatusChange> const& m)
     if (m->has_ledgerseq() &&
         app_.getLedgerMaster().getValidatedLedgerAge() < 15min)
     {
-        if (crn_ && (m->ledgerseq() % crn_->performance().getReportingPeriod()) == 0)
-        // reset accounting data
-        {
-            JLOG(p_journal_.info()) << "Reset accounting data";
-            crn_->performance().accounting().reset();
-        }
         checkSanity (m->ledgerseq(), app_.getLedgerMaster().getValidLedgerIndex());
     }
 
@@ -1646,9 +1656,12 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMValidation> const& m)
 void
 PeerImp::onMessage (std::shared_ptr <protocol::TMPerformanceReport> const& m)
 {
-    JLOG(p_journal_.info()) << "PerformanceReport: received";
     if (sanity_.load() == Sanity::insane)
+    {
+        JLOG(p_journal_.info()) << "PerformanceReport: received from insane peer. dropping";
         return;
+    }
+    JLOG(p_journal_.debug()) << "PerformanceReport: received";
 
     JLOG(p_journal_.trace()) << "PerformanceReport: serialize report";
     SerialIter sit (makeSlice(m->report()));
@@ -1809,39 +1822,6 @@ PeerImp::onMessage (std::shared_ptr <protocol::TMGetObjectByHash> const& m)
         if (packet.type () == protocol::TMGetObjectByHash::otFETCH_PACK)
             app_.getLedgerMaster ().gotFetchPack (progress, pLSeq);
     }
-}
-
-void PeerImp::onMessage(std::shared_ptr<protocol::TMReportState> const& m)
-{
-    JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState.";
-
-    if (!crn_)
-    {
-        PublicKey crnIncomingPubKey;
-        std::string domain;
-        std::string domainSignature;
-        if (m->has_crnpubkey())
-            crnIncomingPubKey = PublicKey(Slice(m->crnpubkey().data(), m->crnpubkey().size()));
-        else
-            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState crnPubKey missing in msg";
-        if (m->has_domain())
-            domain = m->domain();
-        else
-            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState domain missing in msg";
-        if (m->has_signature())
-            domainSignature = m->signature();
-        else
-            JLOG(journal_.debug()) << "PeerImp::onMessage TMReportState signature missing in msg";
-
-        crn_ = make_CRN(crnIncomingPubKey, domain, domainSignature,
-                        app_.getOPs(), app_.getLedgerMaster().getCurrentLedgerIndex(),
-                        journal_,
-                        app_.config(),
-                        app_.getLedgerMaster());
-    }
-
-    crn_->onOverlayMessage(m);
-
 }
 
 //--------------------------------------------------------------------------

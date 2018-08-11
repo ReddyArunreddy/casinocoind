@@ -857,7 +857,6 @@ to_Port(ParsedPort const& parsed, std::ostream& log)
     return p;
 }
 
-static
 std::vector<Port>
 parse_Ports (
     Config const& config,

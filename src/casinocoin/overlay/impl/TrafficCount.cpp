@@ -73,7 +73,6 @@ TrafficCount::category TrafficCount::categorize (
             (type == protocol::mtENDPOINTS) ||
             (type == protocol::mtPEERS) ||
             (type == protocol::mtGET_PEERS) ||
-            (type == protocol::mtREPORT_STATE) ||
             (type == protocol::mtPERFORMANCE_REPORT))
         return TrafficCount::category::CT_overlay;
 
