@@ -117,7 +117,8 @@ private:
                     crnPubKey != it->second->getSignerPublic())
                 {
                     // This is either a newer CRNReport or a new signing key
-                    JLOG (j_.warn()) << "Newer report or report with new signing key received";
+                    JLOG (j_.debug()) << "Newer report or report with new signing key received";
+                    it->second = report;
                 }
                 else
                 {
