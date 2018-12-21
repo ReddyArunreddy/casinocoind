@@ -74,8 +74,9 @@ class FeatureCollections
          "CryptoConditionsSuite",
          "fix1373",
          "EnforceInvariants",
-		 "featureKYC",
-		 "SortedDirectories"};
+		 "KYC",
+		 "SortedDirectories",
+		 "fix1201"};
 
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
@@ -169,6 +170,7 @@ extern uint256 const fix1373;
 extern uint256 const featureEnforceInvariants;
 extern uint256 const featureKYC;
 extern uint256 const featureSortedDirectories;
+extern uint256 const fix1201;
 
 } // casinocoin
 
