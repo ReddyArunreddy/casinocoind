@@ -74,7 +74,7 @@ class FeatureCollections
          "CryptoConditionsSuite",
          "fix1373",
          "EnforceInvariants",
-		 "featureKYC"};
+		 "KYC"};
 
     std::vector<uint256> features;
     boost::container::flat_map<uint256, std::size_t> featureToIndex;
