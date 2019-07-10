@@ -74,7 +74,7 @@ class FeatureCollections
          "CryptoConditionsSuite",
          "fix1373",
          "EnforceInvariants",
-		 "featureKYC",
+		 "KYC",
 		 "SortedDirectories"};
 
     std::vector<uint256> features;
