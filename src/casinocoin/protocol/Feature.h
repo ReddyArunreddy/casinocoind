@@ -74,7 +74,7 @@ class FeatureCollections
          "CryptoConditionsSuite",
          "fix1373",
          "EnforceInvariants",
-		 "featureKYC",
+		 "KYC",
 		 "SortedDirectories",
 		 "fix1201"};
 
