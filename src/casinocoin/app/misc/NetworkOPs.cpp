@@ -1259,39 +1259,6 @@ void NetworkOPsImp::setAmendmentBlocked ()
     setMode (omTRACKING);
 }
 
-class ValidationCount
-{
-public:
-    int trustedValidations, nodesUsing;
-    NodeID highNodeUsing, highValidation;
-
-    ValidationCount () : trustedValidations (0), nodesUsing (0)
-    {
-    }
-
-    bool operator> (const ValidationCount& v) const
-    {
-        if (trustedValidations > v.trustedValidations)
-            return true;
-
-        if (trustedValidations < v.trustedValidations)
-            return false;
-
-        if (trustedValidations == 0)
-        {
-            if (nodesUsing > v.nodesUsing)
-                return true;
-
-            if (nodesUsing < v.nodesUsing)
-                return false;
-
-            return highNodeUsing > v.highNodeUsing;
-        }
-
-        return highValidation > v.highValidation;
-    }
-};
-
 bool NetworkOPsImp::checkLastClosedLedger (
     const Overlay::PeerSequence& peerList, uint256& networkClosed)
 {
